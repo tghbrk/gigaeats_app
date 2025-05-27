@@ -126,7 +126,10 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
                                 ),
                                 child: SizedBox(
                                   width: 280,
-                                  child: FeaturedVendorCard(vendor: vendors[index]),
+                                  child: FeaturedVendorCard(
+                                    vendor: vendors[index],
+                                    onTap: () => _navigateToVendorDetails(vendors[index]),
+                                  ),
                                 ),
                               );
                             },
@@ -338,7 +341,6 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
   }
 
   void _navigateToVendorDetails(Vendor vendor) {
-    // TODO: Navigate to vendor details screen
     context.push('/vendor-details/${vendor.id}');
   }
 }

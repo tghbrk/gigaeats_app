@@ -1,5 +1,6 @@
 import '../models/vendor.dart';
 import '../models/product.dart';
+import 'mock_data.dart';
 
 class VendorService {
   // In a real app, this would make API calls
@@ -18,7 +19,7 @@ class VendorService {
     await Future.delayed(const Duration(milliseconds: 800));
 
     // TODO: Replace with actual API call
-    var vendors = <Vendor>[];
+    var vendors = MockData.sampleVendors;
 
     // Apply filters
     if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -54,7 +55,11 @@ class VendorService {
     await Future.delayed(const Duration(milliseconds: 300));
 
     // TODO: Replace with actual API call
-    return null;
+    try {
+      return MockData.sampleVendors.firstWhere((vendor) => vendor.id == vendorId);
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<List<Product>> getVendorProducts(String vendorId, {
@@ -66,7 +71,7 @@ class VendorService {
     await Future.delayed(const Duration(milliseconds: 500));
 
     // TODO: Replace with actual API call
-    var products = <Product>[];
+    var products = MockData.getProductsForVendor(vendorId);
 
     // Apply filters
     if (category != null) {
@@ -100,14 +105,14 @@ class VendorService {
     await Future.delayed(const Duration(milliseconds: 200));
 
     // TODO: Replace with actual API call
-    return <String>[];
+    return MockData.cuisineTypes;
   }
 
   Future<List<Vendor>> getFeaturedVendors({int limit = 5}) async {
     await Future.delayed(const Duration(milliseconds: 400));
 
     // TODO: Replace with actual API call
-    return <Vendor>[];
+    return MockData.sampleVendors.take(limit).toList();
   }
 
   Future<List<Vendor>> getNearbyVendors({

@@ -8,6 +8,8 @@ import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart';
 import '../../presentation/screens/sales_agent/sales_agent_dashboard.dart';
 import '../../presentation/screens/sales_agent/create_order_screen.dart';
+import '../../presentation/screens/sales_agent/vendor_details_screen.dart';
+import '../../presentation/screens/sales_agent/cart_screen.dart';
 import '../../presentation/screens/vendor/vendor_dashboard.dart';
 import '../../presentation/screens/admin/admin_dashboard.dart';
 import '../../core/constants/app_constants.dart';
@@ -49,6 +51,11 @@ class AppRouter {
             path: 'create-order',
             name: 'create-order',
             builder: (context, state) => const CreateOrderScreen(),
+          ),
+          GoRoute(
+            path: 'cart',
+            name: 'cart',
+            builder: (context, state) => const CartScreen(),
           ),
           GoRoute(
             path: 'orders',
@@ -149,10 +156,11 @@ class AppRouter {
         path: AppRoutes.vendorDetails,
         name: 'vendor-details',
         builder: (context, state) {
-          final vendorId = state.pathParameters['vendorId'];
-          return Placeholder(); // TODO: Implement VendorDetailsScreen(vendorId: vendorId)
+          final vendorId = state.pathParameters['vendorId']!;
+          return VendorDetailsScreen(vendorId: vendorId);
         },
       ),
+
       GoRoute(
         path: AppRoutes.settings,
         name: 'settings',

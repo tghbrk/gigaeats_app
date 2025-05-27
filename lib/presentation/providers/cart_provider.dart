@@ -206,6 +206,16 @@ class CartNotifier extends StateNotifier<CartState> {
     state = state.copyWith(items: updatedItems);
   }
 
+  void incrementItem(String itemId) {
+    final item = state.items.firstWhere((item) => item.id == itemId);
+    updateItemQuantity(itemId, item.quantity + 1);
+  }
+
+  void decrementItem(String itemId) {
+    final item = state.items.firstWhere((item) => item.id == itemId);
+    updateItemQuantity(itemId, item.quantity - 1);
+  }
+
   void removeItem(String itemId) {
     final updatedItems = state.items.where((item) => item.id != itemId).toList();
     state = state.copyWith(items: updatedItems);

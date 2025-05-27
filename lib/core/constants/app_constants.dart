@@ -104,6 +104,8 @@ class AppRoutes {
   static const String salesAgentCustomers = '/sales-agent/customers';
   static const String salesAgentProfile = '/sales-agent/profile';
   static const String salesAgentCommissions = '/sales-agent/commissions';
+  static const String salesAgentCart = '/sales-agent/cart';
+  static const String salesAgentCreateOrder = '/sales-agent/create-order';
 
   // Vendor Routes
   static const String vendorDashboard = '/vendor';
@@ -120,8 +122,8 @@ class AppRoutes {
   static const String adminReports = '/admin/reports';
 
   // Shared Routes
-  static const String orderDetails = '/order-details';
-  static const String vendorDetails = '/vendor-details';
+  static const String orderDetails = '/order-details/:orderId';
+  static const String vendorDetails = '/vendor-details/:vendorId';
   static const String settings = '/settings';
   static const String help = '/help';
   static const String about = '/about';

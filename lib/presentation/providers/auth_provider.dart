@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/user.dart';
+import '../../data/models/user_role.dart';
 import '../../data/services/auth_service.dart';
 
 // Shared Preferences Provider
@@ -121,6 +122,50 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       debugPrint('AuthProvider: Exception during sign in: $e');
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  Future<void> register({
+    required String email,
+    required String password,
+    required String fullName,
+    required String phoneNumber,
+    required UserRole role,
+  }) async {
+    debugPrint('AuthProvider: Starting registration process');
+    state = state.copyWith(status: AuthStatus.loading);
+
+    try {
+      debugPrint('AuthProvider: Calling auth service register');
+      final result = await _authService.registerWithEmailAndPassword(
+        email: email,
+        password: password,
+        fullName: fullName,
+        phoneNumber: phoneNumber,
+        role: role,
+      );
+
+      debugPrint('AuthProvider: Auth service result - success: ${result.isSuccess}, user: ${result.user?.email}');
+
+      if (result.isSuccess && result.user != null) {
+        debugPrint('AuthProvider: Setting authenticated state after registration');
+        state = state.copyWith(
+          status: AuthStatus.authenticated,
+          user: result.user,
+        );
+      } else {
+        debugPrint('AuthProvider: Setting unauthenticated state with error: ${result.errorMessage}');
+        state = state.copyWith(
+          status: AuthStatus.unauthenticated,
+          errorMessage: result.errorMessage,
+        );
+      }
+    } catch (e) {
+      debugPrint('AuthProvider: Exception during registration: $e');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: e.toString(),

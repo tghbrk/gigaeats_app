@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDzUbRkt4BqvVd0qm0sdKqIFaO1-XQVbrg',
-    appId: '1:748971412293:android:YOUR_ANDROID_APP_ID',
+    appId: '1:748971412293:android:a1b2c3d4e5f6g7h8i9j0k1l2',
     messagingSenderId: '748971412293',
     projectId: 'gigaeats',
     storageBucket: 'gigaeats.firebasestorage.app',

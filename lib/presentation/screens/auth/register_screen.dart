@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_role.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 
@@ -21,7 +22,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   bool _isLoading = false;
   UserRole _selectedRole = UserRole.salesAgent;
   bool _agreeToTerms = false;
@@ -55,17 +56,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      // TODO: Implement actual registration logic with AuthService
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-      
+      // Call the auth provider's register method
+      await ref.read(authStateProvider.notifier).register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        fullName: _fullNameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        role: _selectedRole,
+      );
+
+      // Check the auth state to see if registration was successful
+      final authState = ref.read(authStateProvider);
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful! Please verify your email.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        context.go(AppRoutes.login);
+        if (authState.status == AuthStatus.authenticated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration successful! Please verify your email.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Navigate to the appropriate dashboard based on user role
+          _navigateBasedOnRole(authState.user?.role);
+        } else if (authState.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Registration failed: ${authState.errorMessage}'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -85,10 +105,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  void _navigateBasedOnRole(UserRole? role) {
+    if (role == null) return;
+
+    switch (role) {
+      case UserRole.salesAgent:
+        context.go(AppRoutes.salesAgentDashboard);
+        break;
+      case UserRole.vendor:
+        context.go(AppRoutes.vendorDashboard);
+        break;
+      case UserRole.admin:
+        context.go(AppRoutes.adminDashboard);
+        break;
+      case UserRole.customer:
+        context.go(AppRoutes.salesAgentDashboard); // Customers use sales agent interface
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Account'),
@@ -121,9 +160,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Full Name Field
                 CustomTextField(
                   controller: _fullNameController,
@@ -141,23 +180,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Email Field
                 EmailTextField(
                   controller: _emailController,
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Phone Field
                 PhoneTextField(
                   controller: _phoneController,
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Role Selection
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,9 +233,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Password Field
                 PasswordTextField(
                   controller: _passwordController,
@@ -213,9 +252,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Confirm Password Field
                 PasswordTextField(
                   controller: _confirmPasswordController,
@@ -232,9 +271,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Terms and Conditions
                 Row(
                   children: [
@@ -280,18 +319,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Register Button
                 CustomButton(
                   text: 'Create Account',
                   onPressed: _isLoading ? null : _handleRegister,
                   isLoading: _isLoading,
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Login Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

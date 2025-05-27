@@ -8,24 +8,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
-import 'data/services/auth_service.dart';
-
-// Global providers
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError();
-});
-
-final authServiceProvider = Provider<AuthService>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return AuthService(prefs: prefs);
-});
+import 'presentation/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "demo-api-key",
+        authDomain: "gigaeats-demo.firebaseapp.com",
+        projectId: "gigaeats-demo",
+        storageBucket: "gigaeats-demo.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:demo",
+      ),
+    );
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
   }

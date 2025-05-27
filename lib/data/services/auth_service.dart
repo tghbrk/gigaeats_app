@@ -108,13 +108,20 @@ class AuthService {
       final token = await credential.user!.getIdToken() ?? '';
 
       // Fetch user profile from backend (this would be an API call)
-      // For now, we'll create a mock user
+      // For demo purposes, determine role based on email
+      UserRole userRole = UserRole.salesAgent;
+      if (email.contains('vendor')) {
+        userRole = UserRole.vendor;
+      } else if (email.contains('admin')) {
+        userRole = UserRole.admin;
+      }
+
       final user = User(
         id: credential.user!.uid,
         email: email,
         fullName: credential.user!.displayName ?? 'User',
         phoneNumber: credential.user!.phoneNumber ?? '',
-        role: UserRole.salesAgent, // This should come from backend
+        role: userRole,
         isVerified: credential.user!.emailVerified,
         isActive: true,
         createdAt: DateTime.now(),

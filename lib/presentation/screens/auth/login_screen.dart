@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/router/app_router.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 
@@ -17,7 +19,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -38,12 +40,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      // TODO: Implement actual login logic with AuthService
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-      
-      // For now, navigate to sales agent dashboard
-      if (mounted) {
-        context.go(AppRoutes.salesAgentDashboard);
+      final authNotifier = ref.read(authStateProvider.notifier);
+      await authNotifier.signIn(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      // Listen to auth state changes
+      final authState = ref.read(authStateProvider);
+
+      if (authState.status == AuthStatus.authenticated && authState.user != null) {
+        // Navigate to appropriate dashboard based on user role
+        final dashboardRoute = AppRouter.getDashboardRoute(authState.user!.role);
+        if (mounted) {
+          context.go(dashboardRoute);
+        }
+      } else if (authState.errorMessage != null) {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authState.errorMessage!),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -66,7 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -77,7 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 48),
-                
+
                 // Logo and Title
                 Center(
                   child: Column(
@@ -114,9 +135,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // Email Field
                 CustomTextField(
                   controller: _emailController,
@@ -134,9 +155,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Password Field
                 CustomTextField(
                   controller: _passwordController,
@@ -164,9 +185,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Forgot Password
                 Align(
                   alignment: Alignment.centerRight,
@@ -177,18 +198,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: const Text('Forgot Password?'),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Login Button
                 CustomButton(
                   text: 'Sign In',
                   onPressed: _isLoading ? null : _handleLogin,
                   isLoading: _isLoading,
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Divider
                 Row(
                   children: [
@@ -205,9 +226,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const Expanded(child: Divider()),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Register Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -224,9 +245,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // App Version
                 Center(
                   child: Text(

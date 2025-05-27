@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/router/app_router.dart';
+import '../providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -57,14 +58,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (!mounted) return;
 
     try {
-      // TODO: Replace with actual AuthService provider
-      // For now, we'll simulate the check
-      final isAuthenticated = false; // await ref.read(authServiceProvider).isAuthenticated;
-      final userRole = null; // await ref.read(authServiceProvider).userRole;
+      // Check authentication state
+      final authState = ref.read(authStateProvider);
 
-      if (isAuthenticated && userRole != null) {
+      if (authState.status == AuthStatus.authenticated && authState.user != null) {
         // User is authenticated, navigate to appropriate dashboard
-        final dashboardRoute = AppRouter.getDashboardRoute(userRole);
+        final dashboardRoute = AppRouter.getDashboardRoute(authState.user!.role);
         if (mounted) {
           context.go(dashboardRoute);
         }
@@ -91,7 +90,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.colorScheme.primary,
       body: Center(
@@ -127,7 +126,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // App Name
                     Text(
                       AppConstants.appName,
@@ -137,7 +136,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // App Tagline
                     Text(
                       'Bulk Food Ordering Made Easy',
@@ -146,7 +145,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ),
                     const SizedBox(height: 48),
-                    
+
                     // Loading Indicator
                     SizedBox(
                       width: 40,

@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../data/models/order.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/quick_action_button.dart';
+import '../../providers/order_provider.dart';
 import 'vendors_screen.dart';
+import 'orders_screen.dart';
 
 class SalesAgentDashboard extends ConsumerStatefulWidget {
   const SalesAgentDashboard({super.key});
@@ -56,7 +59,7 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
               _selectedIndex = index;
             });
           }),
-          const _OrdersTab(),
+          const OrdersScreen(),
           const VendorsScreen(),
           const _CustomersTab(),
           const _ProfileTab(),
@@ -83,6 +86,10 @@ class _DashboardTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final totalEarnings = ref.watch(totalEarningsProvider);
+    final monthlyEarnings = ref.watch(monthlyEarningsProvider);
+    final activeOrders = ref.watch(activeOrdersProvider);
+    final pendingOrders = ref.watch(pendingOrdersProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -104,8 +111,7 @@ class _DashboardTab extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          // TODO: Implement refresh logic
-          await Future.delayed(const Duration(seconds: 1));
+          ref.read(ordersProvider.notifier).loadOrders();
         },
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -120,7 +126,7 @@ class _DashboardTab extends ConsumerWidget {
                   gradient: LinearGradient(
                     colors: [
                       theme.colorScheme.primary,
-                      theme.colorScheme.primary.withOpacity(0.8),
+                      theme.colorScheme.primary.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -131,7 +137,7 @@ class _DashboardTab extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Welcome back, John!',
+                      'Welcome back!',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -139,9 +145,9 @@ class _DashboardTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'You have 3 pending orders to follow up',
+                      'You have ${pendingOrders.length} pending orders to follow up',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -156,8 +162,8 @@ class _DashboardTab extends ConsumerWidget {
                   Expanded(
                     child: DashboardCard(
                       title: 'Total Earnings',
-                      value: 'RM 12,450',
-                      subtitle: '+15% this month',
+                      value: 'RM ${totalEarnings.toStringAsFixed(2)}',
+                      subtitle: 'This month: RM ${monthlyEarnings.toStringAsFixed(2)}',
                       icon: Icons.account_balance_wallet,
                       color: Colors.green,
                     ),
@@ -166,8 +172,8 @@ class _DashboardTab extends ConsumerWidget {
                   Expanded(
                     child: DashboardCard(
                       title: 'Active Orders',
-                      value: '8',
-                      subtitle: '3 pending',
+                      value: '${activeOrders.length}',
+                      subtitle: '${pendingOrders.length} pending',
                       icon: Icons.receipt_long,
                       color: Colors.blue,
                     ),
@@ -219,7 +225,7 @@ class _DashboardTab extends ConsumerWidget {
                       icon: Icons.add_shopping_cart,
                       label: 'New Order',
                       onTap: () {
-                        // TODO: Navigate to new order
+                        context.push('/sales-agent/create-order');
                       },
                     ),
                   ),
@@ -258,61 +264,76 @@ class _DashboardTab extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              // TODO: Replace with actual order list
-              ...List.generate(3, (index) {
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                      child: Icon(
-                        Icons.restaurant,
-                        color: theme.colorScheme.primary,
-                      ),
+              // Recent Orders
+              if (activeOrders.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text(
+                      'No recent orders',
+                      style: TextStyle(color: Colors.grey),
                     ),
-                    title: Text('Order #GE${1000 + index}'),
-                    subtitle: Text('ABC Corporation • RM ${(500 + index * 100)}'),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Pending',
-                        style: TextStyle(
-                          color: Colors.orange.shade700,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                  ),
+                )
+              else
+                ...activeOrders.take(3).map((order) {
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        child: Icon(
+                          Icons.restaurant,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
+                      title: Text('Order #${order.orderNumber}'),
+                      subtitle: Text('${order.customerName} • RM ${order.totalAmount.toStringAsFixed(2)}'),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(order.status).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          order.status.displayName,
+                          style: TextStyle(
+                            color: _getStatusColor(order.status),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      onTap: () {
+                        context.push('/order-details/${order.id}');
+                      },
                     ),
-                    onTap: () {
-                      // TODO: Navigate to order details
-                    },
-                  ),
-                );
-              }),
+                  );
+                }),
             ],
           ),
         ),
       ),
     );
   }
-}
 
-// Placeholder tabs - to be implemented
-class _OrdersTab extends StatelessWidget {
-  const _OrdersTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: const Center(
-        child: Text('Orders Tab - Coming Soon'),
-      ),
-    );
+  Color _getStatusColor(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending:
+        return Colors.orange;
+      case OrderStatus.confirmed:
+        return Colors.blue;
+      case OrderStatus.preparing:
+        return Colors.purple;
+      case OrderStatus.ready:
+        return Colors.teal;
+      case OrderStatus.outForDelivery:
+        return Colors.indigo;
+      case OrderStatus.delivered:
+        return Colors.green;
+      case OrderStatus.cancelled:
+        return Colors.red;
+    }
   }
 }
 

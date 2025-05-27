@@ -7,6 +7,7 @@ import '../../presentation/screens/splash_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart';
 import '../../presentation/screens/sales_agent/sales_agent_dashboard.dart';
+import '../../presentation/screens/sales_agent/create_order_screen.dart';
 import '../../presentation/screens/vendor/vendor_dashboard.dart';
 import '../../presentation/screens/admin/admin_dashboard.dart';
 import '../../core/constants/app_constants.dart';
@@ -44,6 +45,11 @@ class AppRouter {
         name: 'sales-agent-dashboard',
         builder: (context, state) => const SalesAgentDashboard(),
         routes: [
+          GoRoute(
+            path: 'create-order',
+            name: 'create-order',
+            builder: (context, state) => const CreateOrderScreen(),
+          ),
           GoRoute(
             path: 'orders',
             name: 'sales-agent-orders',

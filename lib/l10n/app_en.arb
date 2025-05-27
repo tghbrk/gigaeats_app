@@ -1,0 +1,99 @@
+{
+  "@@locale": "en",
+  "appTitle": "GigaEats",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "welcome": "Welcome to GigaEats",
+  "@welcome": {
+    "description": "Welcome message"
+  },
+  "login": "Login",
+  "@login": {
+    "description": "Login button text"
+  },
+  "register": "Register",
+  "@register": {
+    "description": "Register button text"
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Email field label"
+  },
+  "password": "Password",
+  "@password": {
+    "description": "Password field label"
+  },
+  "confirmPassword": "Confirm Password",
+  "@confirmPassword": {
+    "description": "Confirm password field label"
+  },
+  "phoneNumber": "Phone Number",
+  "@phoneNumber": {
+    "description": "Phone number field label"
+  },
+  "fullName": "Full Name",
+  "@fullName": {
+    "description": "Full name field label"
+  },
+  "selectRole": "Select Your Role",
+  "@selectRole": {
+    "description": "Role selection prompt"
+  },
+  "salesAgent": "Sales Agent",
+  "@salesAgent": {
+    "description": "Sales agent role"
+  },
+  "vendor": "Vendor",
+  "@vendor": {
+    "description": "Vendor role"
+  },
+  "admin": "Admin",
+  "@admin": {
+    "description": "Admin role"
+  },
+  "dashboard": "Dashboard",
+  "@dashboard": {
+    "description": "Dashboard menu item"
+  },
+  "orders": "Orders",
+  "@orders": {
+    "description": "Orders menu item"
+  },
+  "vendors": "Vendors",
+  "@vendors": {
+    "description": "Vendors menu item"
+  },
+  "customers": "Customers",
+  "@customers": {
+    "description": "Customers menu item"
+  },
+  "profile": "Profile",
+  "@profile": {
+    "description": "Profile menu item"
+  },
+  "logout": "Logout",
+  "@logout": {
+    "description": "Logout button text"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Save button text"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button text"
+  },
+  "loading": "Loading...",
+  "@loading": {
+    "description": "Loading indicator text"
+  },
+  "error": "Error",
+  "@error": {
+    "description": "Error message title"
+  },
+  "success": "Success",
+  "@success": {
+    "description": "Success message title"
+  }
+}

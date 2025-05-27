@@ -1,0 +1,83 @@
+name: gigaeats_app
+description: "GigaEats - B2B2C Bulk Food Ordering Platform for Malaysia"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.4.0
+
+  # Navigation
+  go_router: ^10.0.0
+
+  # Network & API
+  dio: ^5.3.0
+  json_annotation: ^4.8.1
+
+  # Local Storage
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.2.0
+
+  # Firebase
+  firebase_core: ^2.15.0
+  firebase_auth: ^4.7.0
+  firebase_messaging: ^14.6.0
+  firebase_storage: ^11.2.0
+
+  # UI & Media
+  image_picker: ^1.0.0
+  cached_network_image: ^3.2.0
+  photo_view: ^0.14.0
+
+  # Utilities
+  intl: ^0.20.2
+  url_launcher: ^6.1.0
+  permission_handler: ^11.0.0
+  uuid: ^4.0.0
+  equatable: ^2.0.5
+
+  # Icons & Design
+  cupertino_icons: ^1.0.8
+  flutter_svg: ^2.0.7
+
+  # Real-time Communication
+  socket_io_client: ^2.0.3
+
+  # Payment & Location
+  geolocator: ^10.1.0
+  geocoding: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  json_serializable: ^6.7.0
+  build_runner: ^2.4.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/logos/
+
+  # fonts:
+  #   - family: Roboto
+  #     fonts:
+  #       - asset: assets/fonts/Roboto-Regular.ttf
+  #       - asset: assets/fonts/Roboto-Bold.ttf
+  #         weight: 700

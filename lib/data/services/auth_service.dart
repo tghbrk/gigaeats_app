@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
@@ -95,26 +96,30 @@ class AuthService {
     required String password,
   }) async {
     try {
+      debugPrint('AuthService: Attempting Firebase sign in for $email');
+
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
+      debugPrint('AuthService: Firebase sign in successful, user: ${credential.user?.uid}');
+
       if (credential.user == null) {
+        debugPrint('AuthService: No user in credential');
         return AuthResult.failure('Failed to sign in');
       }
 
       // Get user token
       final token = await credential.user!.getIdToken() ?? '';
+      debugPrint('AuthService: Got user token');
 
       // Fetch user profile from backend (this would be an API call)
-      // For demo purposes, determine role based on email
+      // In production, user role should be determined by your backend API
+      // For now, defaulting to sales agent - implement proper role assignment
       UserRole userRole = UserRole.salesAgent;
-      if (email.contains('vendor')) {
-        userRole = UserRole.vendor;
-      } else if (email.contains('admin')) {
-        userRole = UserRole.admin;
-      }
+
+      debugPrint('AuthService: Determined user role: $userRole');
 
       final user = User(
         id: credential.user!.uid,
@@ -128,6 +133,8 @@ class AuthService {
         updatedAt: DateTime.now(),
       );
 
+      debugPrint('AuthService: Created user object: ${user.email}, role: ${user.role}');
+
       // Store user data locally
       await _storeUserData(
         userId: user.id,
@@ -135,10 +142,14 @@ class AuthService {
         role: user.role,
       );
 
+      debugPrint('AuthService: Stored user data locally');
+
       return AuthResult.success(user);
     } on firebase_auth.FirebaseAuthException catch (e) {
+      debugPrint('AuthService: Firebase auth exception: ${e.code} - ${e.message}');
       return AuthResult.failure(_getFirebaseErrorMessage(e));
     } catch (e) {
+      debugPrint('AuthService: Unexpected error: $e');
       return AuthResult.failure('An unexpected error occurred: ${e.toString()}');
     }
   }

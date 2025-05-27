@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/quick_action_button.dart';
+import 'vendors_screen.dart';
 
 class SalesAgentDashboard extends ConsumerStatefulWidget {
   const SalesAgentDashboard({super.key});
@@ -49,12 +50,16 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: const [
-          _DashboardTab(),
-          _OrdersTab(),
-          _VendorsTab(),
-          _CustomersTab(),
-          _ProfileTab(),
+        children: [
+          _DashboardTab(onNavigateToTab: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          }),
+          const _OrdersTab(),
+          const VendorsScreen(),
+          const _CustomersTab(),
+          const _ProfileTab(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -71,12 +76,14 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
 }
 
 class _DashboardTab extends ConsumerWidget {
-  const _DashboardTab();
+  final ValueChanged<int>? onNavigateToTab;
+
+  const _DashboardTab({this.onNavigateToTab});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sales Dashboard'),
@@ -140,9 +147,9 @@ class _DashboardTab extends ConsumerWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Quick Stats
               Row(
                 children: [
@@ -167,9 +174,9 @@ class _DashboardTab extends ConsumerWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               Row(
                 children: [
                   Expanded(
@@ -193,9 +200,9 @@ class _DashboardTab extends ConsumerWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Quick Actions
               Text(
                 'Quick Actions',
@@ -204,7 +211,7 @@ class _DashboardTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               Row(
                 children: [
                   Expanded(
@@ -232,15 +239,16 @@ class _DashboardTab extends ConsumerWidget {
                       icon: Icons.store,
                       label: 'Browse Vendors',
                       onTap: () {
-                        // TODO: Navigate to vendors
+                        // Navigate to vendors tab
+                        onNavigateToTab?.call(2); // Vendors tab index
                       },
                     ),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Recent Orders
               Text(
                 'Recent Orders',
@@ -249,7 +257,7 @@ class _DashboardTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // TODO: Replace with actual order list
               ...List.generate(3, (index) {
                 return Card(
@@ -308,19 +316,7 @@ class _OrdersTab extends StatelessWidget {
   }
 }
 
-class _VendorsTab extends StatelessWidget {
-  const _VendorsTab();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Vendors')),
-      body: const Center(
-        child: Text('Vendors Tab - Coming Soon'),
-      ),
-    );
-  }
-}
 
 class _CustomersTab extends StatelessWidget {
   const _CustomersTab();

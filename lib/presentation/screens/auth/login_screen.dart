@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/router/app_router.dart';
+import '../../../data/models/user_role.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
@@ -41,22 +43,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final authNotifier = ref.read(authStateProvider.notifier);
+
+      // Debug: Print login attempt
+      debugPrint('Attempting login with email: ${_emailController.text.trim()}');
+
       await authNotifier.signIn(
         _emailController.text.trim(),
         _passwordController.text,
       );
 
+      // Wait a moment for state to update
+      await Future.delayed(const Duration(milliseconds: 100));
+
       // Listen to auth state changes
       final authState = ref.read(authStateProvider);
+
+      debugPrint('Auth state after login: ${authState.status}, user: ${authState.user?.email}');
 
       if (authState.status == AuthStatus.authenticated && authState.user != null) {
         // Navigate to appropriate dashboard based on user role
         final dashboardRoute = AppRouter.getDashboardRoute(authState.user!.role);
+        debugPrint('Navigating to: $dashboardRoute');
         if (mounted) {
           context.go(dashboardRoute);
         }
       } else if (authState.errorMessage != null) {
         // Show error message
+        debugPrint('Login error: ${authState.errorMessage}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -65,8 +78,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           );
         }
+      } else {
+        // Show generic error if no specific error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Login failed. Please check your credentials.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     } catch (e) {
+      debugPrint('Login exception: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -80,6 +104,82 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _testFirebaseConnection() async {
+    try {
+      // Test Firebase connection by trying to create a temporary user
+      final authService = ref.read(authServiceProvider);
+
+      // Try to sign in with a test email to see if Firebase is working
+      final result = await authService.signInWithEmailAndPassword(
+        email: 'test@example.com',
+        password: 'test123',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.isSuccess
+                ? 'Firebase connection successful!'
+                : 'Firebase connected but login failed: ${result.errorMessage}'),
+            backgroundColor: result.isSuccess ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Firebase connection error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _createTestAccount() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+
+      // Create a test account
+      final result = await authService.registerWithEmailAndPassword(
+        email: 'test@gigaeats.com',
+        password: 'Test123!',
+        fullName: 'Test User',
+        phoneNumber: '+60123456789',
+        role: UserRole.salesAgent,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.isSuccess
+                ? 'Test account created successfully! Email: test@gigaeats.com, Password: Test123!'
+                : 'Failed to create test account: ${result.errorMessage}'),
+            backgroundColor: result.isSuccess ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+
+        if (result.isSuccess) {
+          // Pre-fill the login form
+          _emailController.text = 'test@gigaeats.com';
+          _passwordController.text = 'Test123!';
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating test account: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
     }
   }
@@ -228,6 +328,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
 
                 const SizedBox(height: 24),
+
+                // Demo Account Creation
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Firebase Troubleshooting',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Test Firebase connection and create test account',
+                        style: theme.textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _testFirebaseConnection,
+                              child: const Text('Test Connection'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _createTestAccount,
+                              child: const Text('Create Test User'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
 
                 // Register Link
                 Row(

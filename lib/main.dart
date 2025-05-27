@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'firebase_options.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -16,15 +17,9 @@ void main() async {
   // Initialize Firebase
   try {
     await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "demo-api-key",
-        authDomain: "gigaeats-demo.firebaseapp.com",
-        projectId: "gigaeats-demo",
-        storageBucket: "gigaeats-demo.appspot.com",
-        messagingSenderId: "123456789",
-        appId: "1:123456789:web:demo",
-      ),
+      options: DefaultFirebaseOptions.currentPlatform,
     );
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -61,10 +62,10 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
 
   Future<void> _checkAuthStatus() async {
     state = state.copyWith(status: AuthStatus.loading);
-    
+
     try {
       if (_authService.isAuthenticated && _authService.userRole != null) {
-        // Create a mock user for now - in real app this would come from API
+        // Create user object from Firebase data - in production this would come from your backend API
         final user = User(
           id: _authService.userId ?? '',
           email: _authService.currentFirebaseUser?.email ?? '',
@@ -76,7 +77,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
-        
+
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: user,
@@ -93,26 +94,33 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signIn(String email, String password) async {
+    debugPrint('AuthProvider: Starting sign in process');
     state = state.copyWith(status: AuthStatus.loading);
-    
+
     try {
+      debugPrint('AuthProvider: Calling auth service sign in');
       final result = await _authService.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
+
+      debugPrint('AuthProvider: Auth service result - success: ${result.isSuccess}, user: ${result.user?.email}');
+
       if (result.isSuccess && result.user != null) {
+        debugPrint('AuthProvider: Setting authenticated state');
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: result.user,
         );
       } else {
+        debugPrint('AuthProvider: Setting unauthenticated state with error: ${result.errorMessage}');
         state = state.copyWith(
           status: AuthStatus.unauthenticated,
           errorMessage: result.errorMessage,
         );
       }
     } catch (e) {
+      debugPrint('AuthProvider: Exception during sign in: $e');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: e.toString(),
@@ -122,7 +130,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
 
   Future<void> signOut() async {
     state = state.copyWith(status: AuthStatus.loading);
-    
+
     try {
       await _authService.signOut();
       state = state.copyWith(

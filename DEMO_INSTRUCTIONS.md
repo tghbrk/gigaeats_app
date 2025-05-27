@@ -1,34 +1,19 @@
-# GigaEats Demo Instructions
+# GigaEats Production Setup
 
 ## 🚀 Current Implementation Status
 
 ### ✅ **What's Working:**
-1. **Firebase Authentication** - Properly configured with demo credentials
+1. **Firebase Authentication** - Properly configured for production use
 2. **Role-based Navigation** - Different dashboards for different user types
 3. **Beautiful UI** - Material Design 3 with custom components
 4. **Multi-language Support** - English, Malay, Chinese (structure ready)
 5. **State Management** - Riverpod with proper auth state management
 6. **Responsive Design** - Works on web, mobile, and tablets
 
-### 🎯 **How to Test the App:**
+### 🎯 **Production Setup:**
 
-#### **Method 1: Create Test Accounts**
-Since Firebase Auth is configured, you can create real test accounts:
-
-1. **Sales Agent Account:**
-   - Email: `agent@test.com`
-   - Password: `Test123!`
-   - Will be assigned Sales Agent role
-
-2. **Vendor Account:**
-   - Email: `vendor@test.com`
-   - Password: `Test123!`
-   - Will be assigned Vendor role (email contains "vendor")
-
-3. **Admin Account:**
-   - Email: `admin@test.com`
-   - Password: `Test123!`
-   - Will be assigned Admin role (email contains "admin")
+#### **User Registration**
+Users can register through the app with proper email verification and role assignment through your backend system.
 
 #### **Method 2: Registration Flow**
 1. Click "Sign Up" on login screen

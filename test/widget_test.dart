@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:gigaeats_app/main.dart';
+import 'package:gigaeats_app/presentation/providers/auth_provider.dart';
 
 void main() {
   testWidgets('GigaEats app smoke test', (WidgetTester tester) async {

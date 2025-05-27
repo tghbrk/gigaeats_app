@@ -1,11 +1,11 @@
 {
-    "name": "gigaeats_app",
-    "short_name": "gigaeats_app",
+    "name": "GigaEats - Bulk Food Ordering Platform",
+    "short_name": "GigaEats",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#4CAF50",
+    "theme_color": "#4CAF50",
+    "description": "GigaEats - B2B2C Bulk Food Ordering Platform for Malaysia",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

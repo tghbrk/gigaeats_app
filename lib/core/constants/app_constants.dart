@@ -70,13 +70,64 @@ class AppConstants {
   static const double freeDeliveryThreshold = 200.0; // RM 200 for free delivery
   static const double standardDeliveryFee = 15.0; // RM 15 standard delivery
 
-  // Business Hours
-  static const int businessStartHour = 8; // 8 AM
-  static const int businessEndHour = 22; // 10 PM
+  // UI Constants
+  static const double defaultPadding = 16.0;
+  static const double smallPadding = 8.0;
+  static const double largePadding = 24.0;
+  static const double borderRadius = 12.0;
+  static const double cardElevation = 2.0;
+
+  // Animation Durations
+  static const Duration shortAnimation = Duration(milliseconds: 200);
+  static const Duration mediumAnimation = Duration(milliseconds: 300);
+  static const Duration longAnimation = Duration(milliseconds: 500);
+
+  // Error Messages
+  static const String networkErrorMessage = 'Network connection failed. Please check your internet connection.';
+  static const String genericErrorMessage = 'Something went wrong. Please try again.';
+  static const String authErrorMessage = 'Authentication failed. Please sign in again.';
+  static const String validationErrorMessage = 'Please check your input and try again.';
+
+  // Success Messages
+  static const String orderPlacedMessage = 'Order placed successfully!';
+  static const String orderUpdatedMessage = 'Order updated successfully!';
+  static const String profileUpdatedMessage = 'Profile updated successfully!';
+  static const String passwordChangedMessage = 'Password changed successfully!';
+
+  // Feature Flags
+  static const bool enableNotifications = true;
+  static const bool enableAnalytics = true;
+  static const bool enableCrashReporting = true;
+  static const bool enableDebugMode = true;
+
+  // Cache Configuration
+  static const Duration cacheExpiration = Duration(hours: 1);
+  static const int maxCacheSize = 100;
+
+  // Notification Configuration
+  static const Duration notificationDisplayDuration = Duration(seconds: 4);
+  static const int maxNotifications = 50;
+
+  // Search Configuration
+  static const Duration searchDebounceDelay = Duration(milliseconds: 500);
+  static const int minSearchLength = 2;
+  static const int maxSearchResults = 50;
 
   // Validation
   static const int minPasswordLength = 8;
   static const int maxPasswordLength = 128;
+  static const int maxNameLength = 100;
+  static const int maxDescriptionLength = 500;
+
+  // Performance Configuration
+  static const Duration debounceDelay = Duration(milliseconds: 300);
+  static const int maxConcurrentRequests = 5;
+
+  // Business Hours
+  static const int businessStartHour = 8; // 8 AM
+  static const int businessEndHour = 22; // 10 PM
+
+  // Phone Validation
   static const int minPhoneLength = 10;
   static const int maxPhoneLength = 15;
 

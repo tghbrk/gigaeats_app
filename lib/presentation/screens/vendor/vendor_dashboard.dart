@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/quick_action_button.dart';
+import 'vendor_orders_screen.dart';
+import 'vendor_menu_screen.dart';
+import 'vendor_analytics_screen.dart';
+import 'vendor_profile_screen.dart';
 
 class VendorDashboard extends ConsumerStatefulWidget {
   const VendorDashboard({super.key});
@@ -49,12 +53,16 @@ class _VendorDashboardState extends ConsumerState<VendorDashboard> {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: const [
-          _VendorDashboardTab(),
-          _VendorOrdersTab(),
-          _VendorMenuTab(),
-          _VendorAnalyticsTab(),
-          _VendorProfileTab(),
+        children: [
+          _VendorDashboardTab(onNavigateToTab: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          }),
+          const VendorOrdersScreen(),
+          const VendorMenuScreen(),
+          const VendorAnalyticsScreen(),
+          const VendorProfileScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -71,7 +79,9 @@ class _VendorDashboardState extends ConsumerState<VendorDashboard> {
 }
 
 class _VendorDashboardTab extends ConsumerWidget {
-  const _VendorDashboardTab();
+  final ValueChanged<int>? onNavigateToTab;
+
+  const _VendorDashboardTab({this.onNavigateToTab});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -212,7 +222,8 @@ class _VendorDashboardTab extends ConsumerWidget {
                       icon: Icons.add_circle,
                       label: 'Add Menu Item',
                       onTap: () {
-                        // TODO: Navigate to add menu item
+                        // Navigate to menu tab
+                        onNavigateToTab?.call(2);
                       },
                     ),
                   ),
@@ -222,7 +233,8 @@ class _VendorDashboardTab extends ConsumerWidget {
                       icon: Icons.inventory,
                       label: 'Update Stock',
                       onTap: () {
-                        // TODO: Navigate to update stock
+                        // Navigate to menu tab
+                        onNavigateToTab?.call(2);
                       },
                     ),
                   ),
@@ -232,7 +244,8 @@ class _VendorDashboardTab extends ConsumerWidget {
                       icon: Icons.analytics,
                       label: 'View Reports',
                       onTap: () {
-                        // TODO: Navigate to reports
+                        // Navigate to analytics tab
+                        onNavigateToTab?.call(3);
                       },
                     ),
                   ),
@@ -296,59 +309,4 @@ class _VendorDashboardTab extends ConsumerWidget {
   }
 }
 
-// Placeholder tabs - to be implemented
-class _VendorOrdersTab extends StatelessWidget {
-  const _VendorOrdersTab();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: const Center(
-        child: Text('Vendor Orders Tab - Coming Soon'),
-      ),
-    );
-  }
-}
-
-class _VendorMenuTab extends StatelessWidget {
-  const _VendorMenuTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Menu Management')),
-      body: const Center(
-        child: Text('Menu Management Tab - Coming Soon'),
-      ),
-    );
-  }
-}
-
-class _VendorAnalyticsTab extends StatelessWidget {
-  const _VendorAnalyticsTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Analytics')),
-      body: const Center(
-        child: Text('Analytics Tab - Coming Soon'),
-      ),
-    );
-  }
-}
-
-class _VendorProfileTab extends StatelessWidget {
-  const _VendorProfileTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: const Center(
-        child: Text('Vendor Profile Tab - Coming Soon'),
-      ),
-    );
-  }
-}

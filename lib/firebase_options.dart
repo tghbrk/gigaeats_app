@@ -41,46 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDzUbRkt4BqvVd0qm0sdKqIFaO1-XQVbrg',
-    appId: '1:748971412293:web:773a4ac5fc1ee258c2cc2c',
-    messagingSenderId: '748971412293',
-    projectId: 'gigaeats',
-    authDomain: 'gigaeats.firebaseapp.com',
-    storageBucket: 'gigaeats.firebasestorage.app',
+    apiKey: 'AIzaSyBnJhMF-b6liiWAXayDPm-6s9b-9L8eU2E',
+    appId: '1:902837007402:web:ebb9a51083e557850bff53',
+    messagingSenderId: '902837007402',
+    projectId: 'gigaeats-app',
+    authDomain: 'gigaeats-app.firebaseapp.com',
+    storageBucket: 'gigaeats-app.firebasestorage.app',
+    measurementId: 'G-C5T064V38C',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDzUbRkt4BqvVd0qm0sdKqIFaO1-XQVbrg',
-    appId: '1:748971412293:android:a1b2c3d4e5f6g7h8i9j0k1l2',
-    messagingSenderId: '748971412293',
-    projectId: 'gigaeats',
-    storageBucket: 'gigaeats.firebasestorage.app',
+    apiKey: 'AIzaSyAezGZVUVzdb-EMy2Pl8x4r87hUqHp3HBQ',
+    appId: '1:902837007402:android:622df3fae28b7eab0bff53',
+    messagingSenderId: '902837007402',
+    projectId: 'gigaeats-app',
+    storageBucket: 'gigaeats-app.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDzUbRkt4BqvVd0qm0sdKqIFaO1-XQVbrg',
-    appId: '1:748971412293:ios:YOUR_IOS_APP_ID',
-    messagingSenderId: '748971412293',
-    projectId: 'gigaeats',
-    storageBucket: 'gigaeats.firebasestorage.app',
+    apiKey: 'AIzaSyBr6d3AOm6OI1TY25BevaHcpYLM5itca_A',
+    appId: '1:902837007402:ios:6b219ce714cb8a370bff53',
+    messagingSenderId: '902837007402',
+    projectId: 'gigaeats-app',
+    storageBucket: 'gigaeats-app.firebasestorage.app',
     iosBundleId: 'com.gigaeats.gigaeatsApp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDzUbRkt4BqvVd0qm0sdKqIFaO1-XQVbrg',
-    appId: '1:748971412293:ios:YOUR_IOS_APP_ID',
-    messagingSenderId: '748971412293',
-    projectId: 'gigaeats',
-    storageBucket: 'gigaeats.firebasestorage.app',
+    apiKey: 'AIzaSyBr6d3AOm6OI1TY25BevaHcpYLM5itca_A',
+    appId: '1:902837007402:ios:6b219ce714cb8a370bff53',
+    messagingSenderId: '902837007402',
+    projectId: 'gigaeats-app',
+    storageBucket: 'gigaeats-app.firebasestorage.app',
     iosBundleId: 'com.gigaeats.gigaeatsApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDzUbRkt4BqvVd0qm0sdKqIFaO1-XQVbrg',
-    appId: '1:748971412293:web:773a4ac5fc1ee258c2cc2c',
-    messagingSenderId: '748971412293',
-    projectId: 'gigaeats',
-    authDomain: 'gigaeats.firebaseapp.com',
-    storageBucket: 'gigaeats.firebasestorage.app',
+    apiKey: 'AIzaSyBnJhMF-b6liiWAXayDPm-6s9b-9L8eU2E',
+    appId: '1:902837007402:web:a028f95450a34f600bff53',
+    messagingSenderId: '902837007402',
+    projectId: 'gigaeats-app',
+    authDomain: 'gigaeats-app.firebaseapp.com',
+    storageBucket: 'gigaeats-app.firebasestorage.app',
+    measurementId: 'G-D8S97PYDDB',
   );
+
 }

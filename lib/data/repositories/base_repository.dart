@@ -6,6 +6,7 @@ import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
 import '../../core/errors/error_handler.dart';
 import '../../core/utils/logger.dart';
+import '../../core/config/supabase_config.dart';
 
 /// Base repository class that provides common functionality for all repositories
 abstract class BaseRepository {
@@ -25,23 +26,30 @@ abstract class BaseRepository {
   /// Get the Firebase Auth instance
   firebase_auth.FirebaseAuth get firebaseAuth => _firebaseAuth;
 
-  /// Set Firebase ID token for Supabase authentication
-  Future<void> ensureAuthenticated() async {
+  /// Create authenticated Supabase client with Firebase token
+  Future<SupabaseClient> getAuthenticatedClient() async {
     try {
       final user = _firebaseAuth.currentUser;
       if (user != null) {
         final idToken = await user.getIdToken();
         if (idToken != null) {
-          // Set the Firebase ID token as auth header
-          _client.auth.headers['Authorization'] = 'Bearer $idToken';
+          // Create a new client with Firebase token for RLS
+          return SupabaseClient(
+            SupabaseConfig.url,
+            SupabaseConfig.anonKey,
+            headers: {
+              'Authorization': 'Bearer $idToken',
+            },
+          );
         }
-      } else {
-        // For testing purposes, we'll continue without authentication
-        debugPrint('BaseRepository: No authenticated user found, continuing without auth');
       }
+
+      // Fallback to default client
+      debugPrint('BaseRepository: Using default client (no Firebase auth)');
+      return _client;
     } catch (e) {
-      debugPrint('BaseRepository: Error setting auth token: $e');
-      // Continue without throwing - this might be expected in some cases
+      debugPrint('BaseRepository: Error creating authenticated client: $e');
+      return _client;
     }
   }
 
@@ -79,7 +87,6 @@ abstract class BaseRepository {
 
   /// Execute a query with automatic authentication
   Future<T> executeQuery<T>(Future<T> Function() query) async {
-    await ensureAuthenticated();
     try {
       return await query();
     } catch (e) {
@@ -90,7 +97,6 @@ abstract class BaseRepository {
 
   /// Execute a query that returns a stream with automatic authentication
   Stream<T> executeStreamQuery<T>(Stream<T> Function() query) async* {
-    await ensureAuthenticated();
     try {
       yield* query();
     } catch (e) {
@@ -102,7 +108,6 @@ abstract class BaseRepository {
   /// Execute a query with Either pattern for error handling
   Future<Either<Failure, T>> executeQuerySafe<T>(Future<T> Function() query) async {
     try {
-      await ensureAuthenticated();
       final result = await query();
       _logger.debug('Query executed successfully');
       return Right(result);
@@ -116,7 +121,6 @@ abstract class BaseRepository {
   /// Execute a stream query with Either pattern for error handling
   Stream<Either<Failure, T>> executeStreamQuerySafe<T>(Stream<T> Function() query) async* {
     try {
-      await ensureAuthenticated();
       yield* query().map((data) => Right<Failure, T>(data));
     } catch (e, stackTrace) {
       _logger.error('Stream query execution failed', e, stackTrace);

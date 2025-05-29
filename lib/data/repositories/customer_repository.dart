@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/customer.dart';
@@ -309,13 +310,24 @@ class CustomerRepository extends BaseRepository {
   Future<String?> _getCurrentSalesAgentId() async {
     if (currentUserUid == null) return null;
 
-    final response = await client
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', currentUserUid!)
-        .eq('role', 'sales_agent')
-        .maybeSingle();
+    try {
+      final authenticatedClient = await getAuthenticatedClient();
 
-    return response?['id'];
+      debugPrint('CustomerRepository: Looking for sales agent with Firebase UID: $currentUserUid');
+
+      final response = await authenticatedClient
+          .from('users')
+          .select('id')
+          .eq('firebase_uid', currentUserUid!)
+          .eq('role', 'sales_agent')
+          .maybeSingle();
+
+      debugPrint('CustomerRepository: Sales agent query response: $response');
+
+      return response?['id'];
+    } catch (e) {
+      debugPrint('CustomerRepository: Error getting sales agent ID: $e');
+      return null;
+    }
   }
 }

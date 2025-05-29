@@ -175,7 +175,23 @@ class AppRouter {
       ),
     ],
     redirect: (context, state) {
-      // TODO: Implement authentication and role-based redirection logic
+      // Get the current route
+      final String location = state.uri.toString();
+
+      // Skip redirect for auth routes and splash
+      if (location == AppRoutes.splash ||
+          location == AppRoutes.login ||
+          location == AppRoutes.register) {
+        return null;
+      }
+
+      // For now, allow access to test routes
+      if (location.startsWith('/test')) {
+        return null;
+      }
+
+      // TODO: Implement proper authentication state checking
+      // This is a placeholder - in production, check actual auth state
       return null;
     },
     errorBuilder: (context, state) => Scaffold(

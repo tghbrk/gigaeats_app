@@ -27,9 +27,6 @@ class AuthSyncService {
         throw Exception('Failed to get Firebase ID token');
       }
 
-      // Set the Firebase ID token for Supabase auth
-      await _setSupabaseAuth(idToken);
-
       // Get user role from Firebase custom claims
       final idTokenResult = await firebaseUser.getIdTokenResult();
       final claims = idTokenResult.claims;
@@ -53,13 +50,10 @@ class AuthSyncService {
 
       debugPrint('AuthSyncService: Attempting to upsert user data: $userData');
 
-      // Create a fresh Supabase client to avoid any auth header issues
-      final freshSupabase = SupabaseClient(
-        SupabaseConfig.url,
-        SupabaseConfig.anonKey,
-      );
+      // Create an authenticated Supabase client with Firebase token
+      final authenticatedClient = _createAuthenticatedClient(idToken);
 
-      final response = await freshSupabase
+      final response = await authenticatedClient
           .from('users')
           .upsert(userData, onConflict: 'firebase_uid')
           .select()
@@ -72,27 +66,15 @@ class AuthSyncService {
     }
   }
 
-  /// Set Firebase ID token for Supabase authentication
-  Future<void> _setSupabaseAuth(String idToken) async {
-    try {
-      // For Firebase JWT integration with Supabase RLS, we need to set the token
-      // in the request headers. This is typically done by creating a new client
-      // with the token or by using the REST client directly.
-
-      // Create a new Supabase client with the Firebase token as authorization
-      final authenticatedClient = SupabaseClient(
-        SupabaseConfig.url,
-        SupabaseConfig.anonKey,
-        headers: {
-          'Authorization': 'Bearer $idToken',
-        },
-      );
-
-      debugPrint('AuthSyncService: Firebase token set for Supabase auth');
-    } catch (e) {
-      debugPrint('AuthSyncService: Error setting Supabase auth: $e');
-      // Continue without throwing - this might be expected in some cases
-    }
+  /// Create authenticated Supabase client with Firebase token
+  SupabaseClient _createAuthenticatedClient(String idToken) {
+    return SupabaseClient(
+      SupabaseConfig.url,
+      SupabaseConfig.anonKey,
+      headers: {
+        'Authorization': 'Bearer $idToken',
+      },
+    );
   }
 
   /// Get current Firebase user and sync to Supabase
@@ -103,17 +85,22 @@ class AuthSyncService {
     try {
       // Get Firebase ID token for Supabase requests
       final idToken = await firebaseUser.getIdToken();
-      if (idToken != null) {
-        await _setSupabaseAuth(idToken);
-      }
 
-      // Fetch user profile from Supabase
-      final response = await _supabase
+      debugPrint('AuthSyncService: Fetching user with Firebase UID: ${firebaseUser.uid}');
+
+      // Create authenticated client for this request
+      final authenticatedClient = idToken != null
+          ? _createAuthenticatedClient(idToken)
+          : _supabase;
+
+      // Fetch user profile from Supabase using authenticated client
+      final response = await authenticatedClient
           .from('users')
           .select()
           .eq('firebase_uid', firebaseUser.uid)
           .single();
 
+      debugPrint('AuthSyncService: Successfully fetched user from Supabase');
       return app_models.User.fromJson(response);
     } catch (e) {
       debugPrint('AuthSyncService: Error getting current user: $e');
@@ -128,11 +115,11 @@ class AuthSyncService {
       // This is a temporary workaround until we upgrade to Blaze plan
 
       final idToken = await _firebaseAuth.currentUser?.getIdToken();
-      if (idToken != null) {
-        await _setSupabaseAuth(idToken);
-      }
+      final client = idToken != null
+          ? _createAuthenticatedClient(idToken)
+          : _supabase;
 
-      await _supabase
+      await client
           .from('users')
           .update({
             'role': role.value,
@@ -155,11 +142,11 @@ class AuthSyncService {
       // For now, we'll just update Supabase directly
 
       final idToken = await _firebaseAuth.currentUser?.getIdToken();
-      if (idToken != null) {
-        await _setSupabaseAuth(idToken);
-      }
+      final client = idToken != null
+          ? _createAuthenticatedClient(idToken)
+          : _supabase;
 
-      await _supabase
+      await client
           .from('users')
           .update({
             'role': role.value,
@@ -178,11 +165,11 @@ class AuthSyncService {
   Future<void> setUserVerification(String firebaseUid, bool verified) async {
     try {
       final idToken = await _firebaseAuth.currentUser?.getIdToken();
-      if (idToken != null) {
-        await _setSupabaseAuth(idToken);
-      }
+      final client = idToken != null
+          ? _createAuthenticatedClient(idToken)
+          : _supabase;
 
-      await _supabase
+      await client
           .from('users')
           .update({
             'is_verified': verified,
@@ -201,11 +188,11 @@ class AuthSyncService {
   Future<UserRole?> getUserRole(String firebaseUid) async {
     try {
       final idToken = await _firebaseAuth.currentUser?.getIdToken();
-      if (idToken != null) {
-        await _setSupabaseAuth(idToken);
-      }
+      final client = idToken != null
+          ? _createAuthenticatedClient(idToken)
+          : _supabase;
 
-      final response = await _supabase
+      final response = await client
           .from('users')
           .select('role')
           .eq('firebase_uid', firebaseUid)
@@ -235,7 +222,7 @@ class AuthSyncService {
     if (firebaseUser != null) {
       final idToken = await firebaseUser.getIdToken();
       if (idToken != null) {
-        await _setSupabaseAuth(idToken);
+        debugPrint('AuthSyncService: Firebase token available for Supabase auth');
       }
     }
   }

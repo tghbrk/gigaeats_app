@@ -113,7 +113,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -141,7 +141,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     Text(
                       'Bulk Food Ordering Made Easy',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                     const SizedBox(height: 48),
@@ -152,7 +152,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       height: 40,
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white.withOpacity(0.8),
+                          Colors.white.withValues(alpha: 0.8),
                         ),
                         strokeWidth: 3,
                       ),

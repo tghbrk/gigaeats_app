@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import '../models/notification.dart';
 
@@ -107,7 +106,6 @@ class NotificationService {
 
   Future<void> _loadSampleNotifications() async {
     final now = DateTime.now();
-    final random = Random();
 
     final sampleNotifications = [
       AppNotification(

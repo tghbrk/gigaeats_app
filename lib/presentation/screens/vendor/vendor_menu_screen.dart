@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../data/models/product.dart';
 import '../../../data/services/mock_data.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/loading_widget.dart';
-import '../../widgets/error_widget.dart';
+
 
 class VendorMenuScreen extends ConsumerStatefulWidget {
   const VendorMenuScreen({super.key});
@@ -184,6 +184,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "vendor_menu_add_item_fab",
         onPressed: () => _navigateToAddProduct(),
         icon: const Icon(Icons.add),
         label: const Text('Add Item'),

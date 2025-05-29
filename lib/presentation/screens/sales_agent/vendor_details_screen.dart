@@ -73,6 +73,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
       floatingActionButton: cartState.isEmpty
           ? null
           : FloatingActionButton.extended(
+              heroTag: "vendor_details_cart_fab",
               onPressed: () => _showCartSummary(context),
               icon: const Icon(Icons.shopping_cart),
               label: Text('Cart (${cartState.totalItems})'),

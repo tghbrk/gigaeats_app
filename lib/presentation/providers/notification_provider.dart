@@ -45,7 +45,11 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
     _initialize();
   }
 
-  void _initialize() async {
+  Future<void> refresh() async {
+    await _initialize();
+  }
+
+  Future<void> _initialize() async {
     state = state.copyWith(isLoading: true);
     
     try {

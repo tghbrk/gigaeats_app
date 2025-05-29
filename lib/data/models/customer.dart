@@ -102,6 +102,10 @@ class Customer extends Equatable {
     );
   }
 
+  // Convenience getters for backward compatibility
+  String get businessName => organizationName;
+  String get contactPerson => contactPersonName;
+
   @override
   List<Object?> get props => [
         id,

@@ -113,7 +113,7 @@ class _AdminDashboardTab extends ConsumerWidget {
                   gradient: LinearGradient(
                     colors: [
                       theme.colorScheme.primary,
-                      theme.colorScheme.primary.withOpacity(0.8),
+                      theme.colorScheme.primary.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -134,7 +134,7 @@ class _AdminDashboardTab extends ConsumerWidget {
                     Text(
                       'Platform overview and management',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -278,7 +278,7 @@ class _AdminDashboardTab extends ConsumerWidget {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: colors[index].withOpacity(0.1),
+                      backgroundColor: colors[index].withValues(alpha: 0.1),
                       child: Icon(
                         icons[index],
                         color: colors[index],

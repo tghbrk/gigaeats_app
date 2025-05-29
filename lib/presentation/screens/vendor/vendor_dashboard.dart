@@ -123,7 +123,7 @@ class _VendorDashboardTab extends ConsumerWidget {
                   gradient: LinearGradient(
                     colors: [
                       theme.colorScheme.primary,
-                      theme.colorScheme.primary.withOpacity(0.8),
+                      theme.colorScheme.primary.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -144,7 +144,7 @@ class _VendorDashboardTab extends ConsumerWidget {
                     Text(
                       'You have 5 new orders to process',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -272,7 +272,7 @@ class _VendorDashboardTab extends ConsumerWidget {
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: colors[index].withOpacity(0.1),
+                      backgroundColor: colors[index].withValues(alpha: 0.1),
                       child: Icon(
                         Icons.restaurant,
                         color: colors[index],
@@ -283,7 +283,7 @@ class _VendorDashboardTab extends ConsumerWidget {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: colors[index].withOpacity(0.1),
+                        color: colors[index].withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

@@ -7,7 +7,7 @@ import '../../providers/customer_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_widget.dart';
-import '../../widgets/error_widget.dart';
+
 
 class CustomerFormScreen extends ConsumerStatefulWidget {
   final String? customerId; // null for create, non-null for edit

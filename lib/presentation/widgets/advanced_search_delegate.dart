@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/vendor.dart';
-import '../../data/models/product.dart';
 import '../../data/models/customer.dart';
 import '../../data/models/order.dart';
 import '../providers/vendor_provider.dart';
@@ -118,7 +117,7 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
           itemCount: filteredVendors.length,
           itemBuilder: (context, index) {
             final vendor = filteredVendors[index];
-            return _buildVendorTile(vendor);
+            return _buildVendorTileWithContext(vendor, context);
           },
         );
       },
@@ -154,7 +153,7 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
           itemCount: filteredCustomers.length,
           itemBuilder: (context, index) {
             final customer = filteredCustomers[index];
-            return _buildCustomerTile(customer);
+            return _buildCustomerTileWithContext(customer, context);
           },
         );
       },
@@ -184,14 +183,14 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
           itemCount: filteredOrders.length,
           itemBuilder: (context, index) {
             final order = filteredOrders[index];
-            return _buildOrderTile(order);
+            return _buildOrderTileWithContext(order, context);
           },
         );
       },
     );
   }
 
-  Widget _buildVendorTile(Vendor vendor) {
+  Widget _buildVendorTileWithContext(Vendor vendor, BuildContext context) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Colors.blue.withValues(alpha: 0.1),
@@ -237,7 +236,7 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
     );
   }
 
-  Widget _buildCustomerTile(Customer customer) {
+  Widget _buildCustomerTileWithContext(Customer customer, BuildContext context) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Colors.purple.withValues(alpha: 0.1),
@@ -288,7 +287,7 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
     );
   }
 
-  Widget _buildOrderTile(Order order) {
+  Widget _buildOrderTileWithContext(Order order, BuildContext context) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: _getStatusColor(order.status).withValues(alpha: 0.1),

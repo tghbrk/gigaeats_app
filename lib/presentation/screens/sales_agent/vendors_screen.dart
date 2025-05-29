@@ -6,7 +6,7 @@ import '../../../data/models/vendor.dart';
 import '../../providers/vendor_provider.dart';
 import '../../widgets/vendor_card.dart';
 import '../../widgets/search_bar_widget.dart';
-import '../../widgets/filter_chips.dart';
+
 
 class VendorsScreen extends ConsumerStatefulWidget {
   const VendorsScreen({super.key});
@@ -28,7 +28,7 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
   Widget build(BuildContext context) {
     final vendorsState = ref.watch(vendorsProvider);
     final featuredVendorsAsync = ref.watch(featuredVendorsProvider);
-    final cuisineTypesAsync = ref.watch(cuisineTypesProvider);
+    // final cuisineTypesAsync = ref.watch(cuisineTypesProvider); // TODO: Use for filtering
 
     return Scaffold(
       appBar: AppBar(

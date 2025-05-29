@@ -45,9 +45,9 @@ class CustomerState {
 // Customer Notifier
 class CustomerNotifier extends StateNotifier<CustomerState> {
   final CustomerService _customerService;
-  final Ref _ref;
+  // final Ref _ref; // TODO: Use for cross-provider communication
 
-  CustomerNotifier(this._customerService, this._ref) : super(CustomerState());
+  CustomerNotifier(this._customerService, Ref ref) : super(CustomerState());
 
   Future<void> loadCustomers({
     String? searchQuery,

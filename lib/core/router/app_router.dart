@@ -176,7 +176,7 @@ class AppRouter {
         path: AppRoutes.orderDetails,
         name: 'order-details',
         builder: (context, state) {
-          final orderId = state.pathParameters['orderId'];
+          final orderId = state.pathParameters['orderId']!;
           return Placeholder(); // TODO: Implement OrderDetailsScreen(orderId: orderId)
         },
       ),

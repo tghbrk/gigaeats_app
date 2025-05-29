@@ -96,7 +96,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
           : notificationState.errorMessage != null
               ? CustomErrorWidget(
                   message: notificationState.errorMessage!,
-                  onRetry: () => ref.read(notificationProvider.notifier)._initialize(),
+                  onRetry: () => ref.read(notificationProvider.notifier).refresh(),
                 )
               : TabBarView(
                   controller: _tabController,
@@ -146,7 +146,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
     return RefreshIndicator(
       onRefresh: () async {
         // Refresh notifications
-        ref.read(notificationProvider.notifier)._initialize();
+        ref.read(notificationProvider.notifier).refresh();
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(16),

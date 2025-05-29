@@ -242,7 +242,7 @@ class ErrorHandler {
       case ErrorType.notFound:
         return Icons.search_off;
       case ErrorType.serverError:
-        return Icons.server_error;
+        return Icons.dns;
       case ErrorType.unknown:
         return Icons.error;
     }

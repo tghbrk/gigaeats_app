@@ -1,8 +1,13 @@
+import 'package:flutter/material.dart';
+
 class AppConstants {
   // App Information
   static const String appName = 'GigaEats';
   static const String appVersion = '1.0.0';
   static const String appDescription = 'B2B2C Bulk Food Ordering Platform for Malaysia';
+
+  // Colors
+  static const Color primaryColor = Color(0xFF4CAF50);
 
   // API Configuration
   static const String baseUrl = 'https://api.gigaeats.com';

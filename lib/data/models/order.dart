@@ -73,6 +73,9 @@ class Address extends Equatable {
       ];
 
   String get fullAddress => '$street, $city, $state $postalCode, $country';
+
+  // Convenience getter for backward compatibility
+  String get postcode => postalCode;
 }
 
 @JsonSerializable()
@@ -171,6 +174,7 @@ class Order extends Equatable {
   final String vendorName;
   final String customerId;
   final String customerName;
+  final String? customerEmail;
   final String? salesAgentId;
   final String? salesAgentName;
   final DateTime deliveryDate;
@@ -195,6 +199,7 @@ class Order extends Equatable {
     required this.vendorName,
     required this.customerId,
     required this.customerName,
+    this.customerEmail,
     this.salesAgentId,
     this.salesAgentName,
     required this.deliveryDate,
@@ -224,6 +229,7 @@ class Order extends Equatable {
     String? vendorName,
     String? customerId,
     String? customerName,
+    String? customerEmail,
     String? salesAgentId,
     String? salesAgentName,
     DateTime? deliveryDate,
@@ -248,6 +254,7 @@ class Order extends Equatable {
       vendorName: vendorName ?? this.vendorName,
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
+      customerEmail: customerEmail ?? this.customerEmail,
       salesAgentId: salesAgentId ?? this.salesAgentId,
       salesAgentName: salesAgentName ?? this.salesAgentName,
       deliveryDate: deliveryDate ?? this.deliveryDate,
@@ -275,6 +282,7 @@ class Order extends Equatable {
         vendorName,
         customerId,
         customerName,
+        customerEmail,
         salesAgentId,
         salesAgentName,
         deliveryDate,
@@ -290,6 +298,10 @@ class Order extends Equatable {
         updatedAt,
         metadata,
       ];
+
+  // Convenience getters
+  DateTime get orderDate => createdAt;
+  String get postcode => deliveryAddress.postalCode;
 
   @override
   String toString() {

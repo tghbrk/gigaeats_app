@@ -146,6 +146,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "customers_add_customer_fab",
         onPressed: () => _navigateToCreateCustomer(),
         icon: const Icon(Icons.person_add),
         label: const Text('Add Customer'),
@@ -489,20 +490,24 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen>
     );
 
     if (success != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Customer ${customer.isActive ? 'deactivated' : 'activated'} successfully',
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Customer ${customer.isActive ? 'deactivated' : 'activated'} successfully',
+            ),
           ),
-        ),
-      );
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update customer status'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update customer status'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

@@ -443,10 +443,8 @@ class CustomerDetailsScreen extends ConsumerWidget {
           _buildInfoRow('Registration No.', businessInfo.companyRegistrationNumber!),
         if (businessInfo.taxId != null)
           _buildInfoRow('Tax ID', businessInfo.taxId!),
-        if (businessInfo.industry != null)
-          _buildInfoRow('Industry', businessInfo.industry!),
-        if (businessInfo.employeeCount != null)
-          _buildInfoRow('Employees', businessInfo.employeeCount.toString()),
+        _buildInfoRow('Industry', businessInfo.industry),
+        _buildInfoRow('Employees', businessInfo.employeeCount.toString()),
         if (businessInfo.website != null)
           _buildInfoRow('Website', businessInfo.website!),
         if (businessInfo.businessHours.isNotEmpty)
@@ -466,11 +464,10 @@ class CustomerDetailsScreen extends ConsumerWidget {
           _buildInfoRow('Halal Only', 'Yes'),
         if (preferences.vegetarianOptions)
           _buildInfoRow('Vegetarian Options', 'Required'),
-        if (preferences.budgetRangeMin != null && preferences.budgetRangeMax != null)
-          _buildInfoRow(
-            'Budget Range',
-            'RM ${preferences.budgetRangeMin} - RM ${preferences.budgetRangeMax}',
-          ),
+        _buildInfoRow(
+          'Budget Range',
+          'RM ${preferences.budgetRangeMin} - RM ${preferences.budgetRangeMax}',
+        ),
         if (preferences.preferredDeliveryTimes.isNotEmpty)
           _buildInfoRow(
             'Preferred Delivery Times',
@@ -567,22 +564,29 @@ class CustomerDetailsScreen extends ConsumerWidget {
     );
 
     if (success != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Customer ${customer.isActive ? 'deactivated' : 'activated'} successfully',
-          ),
-        ),
-      );
       // Refresh the customer data
       ref.invalidate(customerProvider(customer.id));
+
+      // Show success message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Customer ${customer.isActive ? 'deactivated' : 'activated'} successfully',
+            ),
+          ),
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update customer status'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Show error message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update customer status'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

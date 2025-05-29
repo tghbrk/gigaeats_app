@@ -193,6 +193,34 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
     }
   }
 
+  Future<Order?> loadOrderById(String orderId) async {
+    try {
+      final order = await _orderService.getOrderById(orderId);
+
+      if (order != null) {
+        // Update the order in the local state if it exists
+        final updatedOrders = state.orders.map((o) {
+          return o.id == orderId ? order : o;
+        }).toList();
+
+        // If order doesn't exist in local state, add it
+        if (!state.orders.any((o) => o.id == orderId)) {
+          updatedOrders.add(order);
+        }
+
+        state = state.copyWith(orders: updatedOrders);
+      }
+
+      return order;
+    } catch (e) {
+      debugPrint('Error loading order by ID: $e');
+      state = state.copyWith(
+        errorMessage: 'Failed to load order: ${e.toString()}',
+      );
+      return null;
+    }
+  }
+
   void clearError() {
     state = state.copyWith(errorMessage: null);
   }

@@ -66,6 +66,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                   ],
                 ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "orders_new_order_fab",
         onPressed: () {
           // Navigate to create order screen
           context.push('/sales-agent/create-order');

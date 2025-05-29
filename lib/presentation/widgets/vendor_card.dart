@@ -67,7 +67,7 @@ class VendorCard extends StatelessWidget {
                           margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
@@ -114,7 +114,7 @@ class VendorCard extends StatelessWidget {
                       Text(
                         '(${vendor.totalReviews} reviews)',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -126,7 +126,7 @@ class VendorCard extends StatelessWidget {
                   Text(
                     vendor.description,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -142,7 +142,7 @@ class VendorCard extends StatelessWidget {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -169,14 +169,14 @@ class VendorCard extends StatelessWidget {
                             Icon(
                               Icons.location_on_outlined,
                               size: 14,
-                              color: theme.colorScheme.onSurface.withOpacity(0.6),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                             ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 '${vendor.address.city}, ${vendor.address.state}',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -192,7 +192,7 @@ class VendorCard extends StatelessWidget {
                           margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
+                            color: Colors.green.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -213,7 +213,7 @@ class VendorCard extends StatelessWidget {
                   Text(
                     'Min Order: RM ${vendor.businessInfo.minimumOrderAmount.toStringAsFixed(0)}',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -228,7 +228,7 @@ class VendorCard extends StatelessWidget {
 
   Widget _buildPlaceholderImage(ThemeData theme) {
     return Container(
-      color: theme.colorScheme.surfaceVariant,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
           Icons.restaurant,
@@ -270,13 +270,13 @@ class FeaturedVendorCard extends StatelessWidget {
                       imageUrl: vendor.coverImageUrl!,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
-                        color: theme.colorScheme.surfaceVariant,
+                        color: theme.colorScheme.surfaceContainerHighest,
                         child: const Center(
                           child: CircularProgressIndicator(),
                         ),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        color: theme.colorScheme.surfaceVariant,
+                        color: theme.colorScheme.surfaceContainerHighest,
                         child: Center(
                           child: Icon(
                             Icons.restaurant,
@@ -287,7 +287,7 @@ class FeaturedVendorCard extends StatelessWidget {
                       ),
                     )
                   : Container(
-                      color: theme.colorScheme.surfaceVariant,
+                      color: theme.colorScheme.surfaceContainerHighest,
                       child: Center(
                         child: Icon(
                           Icons.restaurant,
@@ -307,7 +307,7 @@ class FeaturedVendorCard extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.7),
+                      Colors.black.withValues(alpha: 0.7),
                     ],
                   ),
                 ),
@@ -357,7 +357,7 @@ class FeaturedVendorCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.8),
+                            color: Colors.green.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -378,7 +378,7 @@ class FeaturedVendorCard extends StatelessWidget {
                   Text(
                     vendor.cuisineTypes.take(2).join(' • '),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 12,
                     ),
                     maxLines: 1,

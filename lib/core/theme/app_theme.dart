@@ -32,7 +32,7 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.light,
     primarySwatch: MaterialColor(
-      primaryColor.value,
+      0xFF4CAF50,
       <int, Color>{
         50: const Color(0xFFE8F5E8),
         100: const Color(0xFFC8E6C9),

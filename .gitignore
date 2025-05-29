@@ -4,6 +4,8 @@
 *.pyc
 *.swp
 .DS_Store
+.AppleDouble
+.LSOverride
 .atom/
 .build/
 .buildlog/
@@ -18,21 +20,23 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# VS Code
+.vscode/
+.history/
 
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
-.dart_tool/
+**/.dart_tool/
+.packages
 .flutter-plugins
 .flutter-plugins-dependencies
+.flutter-versions
 .pub-cache/
 .pub/
-/build/
+**/build/
 pubspec.lock
+generated_plugin_registrant.dart
 
 # Symbolication related
 app.*.symbols
@@ -53,6 +57,15 @@ app.*.map.json
 **/*.lock
 **/*.stamp
 **/DerivedData/
+**/.gradle/
+**/.idea/
+**/.vscode/
+**/.cxx/
+**/xcuserdata/
+**/.symlinks/
+**/*.iml
+**/*.ipr
+**/*.iws
 
 # iOS/macOS specific
 ios/Flutter/Generated.xcconfig
@@ -74,3 +87,17 @@ android/gradle/wrapper/gradle-wrapper.jar
 
 # Web build
 web/build/
+web/.dart_tool/
+
+# Coverage
+coverage/
+
+# Supabase
+supabase/.temp/
+supabase/.branches
+
+# Node.js (for Firebase Functions)
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*

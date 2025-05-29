@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/order.dart';
+import '../../../data/models/customer.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/customer_selector.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   const CreateOrderScreen({super.key});
@@ -17,24 +19,19 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
 
 class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _customerNameController = TextEditingController();
-  final _customerEmailController = TextEditingController();
-  final _customerPhoneController = TextEditingController();
   final _streetController = TextEditingController();
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _notesController = TextEditingController();
 
+  Customer? _selectedCustomer;
   DateTime? _selectedDeliveryDate;
   TimeOfDay? _selectedDeliveryTime;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _customerNameController.dispose();
-    _customerEmailController.dispose();
-    _customerPhoneController.dispose();
     _streetController.dispose();
     _cityController.dispose();
     _stateController.dispose();
@@ -71,10 +68,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Customer Information
-                    _buildSectionHeader('Customer Information'),
-                    const SizedBox(height: 16),
-                    _buildCustomerForm(),
+                    // Customer Selection
+                    CustomerSelector(
+                      selectedCustomer: _selectedCustomer,
+                      onCustomerSelected: (customer) {
+                        setState(() {
+                          _selectedCustomer = customer;
+                          // Pre-fill delivery address if customer has default address
+                          if (customer != null) {
+                            _streetController.text = customer.address.street;
+                            _cityController.text = customer.address.city;
+                            _stateController.text = customer.address.state;
+                            _postalCodeController.text = customer.address.postcode;
+                          }
+                        });
+                      },
+                    ),
 
                     const SizedBox(height: 24),
 
@@ -229,43 +238,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  Widget _buildCustomerForm() {
-    return Column(
-      children: [
-        CustomTextField(
-          controller: _customerNameController,
-          label: 'Customer Name *',
-          hintText: 'Enter customer or company name',
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Customer name is required';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        CustomTextField(
-          controller: _customerEmailController,
-          label: 'Email Address',
-          hintText: 'customer@company.com',
-          keyboardType: TextInputType.emailAddress,
-        ),
-        const SizedBox(height: 16),
-        CustomTextField(
-          controller: _customerPhoneController,
-          label: 'Phone Number *',
-          hintText: '+60123456789',
-          keyboardType: TextInputType.phone,
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Phone number is required';
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
+
 
   Widget _buildDeliveryForm() {
     return Column(
@@ -405,6 +378,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return;
     }
 
+    if (_selectedCustomer == null) {
+      _showErrorSnackBar('Please select a customer');
+      return;
+    }
+
     if (_selectedDeliveryDate == null) {
       _showErrorSnackBar('Please select a delivery date');
       return;
@@ -436,8 +414,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       );
 
       final order = await ref.read(ordersProvider.notifier).createOrder(
-        customerId: 'temp_customer_id', // TODO: Implement proper customer selection
-        customerName: _customerNameController.text.trim(),
+        customerId: _selectedCustomer!.id,
+        customerName: _selectedCustomer!.organizationName,
         deliveryDate: deliveryDateTime,
         deliveryAddress: deliveryAddress,
         notes: _notesController.text.trim().isNotEmpty

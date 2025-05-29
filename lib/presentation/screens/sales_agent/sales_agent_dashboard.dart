@@ -9,6 +9,7 @@ import '../../widgets/quick_action_button.dart';
 import '../../providers/order_provider.dart';
 import 'vendors_screen.dart';
 import 'orders_screen.dart';
+import 'customers_screen.dart';
 
 class SalesAgentDashboard extends ConsumerStatefulWidget {
   const SalesAgentDashboard({super.key});
@@ -61,7 +62,7 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
           }),
           const OrdersScreen(),
           const VendorsScreen(),
-          const _CustomersTab(),
+          const CustomersScreen(),
           const _ProfileTab(),
         ],
       ),
@@ -235,7 +236,7 @@ class _DashboardTab extends ConsumerWidget {
                       icon: Icons.person_add,
                       label: 'Add Customer',
                       onTap: () {
-                        // TODO: Navigate to add customer
+                        context.push('/sales-agent/customers/create');
                       },
                     ),
                   ),
@@ -339,19 +340,7 @@ class _DashboardTab extends ConsumerWidget {
 
 
 
-class _CustomersTab extends StatelessWidget {
-  const _CustomersTab();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Customers')),
-      body: const Center(
-        child: Text('Customers Tab - Coming Soon'),
-      ),
-    );
-  }
-}
 
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab();

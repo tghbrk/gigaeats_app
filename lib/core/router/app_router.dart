@@ -10,6 +10,9 @@ import '../../presentation/screens/sales_agent/sales_agent_dashboard.dart';
 import '../../presentation/screens/sales_agent/create_order_screen.dart';
 import '../../presentation/screens/sales_agent/vendor_details_screen.dart';
 import '../../presentation/screens/sales_agent/cart_screen.dart';
+import '../../presentation/screens/sales_agent/customers_screen.dart';
+import '../../presentation/screens/sales_agent/customer_details_screen.dart';
+import '../../presentation/screens/sales_agent/customer_form_screen.dart';
 import '../../presentation/screens/vendor/vendor_dashboard.dart';
 import '../../presentation/screens/admin/admin_dashboard.dart';
 import '../../core/constants/app_constants.dart';
@@ -70,7 +73,32 @@ class AppRouter {
           GoRoute(
             path: 'customers',
             name: 'sales-agent-customers',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
+            builder: (context, state) => const CustomersScreen(),
+            routes: [
+              GoRoute(
+                path: 'create',
+                name: 'create-customer',
+                builder: (context, state) => const CustomerFormScreen(),
+              ),
+              GoRoute(
+                path: ':customerId',
+                name: 'customer-details',
+                builder: (context, state) {
+                  final customerId = state.pathParameters['customerId']!;
+                  return CustomerDetailsScreen(customerId: customerId);
+                },
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    name: 'edit-customer',
+                    builder: (context, state) {
+                      final customerId = state.pathParameters['customerId']!;
+                      return CustomerFormScreen(customerId: customerId);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: 'profile',

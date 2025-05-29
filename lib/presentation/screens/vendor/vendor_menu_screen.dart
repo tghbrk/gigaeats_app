@@ -7,6 +7,7 @@ import '../../../data/models/product.dart';
 import '../../../data/services/mock_data.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/loading_widget.dart';
+import 'menu_item_form_screen.dart';
 
 
 class VendorMenuScreen extends ConsumerStatefulWidget {
@@ -557,11 +558,27 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
   }
 
   void _navigateToAddProduct() {
-    _showComingSoon('Add product functionality');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const MenuItemFormScreen(),
+      ),
+    ).then((_) {
+      // Refresh the products after adding
+      _loadProducts();
+    });
   }
 
   void _navigateToEditProduct(String productId) {
-    _showComingSoon('Edit product functionality');
+    // For now, just navigate to add form since we're using old Product model
+    // In a real app, you'd convert between Product and MenuItem models
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const MenuItemFormScreen(),
+      ),
+    ).then((_) {
+      // Refresh the products after editing
+      _loadProducts();
+    });
   }
 
   void _showComingSoon(String feature) {

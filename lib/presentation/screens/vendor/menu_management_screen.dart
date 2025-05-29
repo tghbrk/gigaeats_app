@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-
+import 'package:go_router/go_router.dart';
 
 import '../../../data/models/menu_item.dart';
 import '../../../data/services/menu_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/custom_error_widget.dart';
+import 'menu_item_form_screen.dart';
 
 // Provider for menu service
 final menuServiceProvider = Provider<MenuService>((ref) => MenuService());
@@ -440,32 +440,32 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
   }
 
   void _showAddMenuDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Menu Item'),
-        content: const Text('Menu item creation form will be implemented here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Add'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const MenuItemFormScreen(),
       ),
-    );
+    ).then((_) {
+      // Refresh the menu items after adding/editing
+      ref.refresh(vendorMenuItemsProvider(widget.vendorId));
+      ref.refresh(vendorMenuStatsProvider(widget.vendorId));
+    });
   }
 
   void _handleMenuAction(String action, MenuItem item) {
     switch (action) {
       case 'edit':
-        // Navigate to edit screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MenuItemFormScreen(menuItemId: item.id),
+          ),
+        ).then((_) {
+          // Refresh the menu items after editing
+          ref.refresh(vendorMenuItemsProvider(widget.vendorId));
+          ref.refresh(vendorMenuStatsProvider(widget.vendorId));
+        });
         break;
       case 'duplicate':
-        // Duplicate item
+        _duplicateMenuItem(item);
         break;
       case 'availability':
         _showAvailabilityDialog(item);
@@ -529,5 +529,49 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
         ],
       ),
     );
+  }
+
+  void _duplicateMenuItem(MenuItem item) async {
+    try {
+      final menuService = ref.read(menuServiceProvider);
+      await menuService.createMenuItem(
+        vendorId: item.vendorId,
+        name: '${item.name} (Copy)',
+        description: item.description,
+        category: item.category,
+        basePrice: item.basePrice,
+        bulkPricingTiers: item.bulkPricingTiers,
+        minimumOrderQuantity: item.minimumOrderQuantity,
+        maximumOrderQuantity: item.maximumOrderQuantity,
+        imageUrls: item.imageUrls,
+        dietaryTypes: item.dietaryTypes,
+        allergens: item.allergens,
+        preparationTimeMinutes: item.preparationTimeMinutes,
+        availableQuantity: item.availableQuantity,
+        unit: item.unit,
+        isHalalCertified: item.isHalalCertified,
+        tags: item.tags,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Menu item duplicated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        ref.refresh(vendorMenuItemsProvider(widget.vendorId));
+        ref.refresh(vendorMenuStatsProvider(widget.vendorId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to duplicate item: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

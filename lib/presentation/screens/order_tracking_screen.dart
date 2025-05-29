@@ -33,16 +33,21 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ordersState = ref.watch(ordersProvider);
-    
+
     // Find the specific order
-    final order = ordersState.orders.firstWhere(
-      (o) => o.id == widget.orderId,
-      orElse: () => throw Exception('Order not found'),
-    );
+    Order? order;
+    try {
+      order = ordersState.orders.firstWhere(
+        (o) => o.id == widget.orderId,
+      );
+    } catch (e) {
+      // Order not found in current state
+      order = null;
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Track Order #${order.orderNumber}'),
+        title: Text(order != null ? 'Track Order #${order.orderNumber}' : 'Order Details'),
         elevation: 0,
         actions: [
           IconButton(
@@ -50,11 +55,12 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
           ),
-          IconButton(
-            onPressed: () => _shareOrder(order),
-            icon: const Icon(Icons.share),
-            tooltip: 'Share',
-          ),
+          if (order != null)
+            IconButton(
+              onPressed: () => _shareOrder(order!),
+              icon: const Icon(Icons.share),
+              tooltip: 'Share',
+            ),
         ],
       ),
       body: ordersState.isLoading
@@ -64,41 +70,81 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                   message: ordersState.errorMessage!,
                   onRetry: () => _refreshOrder(),
                 )
-              : RefreshIndicator(
-                  onRefresh: () async => _refreshOrder(),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Order Status Header
-                        _buildStatusHeader(order),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Order Timeline
-                        _buildOrderTimeline(order),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Order Details
-                        _buildOrderDetails(order),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Delivery Information
-                        _buildDeliveryInfo(order),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Contact Actions
-                        _buildContactActions(order),
-                        
-                        const SizedBox(height: 32),
-                      ],
+              : order == null
+                  ? _buildOrderNotFound()
+                  : RefreshIndicator(
+                      onRefresh: () async => _refreshOrder(),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Order Status Header
+                            _buildStatusHeader(order),
+
+                            const SizedBox(height: 24),
+
+                            // Order Timeline
+                            _buildOrderTimeline(order),
+
+                            const SizedBox(height: 24),
+
+                            // Order Details
+                            _buildOrderDetails(order),
+
+                            const SizedBox(height: 24),
+
+                            // Delivery Information
+                            _buildDeliveryInfo(order),
+
+                            const SizedBox(height: 24),
+
+                            // Contact Actions
+                            _buildContactActions(order),
+
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+    );
+  }
+
+  Widget _buildOrderNotFound() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Order Not Found',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'The order you are looking for could not be found.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Go Back'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

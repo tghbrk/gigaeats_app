@@ -13,8 +13,10 @@ import '../../presentation/screens/sales_agent/cart_screen.dart';
 import '../../presentation/screens/sales_agent/customers_screen.dart';
 import '../../presentation/screens/sales_agent/customer_details_screen.dart';
 import '../../presentation/screens/sales_agent/customer_form_screen.dart';
+import '../../presentation/screens/sales_agent/orders_screen.dart';
 import '../../presentation/screens/vendor/vendor_dashboard.dart';
 import '../../presentation/screens/admin/admin_dashboard.dart';
+import '../../presentation/screens/order_tracking_screen.dart';
 import '../../core/constants/app_constants.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -63,7 +65,7 @@ class AppRouter {
           GoRoute(
             path: 'orders',
             name: 'sales-agent-orders',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
+            builder: (context, state) => const OrdersScreen(),
           ),
           GoRoute(
             path: 'vendors',
@@ -177,7 +179,7 @@ class AppRouter {
         name: 'order-details',
         builder: (context, state) {
           final orderId = state.pathParameters['orderId']!;
-          return Placeholder(); // TODO: Implement OrderDetailsScreen(orderId: orderId)
+          return OrderTrackingScreen(orderId: orderId);
         },
       ),
       GoRoute(

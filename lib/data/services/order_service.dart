@@ -18,11 +18,15 @@ class OrderService {
 
     var filteredOrders = List<Order>.from(_orders);
 
-    if (salesAgentId != null) {
-      filteredOrders = filteredOrders
-          .where((order) => order.salesAgentId == salesAgentId)
-          .toList();
-    }
+    // For demo purposes, show all orders regardless of sales agent ID
+    // In production, this would filter by actual sales agent assignments
+
+    // Uncomment the lines below for production filtering:
+    // if (salesAgentId != null) {
+    //   filteredOrders = filteredOrders
+    //       .where((order) => order.salesAgentId == salesAgentId)
+    //       .toList();
+    // }
 
     if (vendorId != null) {
       filteredOrders = filteredOrders
@@ -177,7 +181,7 @@ class OrderService {
 
     final mockOrders = [
       Order(
-        id: _uuid.v4(),
+        id: 'order_001',
         orderNumber: 'GE1001',
         status: OrderStatus.pending,
         items: [
@@ -191,18 +195,18 @@ class OrderService {
             totalPrice: 250.00,
           ),
         ],
-        vendorId: 'vendor1',
-        vendorName: 'Warung Pak Ali',
-        customerId: 'customer1',
-        customerName: 'ABC Corporation',
-        salesAgentId: 'agent1',
-        salesAgentName: 'John Doe',
+        vendorId: 'vendor_1',
+        vendorName: 'Nasi Lemak Wangi',
+        customerId: 'cust_001',
+        customerName: 'Tech Solutions Sdn Bhd',
+        salesAgentId: 'default_agent', // Use default agent for demo
+        salesAgentName: 'Sales Agent',
         deliveryDate: DateTime.now().add(const Duration(days: 1)),
         deliveryAddress: const Address(
-          street: '123 Business Park',
+          street: 'Level 15, Menara TM, Jalan Pantai Baharu',
           city: 'Kuala Lumpur',
-          state: 'Selangor',
-          postalCode: '50000',
+          state: 'Kuala Lumpur',
+          postalCode: '59200',
           country: 'Malaysia',
         ),
         subtotal: 250.00,
@@ -213,7 +217,80 @@ class OrderService {
         createdAt: DateTime.now().subtract(const Duration(hours: 2)),
         updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
       ),
-      // Add more mock orders as needed
+      Order(
+        id: 'order_002',
+        orderNumber: 'GE1002',
+        status: OrderStatus.confirmed,
+        items: [
+          OrderItem(
+            id: _uuid.v4(),
+            menuItemId: 'item2',
+            name: 'Chicken Biryani',
+            description: 'Fragrant basmati rice with tender chicken',
+            unitPrice: 15.00,
+            quantity: 15,
+            totalPrice: 225.00,
+          ),
+        ],
+        vendorId: 'vendor_3',
+        vendorName: 'Spice Garden Indian Kitchen',
+        customerId: 'cust_002',
+        customerName: 'SMK Taman Desa',
+        salesAgentId: 'default_agent',
+        salesAgentName: 'Sales Agent',
+        deliveryDate: DateTime.now().add(const Duration(hours: 4)),
+        deliveryAddress: const Address(
+          street: 'Jalan Desa Utama 1/2',
+          city: 'Kuala Lumpur',
+          state: 'Kuala Lumpur',
+          postalCode: '58100',
+          country: 'Malaysia',
+        ),
+        subtotal: 225.00,
+        deliveryFee: 5.00,
+        sstAmount: 13.50,
+        totalAmount: 243.50,
+        commissionAmount: 15.75,
+        createdAt: DateTime.now().subtract(const Duration(hours: 6)),
+        updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
+      ),
+      Order(
+        id: 'order_003',
+        orderNumber: 'GE1003',
+        status: OrderStatus.delivered,
+        items: [
+          OrderItem(
+            id: _uuid.v4(),
+            menuItemId: 'item3',
+            name: 'Mixed Dim Sum Platter',
+            description: 'Assorted dim sum including har gow and siu mai',
+            unitPrice: 25.00,
+            quantity: 8,
+            totalPrice: 200.00,
+          ),
+        ],
+        vendorId: 'vendor_2',
+        vendorName: 'Dragon Palace Chinese Cuisine',
+        customerId: 'cust_003',
+        customerName: 'Hospital Kuala Lumpur',
+        salesAgentId: 'default_agent',
+        salesAgentName: 'Sales Agent',
+        deliveryDate: DateTime.now().subtract(const Duration(days: 1)),
+        deliveryAddress: const Address(
+          street: 'Jalan Pahang',
+          city: 'Kuala Lumpur',
+          state: 'Kuala Lumpur',
+          postalCode: '53000',
+          country: 'Malaysia',
+        ),
+        subtotal: 200.00,
+        deliveryFee: 0.00, // Free delivery for orders above RM 200
+        sstAmount: 12.00,
+        totalAmount: 212.00,
+        commissionAmount: 14.00,
+        createdAt: DateTime.now().subtract(const Duration(days: 2)),
+        updatedAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
     ];
 
     _orders.addAll(mockOrders);

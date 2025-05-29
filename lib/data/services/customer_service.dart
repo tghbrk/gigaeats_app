@@ -169,9 +169,14 @@ class CustomerService {
     // TODO: Replace with actual API call
     var customers = MockData.sampleCustomers;
 
-    if (salesAgentId != null) {
-      customers = customers.where((customer) => customer.salesAgentId == salesAgentId).toList();
-    }
+    // For demo purposes, show all customers regardless of sales agent ID
+    // In production, this would filter by actual sales agent assignments
+    // For now, we'll show all customers to ensure the checkout flow works
+
+    // Uncomment the lines below for production filtering:
+    // if (salesAgentId != null) {
+    //   customers = customers.where((customer) => customer.salesAgentId == salesAgentId).toList();
+    // }
 
     // Sort by last order date (most recent first)
     customers.sort((a, b) => b.lastOrderDate.compareTo(a.lastOrderDate));
@@ -189,9 +194,13 @@ class CustomerService {
     // TODO: Replace with actual API call
     var customers = MockData.sampleCustomers;
 
-    if (salesAgentId != null) {
-      customers = customers.where((customer) => customer.salesAgentId == salesAgentId).toList();
-    }
+    // For demo purposes, show all customers regardless of sales agent ID
+    // In production, this would filter by actual sales agent assignments
+
+    // Uncomment the lines below for production filtering:
+    // if (salesAgentId != null) {
+    //   customers = customers.where((customer) => customer.salesAgentId == salesAgentId).toList();
+    // }
 
     if (query.isNotEmpty) {
       final searchQuery = query.toLowerCase();

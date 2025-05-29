@@ -361,7 +361,7 @@ class MockData {
   static List<Customer> sampleCustomers = [
     Customer(
       id: 'cust_001',
-      salesAgentId: 'agent_001',
+      salesAgentId: 'default_agent', // Default agent for demo purposes
       type: CustomerType.corporate,
       organizationName: 'Tech Solutions Sdn Bhd',
       contactPersonName: 'Ahmad Rahman',
@@ -410,7 +410,7 @@ class MockData {
     ),
     Customer(
       id: 'cust_002',
-      salesAgentId: 'agent_001',
+      salesAgentId: 'default_agent',
       type: CustomerType.school,
       organizationName: 'SMK Taman Desa',
       contactPersonName: 'Siti Nurhaliza',
@@ -451,7 +451,7 @@ class MockData {
     ),
     Customer(
       id: 'cust_003',
-      salesAgentId: 'agent_002',
+      salesAgentId: 'default_agent',
       type: CustomerType.hospital,
       organizationName: 'Hospital Kuala Lumpur',
       contactPersonName: 'Dr. Lim Wei Ming',

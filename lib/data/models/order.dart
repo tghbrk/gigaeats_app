@@ -3,6 +3,52 @@ import 'package:equatable/equatable.dart';
 
 part 'order.g.dart';
 
+enum PaymentStatus {
+  pending('pending', 'Pending'),
+  paid('paid', 'Paid'),
+  failed('failed', 'Failed'),
+  refunded('refunded', 'Refunded');
+
+  const PaymentStatus(this.value, this.displayName);
+
+  final String value;
+  final String displayName;
+
+  static PaymentStatus fromString(String value) {
+    return PaymentStatus.values.firstWhere(
+      (status) => status.value == value,
+      orElse: () => PaymentStatus.pending,
+    );
+  }
+
+  bool get isPending => this == PaymentStatus.pending;
+  bool get isPaid => this == PaymentStatus.paid;
+  bool get isFailed => this == PaymentStatus.failed;
+  bool get isRefunded => this == PaymentStatus.refunded;
+}
+
+enum PaymentMethod {
+  fpx('fpx', 'FPX'),
+  grabpay('grabpay', 'GrabPay'),
+  touchngo('touchngo', 'Touch \'n Go'),
+  creditCard('credit_card', 'Credit Card');
+
+  const PaymentMethod(this.value, this.displayName);
+
+  final String value;
+  final String displayName;
+
+  static PaymentMethod fromString(String value) {
+    return PaymentMethod.values.firstWhere(
+      (method) => method.value == value,
+      orElse: () => PaymentMethod.fpx,
+    );
+  }
+
+  @override
+  String toString() => value;
+}
+
 enum OrderStatus {
   pending('pending', 'Pending'),
   confirmed('confirmed', 'Confirmed'),

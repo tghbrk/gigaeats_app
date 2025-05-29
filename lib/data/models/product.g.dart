@@ -8,143 +8,76 @@ part of 'product.dart';
 
 Product _$ProductFromJson(Map<String, dynamic> json) => Product(
   id: json['id'] as String,
-  vendorId: json['vendorId'] as String,
+  vendorId: json['vendor_id'] as String,
   name: json['name'] as String,
-  description: json['description'] as String,
+  description: json['description'] as String?,
   category: json['category'] as String,
   tags:
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
-  pricing: ProductPricing.fromJson(json['pricing'] as Map<String, dynamic>),
-  availability: ProductAvailability.fromJson(
-    json['availability'] as Map<String, dynamic>,
-  ),
-  nutrition: json['nutrition'] == null
-      ? null
-      : ProductNutrition.fromJson(json['nutrition'] as Map<String, dynamic>),
+  basePrice: (json['base_price'] as num).toDouble(),
+  bulkPrice: (json['bulk_price'] as num?)?.toDouble(),
+  bulkMinQuantity: (json['bulk_min_quantity'] as num?)?.toInt(),
+  currency: json['currency'] as String?,
+  includesSst: json['includes_sst'] as bool?,
+  isAvailable: json['is_available'] as bool?,
+  minOrderQuantity: (json['min_order_quantity'] as num?)?.toInt(),
+  maxOrderQuantity: (json['max_order_quantity'] as num?)?.toInt(),
+  preparationTimeMinutes: (json['preparation_time_minutes'] as num?)?.toInt(),
   allergens:
       (json['allergens'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
-  isHalal: json['isHalal'] as bool? ?? false,
-  isVegetarian: json['isVegetarian'] as bool? ?? false,
-  isVegan: json['isVegan'] as bool? ?? false,
-  isSpicy: json['isSpicy'] as bool? ?? false,
-  spicyLevel: (json['spicyLevel'] as num?)?.toInt() ?? 0,
-  imageUrl: json['imageUrl'] as String?,
+  isHalal: json['is_halal'] as bool?,
+  isVegetarian: json['is_vegetarian'] as bool?,
+  isVegan: json['is_vegan'] as bool?,
+  isSpicy: json['is_spicy'] as bool?,
+  spicyLevel: (json['spicy_level'] as num?)?.toInt(),
+  imageUrl: json['image_url'] as String?,
   galleryImages:
-      (json['galleryImages'] as List<dynamic>?)
+      (json['gallery_images'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList() ??
       const [],
-  rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-  totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 0,
-  isActive: json['isActive'] as bool? ?? true,
-  isFeatured: json['isFeatured'] as bool? ?? false,
-  createdAt: DateTime.parse(json['createdAt'] as String),
-  updatedAt: DateTime.parse(json['updatedAt'] as String),
+  nutritionInfo: json['nutrition_info'] as Map<String, dynamic>?,
+  rating: (json['rating'] as num?)?.toDouble(),
+  totalReviews: (json['total_reviews'] as num?)?.toInt(),
+  isFeatured: json['is_featured'] as bool?,
+  createdAt: json['created_at'] == null
+      ? null
+      : DateTime.parse(json['created_at'] as String),
+  updatedAt: json['updated_at'] == null
+      ? null
+      : DateTime.parse(json['updated_at'] as String),
 );
 
 Map<String, dynamic> _$ProductToJson(Product instance) => <String, dynamic>{
   'id': instance.id,
-  'vendorId': instance.vendorId,
+  'vendor_id': instance.vendorId,
   'name': instance.name,
   'description': instance.description,
   'category': instance.category,
   'tags': instance.tags,
-  'pricing': instance.pricing,
-  'availability': instance.availability,
-  'nutrition': instance.nutrition,
+  'base_price': instance.basePrice,
+  'bulk_price': instance.bulkPrice,
+  'bulk_min_quantity': instance.bulkMinQuantity,
+  'currency': instance.currency,
+  'includes_sst': instance.includesSst,
+  'is_available': instance.isAvailable,
+  'min_order_quantity': instance.minOrderQuantity,
+  'max_order_quantity': instance.maxOrderQuantity,
+  'preparation_time_minutes': instance.preparationTimeMinutes,
   'allergens': instance.allergens,
-  'isHalal': instance.isHalal,
-  'isVegetarian': instance.isVegetarian,
-  'isVegan': instance.isVegan,
-  'isSpicy': instance.isSpicy,
-  'spicyLevel': instance.spicyLevel,
-  'imageUrl': instance.imageUrl,
-  'galleryImages': instance.galleryImages,
+  'is_halal': instance.isHalal,
+  'is_vegetarian': instance.isVegetarian,
+  'is_vegan': instance.isVegan,
+  'is_spicy': instance.isSpicy,
+  'spicy_level': instance.spicyLevel,
+  'image_url': instance.imageUrl,
+  'gallery_images': instance.galleryImages,
+  'nutrition_info': instance.nutritionInfo,
   'rating': instance.rating,
-  'totalReviews': instance.totalReviews,
-  'isActive': instance.isActive,
-  'isFeatured': instance.isFeatured,
-  'createdAt': instance.createdAt.toIso8601String(),
-  'updatedAt': instance.updatedAt.toIso8601String(),
+  'total_reviews': instance.totalReviews,
+  'is_featured': instance.isFeatured,
+  'created_at': instance.createdAt?.toIso8601String(),
+  'updated_at': instance.updatedAt?.toIso8601String(),
 };
-
-ProductPricing _$ProductPricingFromJson(Map<String, dynamic> json) =>
-    ProductPricing(
-      basePrice: (json['basePrice'] as num).toDouble(),
-      discountPrice: (json['discountPrice'] as num?)?.toDouble(),
-      bulkPrice: (json['bulkPrice'] as num?)?.toDouble(),
-      bulkMinQuantity: (json['bulkMinQuantity'] as num?)?.toInt(),
-      currency: json['currency'] as String? ?? 'MYR',
-      includesSst: json['includesSst'] as bool? ?? false,
-    );
-
-Map<String, dynamic> _$ProductPricingToJson(ProductPricing instance) =>
-    <String, dynamic>{
-      'basePrice': instance.basePrice,
-      'discountPrice': instance.discountPrice,
-      'bulkPrice': instance.bulkPrice,
-      'bulkMinQuantity': instance.bulkMinQuantity,
-      'currency': instance.currency,
-      'includesSst': instance.includesSst,
-    };
-
-ProductAvailability _$ProductAvailabilityFromJson(
-  Map<String, dynamic> json,
-) => ProductAvailability(
-  isAvailable: json['isAvailable'] as bool? ?? true,
-  stockQuantity: (json['stockQuantity'] as num?)?.toInt(),
-  dailyLimit: (json['dailyLimit'] as num?)?.toInt(),
-  weeklyLimit: (json['weeklyLimit'] as num?)?.toInt(),
-  availableDays:
-      (json['availableDays'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const [],
-  availableTimeStart: json['availableTimeStart'] as String?,
-  availableTimeEnd: json['availableTimeEnd'] as String?,
-  minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
-  maximumOrderQuantity: (json['maximumOrderQuantity'] as num?)?.toInt() ?? 1000,
-  preparationTimeMinutes:
-      (json['preparationTimeMinutes'] as num?)?.toInt() ?? 30,
-);
-
-Map<String, dynamic> _$ProductAvailabilityToJson(
-  ProductAvailability instance,
-) => <String, dynamic>{
-  'isAvailable': instance.isAvailable,
-  'stockQuantity': instance.stockQuantity,
-  'dailyLimit': instance.dailyLimit,
-  'weeklyLimit': instance.weeklyLimit,
-  'availableDays': instance.availableDays,
-  'availableTimeStart': instance.availableTimeStart,
-  'availableTimeEnd': instance.availableTimeEnd,
-  'minimumOrderQuantity': instance.minimumOrderQuantity,
-  'maximumOrderQuantity': instance.maximumOrderQuantity,
-  'preparationTimeMinutes': instance.preparationTimeMinutes,
-};
-
-ProductNutrition _$ProductNutritionFromJson(Map<String, dynamic> json) =>
-    ProductNutrition(
-      calories: (json['calories'] as num?)?.toDouble(),
-      protein: (json['protein'] as num?)?.toDouble(),
-      carbohydrates: (json['carbohydrates'] as num?)?.toDouble(),
-      fat: (json['fat'] as num?)?.toDouble(),
-      fiber: (json['fiber'] as num?)?.toDouble(),
-      sugar: (json['sugar'] as num?)?.toDouble(),
-      sodium: (json['sodium'] as num?)?.toDouble(),
-      servingSize: json['servingSize'] as String? ?? '1 serving',
-    );
-
-Map<String, dynamic> _$ProductNutritionToJson(ProductNutrition instance) =>
-    <String, dynamic>{
-      'calories': instance.calories,
-      'protein': instance.protein,
-      'carbohydrates': instance.carbohydrates,
-      'fat': instance.fat,
-      'fiber': instance.fiber,
-      'sugar': instance.sugar,
-      'sodium': instance.sodium,
-      'servingSize': instance.servingSize,
-    };

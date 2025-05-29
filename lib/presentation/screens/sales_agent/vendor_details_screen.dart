@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/models/vendor.dart';
 import '../../../data/models/product.dart';
-import '../../providers/vendor_provider.dart';
+import '../../providers/vendor_provider.dart' hide vendorProductsProvider;
+import '../../providers/repository_providers.dart';
 import '../../providers/cart_provider.dart';
 import '../../widgets/product_card.dart';
 import 'product_details_screen.dart';
@@ -42,7 +43,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
   @override
   Widget build(BuildContext context) {
     final vendorAsync = ref.watch(vendorDetailsProvider(widget.vendorId));
-    final productsAsync = ref.watch(vendorProductsProvider(widget.vendorId));
+    final productsAsync = ref.watch(vendorProductsProvider({'vendorId': widget.vendorId}));
     final cartState = ref.watch(cartProvider);
 
     return Scaffold(
@@ -80,7 +81,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
     );
   }
 
-  Widget _buildVendorDetails(Vendor vendor, AsyncValue<List<Product>> productsAsync, CartState cartState) {
+  Widget _buildVendorDetails(Vendor vendor, AsyncValue<List<dynamic>> productsAsync, CartState cartState) {
     final theme = Theme.of(context);
 
     return CustomScrollView(
@@ -202,7 +203,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
 
                 // Description
                 Text(
-                  vendor.description,
+                  vendor.description ?? 'No description available',
                   style: theme.textTheme.bodyMedium,
                 ),
 
@@ -233,10 +234,10 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
                 const SizedBox(height: 16),
 
                 // Business Info
-                _buildInfoRow(Icons.location_on, 'Location', vendor.address.fullAddress),
+                _buildInfoRow(Icons.location_on, 'Location', vendor.fullAddress),
                 _buildInfoRow(Icons.access_time, 'Operating Hours', 'Mon-Sun: 9:00 AM - 10:00 PM'),
-                _buildInfoRow(Icons.delivery_dining, 'Delivery Radius', '${vendor.businessInfo.deliveryRadius.toStringAsFixed(0)} km'),
-                _buildInfoRow(Icons.shopping_cart, 'Min Order', 'RM ${vendor.businessInfo.minimumOrderAmount.toStringAsFixed(0)}'),
+                _buildInfoRow(Icons.delivery_dining, 'Delivery Radius', '10 km'),
+                _buildInfoRow(Icons.shopping_cart, 'Min Order', 'RM ${(vendor.minimumOrderAmount ?? 0.0).toStringAsFixed(0)}'),
 
                 if (vendor.isHalalCertified)
                   _buildInfoRow(Icons.verified, 'Halal Certified', 'Yes'),
@@ -305,10 +306,10 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
     );
   }
 
-  Widget _buildMenuTab(AsyncValue<List<Product>> productsAsync) {
+  Widget _buildMenuTab(AsyncValue<List<dynamic>> productsAsync) {
     return productsAsync.when(
-      data: (products) {
-        if (products.isEmpty) {
+      data: (productsData) {
+        if (productsData.isEmpty) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -321,8 +322,11 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
           );
         }
 
+        // Convert dynamic data to Product objects
+        final products = productsData.map((data) => Product.fromJson(data)).toList();
+
         // Get unique categories
-        final categories = ['All', ...products.map((p) => p.category).toSet().toList()];
+        final categories = ['All', ...products.map((p) => p.category).toSet()];
 
         // Filter products by selected category
         final filteredProducts = _selectedCategory == 'All'
@@ -392,7 +396,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
             Text('Error loading menu: $error'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => ref.invalidate(vendorProductsProvider(widget.vendorId)),
+              onPressed: () => ref.invalidate(vendorProductsProvider({'vendorId': widget.vendorId})),
               child: const Text('Retry'),
             ),
           ],
@@ -418,20 +422,20 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
             'Owner: ${vendor.ownerName}',
             'Email: ${vendor.email}',
             'Phone: ${vendor.phoneNumber}',
-            'SSM: ${vendor.businessInfo.ssmNumber}',
+            'SSM: ${vendor.businessRegistrationNumber}',
           ]),
           const SizedBox(height: 16),
           _buildInfoCard('Operating Information', [
-            'Min Order: RM ${vendor.businessInfo.minimumOrderAmount.toStringAsFixed(0)}',
-            'Delivery Radius: ${vendor.businessInfo.deliveryRadius.toStringAsFixed(0)} km',
-            'Payment Methods: ${vendor.businessInfo.paymentMethods.join(', ')}',
+            'Min Order: RM ${(vendor.minimumOrderAmount ?? 0.0).toStringAsFixed(0)}',
+            'Delivery Radius: 10 km',
+            'Payment Methods: Cash, Online Banking',
           ]),
           if (vendor.isHalalCertified) ...[
             const SizedBox(height: 16),
             _buildInfoCard('Certifications', [
               'Halal Certified: Yes',
-              if (vendor.businessInfo.halalCertNumber != null)
-                'Halal Cert No: ${vendor.businessInfo.halalCertNumber}',
+              if (vendor.halalCertificationNumber != null)
+                'Halal Cert No: ${vendor.halalCertificationNumber}',
             ]),
           ],
         ],

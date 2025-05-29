@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/user.dart';
 import '../../data/models/user_role.dart';
 import '../../data/services/auth_service.dart';
+import 'repository_providers.dart';
 
 // Shared Preferences Provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -14,7 +15,11 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 // Auth Service Provider
 final authServiceProvider = Provider<AuthService>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  return AuthService(prefs: prefs);
+  final authSync = ref.watch(authSyncServiceProvider);
+  return AuthService(
+    prefs: prefs,
+    authSync: authSync,
+  );
 });
 
 // Current User Provider

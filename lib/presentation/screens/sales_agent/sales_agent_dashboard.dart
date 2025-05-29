@@ -7,6 +7,7 @@ import '../../../data/models/order.dart';
 import '../../widgets/dashboard_card.dart';
 import '../../widgets/quick_action_button.dart';
 import '../../providers/order_provider.dart';
+import '../../providers/repository_providers.dart';
 import 'vendors_screen.dart';
 import 'orders_screen.dart';
 
@@ -91,6 +92,10 @@ class _DashboardTab extends ConsumerWidget {
     final activeOrders = ref.watch(activeOrdersProvider);
     final pendingOrders = ref.watch(pendingOrdersProvider);
 
+    // Real data from repositories
+    final recentOrdersAsync = ref.watch(recentOrdersProvider);
+    final customerStatsAsync = ref.watch(customerStatisticsProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sales Dashboard'),
@@ -99,6 +104,12 @@ class _DashboardTab extends ConsumerWidget {
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
               // TODO: Navigate to notifications
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              context.push('/test-data');
             },
           ),
           IconButton(
@@ -186,12 +197,28 @@ class _DashboardTab extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: DashboardCard(
-                      title: 'Customers',
-                      value: '24',
-                      subtitle: '2 new this week',
-                      icon: Icons.people,
-                      color: Colors.purple,
+                    child: customerStatsAsync.when(
+                      data: (stats) => DashboardCard(
+                        title: 'Customers',
+                        value: '${stats['total_customers'] ?? 0}',
+                        subtitle: '${stats['active_customers'] ?? 0} active',
+                        icon: Icons.people,
+                        color: Colors.purple,
+                      ),
+                      loading: () => const DashboardCard(
+                        title: 'Customers',
+                        value: '...',
+                        subtitle: 'Loading...',
+                        icon: Icons.people,
+                        color: Colors.purple,
+                      ),
+                      error: (_, __) => const DashboardCard(
+                        title: 'Customers',
+                        value: '0',
+                        subtitle: 'Error loading',
+                        icon: Icons.people,
+                        color: Colors.purple,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -265,51 +292,72 @@ class _DashboardTab extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Recent Orders
-              if (activeOrders.isEmpty)
-                const Center(
+              recentOrdersAsync.when(
+                data: (orders) {
+                  if (orders.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Text(
+                          'No recent orders',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: orders.take(3).map((order) {
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                            child: Icon(
+                              Icons.restaurant,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          title: Text('Order #${order.orderNumber}'),
+                          subtitle: Text('${order.customerName} • RM ${order.totalAmount.toStringAsFixed(2)}'),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(order.status).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              order.status.displayName,
+                              style: TextStyle(
+                                color: _getStatusColor(order.status),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          onTap: () {
+                            context.push('/order-details/${order.id}');
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+                loading: () => const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (error, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
                     child: Text(
-                      'No recent orders',
-                      style: TextStyle(color: Colors.grey),
+                      'Error loading orders: $error',
+                      style: const TextStyle(color: Colors.red),
                     ),
                   ),
-                )
-              else
-                ...activeOrders.take(3).map((order) {
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        child: Icon(
-                          Icons.restaurant,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      title: Text('Order #${order.orderNumber}'),
-                      subtitle: Text('${order.customerName} • RM ${order.totalAmount.toStringAsFixed(2)}'),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(order.status).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          order.status.displayName,
-                          style: TextStyle(
-                            color: _getStatusColor(order.status),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      onTap: () {
-                        context.push('/order-details/${order.id}');
-                      },
-                    ),
-                  );
-                }),
+                ),
+              ),
             ],
           ),
         ),

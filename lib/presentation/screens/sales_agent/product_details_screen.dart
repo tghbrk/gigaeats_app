@@ -115,20 +115,20 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   const SizedBox(height: 8),
 
                   // Rating and Reviews
-                  if (product.rating > 0)
+                  if (product.safeRating > 0)
                     Row(
                       children: [
                         Icon(Icons.star, color: Colors.amber.shade600, size: 20),
                         const SizedBox(width: 4),
                         Text(
-                          product.rating.toStringAsFixed(1),
+                          product.safeRating.toStringAsFixed(1),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '(${product.totalReviews} reviews)',
+                          '(${product.safeTotalReviews} reviews)',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
@@ -143,15 +143,15 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      if (product.isHalal)
+                      if (product.safeIsHalal)
                         _buildBadge('HALAL', Colors.green, Colors.white),
-                      if (product.isVegetarian)
+                      if (product.safeIsVegetarian)
                         _buildBadge('VEGETARIAN', Colors.orange, Colors.white),
-                      if (product.isVegan)
+                      if (product.safeIsVegan)
                         _buildBadge('VEGAN', Colors.teal, Colors.white),
-                      if (product.isSpicy)
-                        _buildBadge('SPICY ${product.spicyLevel}/5', Colors.red, Colors.white),
-                      if (product.isFeatured)
+                      if (product.safeIsSpicy)
+                        _buildBadge('SPICY ${product.safeSpicyLevel}/5', Colors.red, Colors.white),
+                      if (product.safeIsFeatured)
                         _buildBadge('FEATURED', theme.colorScheme.primary, Colors.white),
                     ],
                   ),
@@ -167,7 +167,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    product.description,
+                    product.safeDescription,
                     style: theme.textTheme.bodyMedium,
                   ),
 
@@ -558,29 +558,15 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     final tempVendor = Vendor(
       id: product.vendorId,
       businessName: 'Vendor ${product.vendorId}', // TODO: Get actual vendor name
-      ownerName: '',
-      email: '',
-      phoneNumber: '',
-      description: '',
-      address: VendorAddress(
-        street: '',
-        city: '',
-        state: '',
-        postcode: '',
-        latitude: 0.0,
-        longitude: 0.0,
-      ),
+      firebaseUid: 'temp-firebase-uid',
+      businessRegistrationNumber: 'TEMP-REG-001',
+      businessAddress: 'Temporary Address',
+      businessType: 'Restaurant',
       cuisineTypes: [],
-      businessInfo: VendorBusinessInfo(
-        ssmNumber: '',
-        minimumOrderAmount: 0.0,
-        deliveryRadius: 0.0,
-        paymentMethods: [],
-        operatingHours: VendorOperatingHours(schedule: {}),
-      ),
-      settings: VendorSettings(),
+      description: 'Temporary vendor for cart',
       rating: 0.0,
       totalReviews: 0,
+      totalOrders: 0,
       isActive: true,
       isVerified: false,
       isHalalCertified: false,

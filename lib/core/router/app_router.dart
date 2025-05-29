@@ -13,6 +13,8 @@ import '../../presentation/screens/sales_agent/cart_screen.dart';
 import '../../presentation/screens/vendor/vendor_dashboard.dart';
 import '../../presentation/screens/admin/admin_dashboard.dart';
 import '../../core/constants/app_constants.dart';
+import '../../presentation/screens/test/data_test_screen.dart';
+import '../../presentation/screens/common/order_tracking_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return AppRouter.router;
@@ -148,8 +150,8 @@ class AppRouter {
         path: AppRoutes.orderDetails,
         name: 'order-details',
         builder: (context, state) {
-          final orderId = state.pathParameters['orderId'];
-          return Placeholder(); // TODO: Implement OrderDetailsScreen(orderId: orderId)
+          final orderId = state.pathParameters['orderId']!;
+          return OrderTrackingScreen(orderId: orderId);
         },
       ),
       GoRoute(
@@ -165,6 +167,11 @@ class AppRouter {
         path: AppRoutes.settings,
         name: 'settings',
         builder: (context, state) => const Placeholder(), // TODO: Implement
+      ),
+      GoRoute(
+        path: '/test-data',
+        name: 'test-data',
+        builder: (context, state) => const DataTestScreen(),
       ),
     ],
     redirect: (context, state) {

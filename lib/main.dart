@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'core/config/supabase_config.dart';
 import 'presentation/providers/auth_provider.dart';
 
 void main() async {
@@ -22,6 +24,18 @@ void main() async {
     debugPrint('Firebase initialized successfully');
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
+  }
+
+  // Initialize Supabase
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.anonKey,
+      debug: !const bool.fromEnvironment('dart.vm.product'),
+    );
+    debugPrint('Supabase initialized successfully');
+  } catch (e) {
+    debugPrint('Supabase initialization failed: $e');
   }
 
   // Initialize SharedPreferences

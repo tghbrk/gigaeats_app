@@ -124,7 +124,7 @@ class VendorCard extends StatelessWidget {
 
                   // Description
                   Text(
-                    vendor.description,
+                    vendor.description ?? 'No description available',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.8),
                     ),
@@ -174,7 +174,9 @@ class VendorCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${vendor.address.city}, ${vendor.address.state}',
+                                vendor.serviceAreas?.isNotEmpty == true
+                                    ? vendor.serviceAreas!.first
+                                    : 'Malaysia',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurface.withOpacity(0.6),
                                 ),
@@ -211,7 +213,7 @@ class VendorCard extends StatelessWidget {
 
                   // Minimum Order
                   Text(
-                    'Min Order: RM ${vendor.businessInfo.minimumOrderAmount.toStringAsFixed(0)}',
+                    'Min Order: RM ${(vendor.minimumOrderAmount ?? 0.0).toStringAsFixed(0)}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.6),
                       fontWeight: FontWeight.w500,

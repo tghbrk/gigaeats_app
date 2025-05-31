@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as developer;
 
-import 'firebase_options.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -16,36 +16,56 @@ import 'presentation/providers/auth_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint('Firebase initialized successfully');
-  } catch (e) {
-    debugPrint('Firebase initialization failed: $e');
+  // Enable web debugging
+  if (kIsWeb && kDebugMode) {
+    developer.log('🌐 Flutter Web Debug Mode Enabled', name: 'GigaEats');
+    // Force debug prints to console in web
+    debugPrint = (String? message, {int? wrapWidth}) {
+      developer.log(message ?? '', name: 'GigaEats-Debug');
+    };
   }
 
-  // Initialize Supabase
+  // Initialize Supabase (Primary Authentication & Backend)
   try {
     await Supabase.initialize(
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
-      debug: !const bool.fromEnvironment('dart.vm.product'),
+      debug: kDebugMode, // Enable debug mode in development
+      // Web-specific configuration
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,
+      ),
+      realtimeClientOptions: const RealtimeClientOptions(
+        logLevel: RealtimeLogLevel.info,
+      ),
     );
-    debugPrint('Supabase initialized successfully');
+
+    if (kIsWeb && kDebugMode) {
+      developer.log('✅ Supabase initialized successfully for web', name: 'GigaEats');
+      developer.log('🔗 Supabase URL: ${SupabaseConfig.url}', name: 'GigaEats');
+      developer.log('🔑 Using anon key: ${SupabaseConfig.anonKey.substring(0, 20)}...', name: 'GigaEats');
+    } else {
+      debugPrint('Supabase initialized successfully for ${kIsWeb ? 'web' : 'mobile'}');
+      debugPrint('Supabase URL: ${SupabaseConfig.url}');
+    }
   } catch (e) {
-    debugPrint('Supabase initialization failed: $e');
+    if (kIsWeb && kDebugMode) {
+      developer.log('❌ Supabase initialization failed: $e', name: 'GigaEats-Error');
+    } else {
+      debugPrint('Supabase initialization failed: $e');
+    }
   }
 
   // Initialize SharedPreferences
   final sharedPreferences = await SharedPreferences.getInstance();
 
-  // Set preferred orientations
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // Set preferred orientations (only for mobile platforms)
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(

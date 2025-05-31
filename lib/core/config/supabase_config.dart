@@ -3,13 +3,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SupabaseConfig {
   // Production environment
-  static const String prodUrl = 'https://your-prod-project.supabase.co';
-  static const String prodAnonKey = 'your-prod-anon-key';
-  static const String prodServiceKey = 'your-prod-service-key'; // For server operations
+  static const String prodUrl = 'https://abknoalhfltlhhdbclpv.supabase.co';
+  static const String prodAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFia25vYWxoZmx0bGhoZGJjbHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDIxOTEsImV4cCI6MjA2MzkxODE5MX0.NAThyz5_xSTkWX7pynS7APPFZUnOc8DyjMN2K-cTt-g';
+  static const String prodServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFia25vYWxoZmx0bGhoZGJjbHB2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM0MjE5MSwiZXhwIjoyMDYzOTE4MTkxfQ.c9U38XFDf8f4ngCNDp2XlSOLSlIaPI-Utg1GgaHwmSY'; // For server operations
 
   // Development environment (Local Supabase for Phase 1 testing)
   // Platform-specific URLs for local development
-  static const String devUrlWeb = 'http://localhost:54321'; // For web browsers
+  static const String devUrlWeb = 'http://127.0.0.1:54321'; // For web browsers
   static const String devUrlAndroid = 'http://10.0.2.2:54321'; // For Android emulator
   static const String devUrlIOS = 'http://localhost:54321'; // For iOS simulator
   static const String devUrlDesktop = 'http://localhost:54321'; // For desktop platforms
@@ -35,13 +35,10 @@ class SupabaseConfig {
     }
   }
 
-  // Current environment settings
-  static String get url => const bool.fromEnvironment('dart.vm.product')
-      ? prodUrl : _devUrl;
-  static String get anonKey => const bool.fromEnvironment('dart.vm.product')
-      ? prodAnonKey : devAnonKey;
-  static String get serviceKey => const bool.fromEnvironment('dart.vm.product')
-      ? prodServiceKey : devServiceKey;
+  // Current environment settings - switch between local and remote
+  static String get url => prodUrl; // Use cloud Supabase for testing
+  static String get anonKey => prodAnonKey; // Use cloud Supabase for testing
+  static String get serviceKey => prodServiceKey; // Use cloud Supabase for testing
 
   // Database configuration
   static const String schema = 'public';

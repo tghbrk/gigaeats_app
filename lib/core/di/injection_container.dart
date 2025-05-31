@@ -1,14 +1,13 @@
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/security_service.dart';
 import '../network/network_info.dart';
 import '../network/api_client.dart';
 import '../utils/logger.dart';
-import '../../data/services/auth_service.dart';
 import '../../data/services/cache_service.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/vendor_repository.dart';
@@ -16,7 +15,6 @@ import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/customer_repository.dart';
 import '../../data/repositories/menu_item_repository.dart';
 import '../../core/services/file_upload_service.dart';
-import '../../core/services/auth_sync_service.dart';
 
 import 'injection_container.config.dart';
 
@@ -45,9 +43,7 @@ Future<void> setupDependencies() async {
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerSingleton<SharedPreferences>(sharedPreferences);
   
-  getIt.registerLazySingleton<firebase_auth.FirebaseAuth>(
-    () => firebase_auth.FirebaseAuth.instance,
-  );
+
   
   getIt.registerLazySingleton<SupabaseClient>(
     () => Supabase.instance.client,
@@ -58,16 +54,7 @@ Future<void> setupDependencies() async {
     () => CacheService(),
   );
 
-  getIt.registerLazySingleton<AuthSyncService>(
-    () => AuthSyncService(),
-  );
 
-  getIt.registerLazySingleton<AuthService>(
-    () => AuthService(
-      prefs: getIt<SharedPreferences>(),
-      authSync: getIt<AuthSyncService>(),
-    ),
-  );
 
   getIt.registerLazySingleton<FileUploadService>(
     () => FileUploadService(),
@@ -149,7 +136,7 @@ class ServiceLocator {
   static SecurityService get security => get<SecurityService>();
   static NetworkInfo get networkInfo => get<NetworkInfo>();
   static ApiClient get apiClient => get<ApiClient>();
-  static AuthService get authService => get<AuthService>();
+
   static CacheService get cacheService => get<CacheService>();
   
   // Repositories

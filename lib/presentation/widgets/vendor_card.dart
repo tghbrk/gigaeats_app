@@ -39,7 +39,11 @@ class VendorCard extends StatelessWidget {
                           child: CircularProgressIndicator(),
                         ),
                       ),
-                      errorWidget: (context, url, error) => _buildPlaceholderImage(theme),
+                      errorWidget: (context, url, error) {
+                        debugPrint('VendorCard: Image load error for ${vendor.businessName}: $error');
+                        debugPrint('VendorCard: Failed URL: $url');
+                        return _buildPlaceholderImage(theme);
+                      },
                     )
                   : _buildPlaceholderImage(theme),
             ),
@@ -277,16 +281,20 @@ class FeaturedVendorCard extends StatelessWidget {
                           child: CircularProgressIndicator(),
                         ),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: theme.colorScheme.surfaceVariant,
-                        child: Center(
-                          child: Icon(
-                            Icons.restaurant,
-                            size: 48,
-                            color: theme.colorScheme.onSurfaceVariant,
+                      errorWidget: (context, url, error) {
+                        debugPrint('FeaturedVendorCard: Image load error for ${vendor.businessName}: $error');
+                        debugPrint('FeaturedVendorCard: Failed URL: $url');
+                        return Container(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: Center(
+                            child: Icon(
+                              Icons.restaurant,
+                              size: 48,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     )
                   : Container(
                       color: theme.colorScheme.surfaceVariant,

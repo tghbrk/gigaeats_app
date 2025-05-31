@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -17,8 +17,7 @@ class ErrorHandler {
 
     if (exception is app_exceptions.AppException) {
       return _handleAppException(exception);
-    } else if (exception is firebase_auth.FirebaseAuthException) {
-      return _handleFirebaseAuthException(exception);
+
     } else if (exception is PostgrestException) {
       return _handleSupabaseException(exception);
     } else if (exception is DioException) {
@@ -96,44 +95,7 @@ class ErrorHandler {
     }
   }
 
-  /// Handles Firebase Auth exceptions
-  static Failure _handleFirebaseAuthException(firebase_auth.FirebaseAuthException exception) {
-    String message;
-    switch (exception.code) {
-      case 'user-not-found':
-        message = 'No user found with this email address.';
-        break;
-      case 'wrong-password':
-        message = 'Incorrect password. Please try again.';
-        break;
-      case 'email-already-in-use':
-        message = 'An account already exists with this email address.';
-        break;
-      case 'weak-password':
-        message = 'Password is too weak. Please choose a stronger password.';
-        break;
-      case 'invalid-email':
-        message = 'Invalid email address format.';
-        break;
-      case 'user-disabled':
-        message = 'This account has been disabled.';
-        break;
-      case 'too-many-requests':
-        message = 'Too many failed attempts. Please try again later.';
-        break;
-      case 'network-request-failed':
-        message = 'Network error. Please check your connection.';
-        break;
-      default:
-        message = exception.message ?? 'Authentication failed.';
-    }
 
-    return AuthFailure(
-      message: message,
-      code: exception.code,
-      details: exception,
-    );
-  }
 
   /// Handles Supabase exceptions
   static Failure _handleSupabaseException(PostgrestException exception) {

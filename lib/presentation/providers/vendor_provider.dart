@@ -29,8 +29,8 @@ final vendorDetailsProvider = FutureProvider.family<Vendor?, String>((ref, vendo
   return vendorService.getVendorById(vendorId);
 });
 
-// Vendor Products Provider
-final vendorProductsProvider = FutureProvider.family<List<Product>, String>((ref, vendorId) async {
+// Vendor Products Provider (using service layer)
+final vendorProductsServiceProvider = FutureProvider.family<List<Product>, String>((ref, vendorId) async {
   final vendorService = ref.watch(vendorServiceProvider);
   return vendorService.getVendorProducts(vendorId);
 });

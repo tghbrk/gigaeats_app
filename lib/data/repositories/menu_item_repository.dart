@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,8 +9,7 @@ import 'base_repository.dart';
 class MenuItemRepository extends BaseRepository {
   MenuItemRepository({
     SupabaseClient? client,
-    firebase_auth.FirebaseAuth? firebaseAuth,
-  }) : super(client: client, firebaseAuth: firebaseAuth);
+  }) : super(client: client);
 
   /// Get menu items for a vendor
   Future<List<Product>> getMenuItems(
@@ -25,7 +23,13 @@ class MenuItemRepository extends BaseRepository {
     int offset = 0,
   }) async {
     return executeQuery(() async {
-      var query = client
+      debugPrint('MenuItemRepository: Getting menu items for vendor $vendorId');
+      debugPrint('MenuItemRepository: Platform is ${kIsWeb ? "web" : "mobile"}');
+
+      // Use authenticated client for web platform
+      final queryClient = kIsWeb ? await getAuthenticatedClient() : client;
+
+      var query = queryClient
           .from('menu_items')
           .select('*')
           .eq('vendor_id', vendorId);
@@ -55,6 +59,8 @@ class MenuItemRepository extends BaseRepository {
           .order('is_featured', ascending: false)
           .order('rating', ascending: false)
           .range(offset, offset + limit - 1);
+
+      debugPrint('MenuItemRepository: Found ${response.length} menu items');
 
       return response.map((json) {
         try {
@@ -293,7 +299,12 @@ class MenuItemRepository extends BaseRepository {
   /// Get featured menu items for a vendor
   Future<List<Product>> getFeaturedMenuItems(String vendorId, {int limit = 5}) async {
     return executeQuery(() async {
-      final response = await client
+      debugPrint('MenuItemRepository: Getting featured menu items for vendor $vendorId');
+
+      // Use authenticated client for web platform
+      final queryClient = kIsWeb ? await getAuthenticatedClient() : client;
+
+      final response = await queryClient
           .from('menu_items')
           .select('*')
           .eq('vendor_id', vendorId)
@@ -301,6 +312,8 @@ class MenuItemRepository extends BaseRepository {
           .eq('is_available', true)
           .order('rating', ascending: false)
           .limit(limit);
+
+      debugPrint('MenuItemRepository: Found ${response.length} featured menu items');
 
       return response.map((json) => Product.fromJson(json)).toList();
     });
@@ -397,7 +410,7 @@ class MenuItemRepository extends BaseRepository {
     final response = await client
         .from('vendors')
         .select('id')
-        .eq('firebase_uid', currentUserUid!)
+        .eq('supabase_user_id', currentUserUid!)
         .maybeSingle();
 
     return response?['id'];

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/user.dart' as app_models;
@@ -10,19 +10,15 @@ import 'base_repository.dart';
 class UserRepository extends BaseRepository {
   UserRepository({
     SupabaseClient? client,
-    firebase_auth.FirebaseAuth? firebaseAuth,
-  }) : super(client: client, firebaseAuth: firebaseAuth);
+  }) : super(client: client);
 
-  /// Get user profile by Firebase UID
-  Future<app_models.User?> getUserProfile(String firebaseUid) async {
+  /// Get user profile by Supabase UID
+  Future<app_models.User?> getUserProfile(String supabaseUid) async {
     return executeQuery(() async {
       final response = await client
           .from('users')
-          .select('''
-            *,
-            profile:user_profiles!user_profiles_firebase_uid_fkey(*)
-          ''')
-          .eq('firebase_uid', firebaseUid)
+          .select('*')
+          .eq('supabase_user_id', supabaseUid)
           .maybeSingle();
 
       return response != null ? app_models.User.fromJson(response) : null;
@@ -31,10 +27,10 @@ class UserRepository extends BaseRepository {
 
   /// Get current user profile
   Future<app_models.User?> getCurrentUserProfile() async {
-    final firebaseUid = currentUserUid;
-    if (firebaseUid == null) return null;
+    final supabaseUid = currentUserUid;
+    if (supabaseUid == null) return null;
 
-    return getUserProfile(firebaseUid);
+    return getUserProfile(supabaseUid);
   }
 
   /// Update user profile
@@ -51,16 +47,16 @@ class UserRepository extends BaseRepository {
             'profile_image_url': userData['profile_image_url'],
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('firebase_uid', user.id);
+          .eq('supabase_user_id', user.id);
 
       // Get updated user
       final response = await client
           .from('users')
           .select('''
             *,
-            profile:user_profiles!user_profiles_firebase_uid_fkey(*)
+            profile:user_profiles!user_profiles_supabase_user_id_fkey(*)
           ''')
-          .eq('firebase_uid', user.id)
+          .eq('supabase_user_id', user.id)
           .single();
 
       return app_models.User.fromJson(response);
@@ -96,7 +92,7 @@ class UserRepository extends BaseRepository {
       await client
           .from('user_profiles')
           .update(updateData)
-          .eq('firebase_uid', firebaseUid);
+          .eq('supabase_user_id', firebaseUid);
     });
   }
 
@@ -121,7 +117,7 @@ class UserRepository extends BaseRepository {
             'profile_image_url': publicUrl,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('firebase_uid', firebaseUid);
+          .eq('supabase_user_id', firebaseUid);
 
       return publicUrl;
     });
@@ -145,7 +141,7 @@ class UserRepository extends BaseRepository {
       final currentProfile = await client
           .from('user_profiles')
           .select('kyc_documents')
-          .eq('firebase_uid', firebaseUid)
+          .eq('supabase_user_id', firebaseUid)
           .single();
 
       final kycDocuments = Map<String, dynamic>.from(
@@ -163,7 +159,7 @@ class UserRepository extends BaseRepository {
             'kyc_documents': kycDocuments,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('firebase_uid', firebaseUid);
+          .eq('supabase_user_id', firebaseUid);
 
       return publicUrl;
     });
@@ -178,7 +174,7 @@ class UserRepository extends BaseRepository {
             'role': role.value,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('firebase_uid', firebaseUid);
+          .eq('supabase_user_id', firebaseUid);
     });
   }
 
@@ -192,7 +188,7 @@ class UserRepository extends BaseRepository {
           .from('users')
           .select('''
             *,
-            profile:user_profiles!user_profiles_firebase_uid_fkey(*)
+            profile:user_profiles!user_profiles_supabase_user_id_fkey(*)
           ''')
           .eq('role', role.value)
           .order('created_at', ascending: false)
@@ -212,7 +208,7 @@ class UserRepository extends BaseRepository {
           .from('users')
           .select('''
             *,
-            profile:user_profiles!user_profiles_firebase_uid_fkey(*)
+            profile:user_profiles!user_profiles_supabase_user_id_fkey(*)
           ''')
           .or('full_name.ilike.%$query%,email.ilike.%$query%');
 
@@ -237,7 +233,7 @@ class UserRepository extends BaseRepository {
             'is_verified': isVerified,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('firebase_uid', firebaseUid);
+          .eq('supabase_user_id', firebaseUid);
     });
   }
 
@@ -250,7 +246,7 @@ class UserRepository extends BaseRepository {
             'is_active': isActive,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('firebase_uid', firebaseUid);
+          .eq('supabase_user_id', firebaseUid);
     });
   }
 
@@ -268,7 +264,7 @@ class UserRepository extends BaseRepository {
       await client
           .from('user_fcm_tokens')
           .upsert({
-            'firebase_uid': firebaseUid,
+            'supabase_user_id': firebaseUid,
             'fcm_token': fcmToken,
             'device_type': deviceType,
             'is_active': true,
@@ -283,7 +279,7 @@ class UserRepository extends BaseRepository {
       await client
           .from('user_fcm_tokens')
           .delete()
-          .eq('firebase_uid', firebaseUid)
+          .eq('supabase_user_id', firebaseUid)
           .eq('fcm_token', fcmToken);
     });
   }

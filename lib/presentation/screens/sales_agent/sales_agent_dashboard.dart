@@ -8,8 +8,10 @@ import '../../widgets/dashboard_card.dart';
 import '../../widgets/quick_action_button.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/repository_providers.dart';
+import '../../providers/cart_provider.dart';
 import 'vendors_screen.dart';
 import 'orders_screen.dart';
+import 'customers_screen.dart';
 
 class SalesAgentDashboard extends ConsumerStatefulWidget {
   const SalesAgentDashboard({super.key});
@@ -51,6 +53,9 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🏠 SalesAgentDashboard: build() called');
+    debugPrint('🏠 SalesAgentDashboard: Current route: ${GoRouterState.of(context).fullPath}');
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
@@ -62,7 +67,12 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
           }),
           const OrdersScreen(),
           const VendorsScreen(),
-          const _CustomersTab(),
+          Builder(
+            builder: (context) {
+              debugPrint('🏗️ SalesAgentDashboard: Building CustomersScreen in IndexedStack');
+              return const CustomersScreen();
+            },
+          ),
           const _ProfileTab(),
         ],
       ),
@@ -78,6 +88,8 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
     );
   }
 }
+
+
 
 class _DashboardTab extends ConsumerWidget {
   final ValueChanged<int>? onNavigateToTab;
@@ -96,6 +108,8 @@ class _DashboardTab extends ConsumerWidget {
     final recentOrdersAsync = ref.watch(recentOrdersProvider);
     final customerStatsAsync = ref.watch(customerStatisticsProvider);
 
+
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sales Dashboard'),
@@ -107,10 +121,11 @@ class _DashboardTab extends ConsumerWidget {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.bug_report),
+            icon: const Icon(Icons.developer_mode),
             onPressed: () {
-              context.push('/test-data');
+              context.push('/test-consolidated');
             },
+            tooltip: 'Developer Tools',
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -248,11 +263,20 @@ class _DashboardTab extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: QuickActionButton(
-                      icon: Icons.add_shopping_cart,
-                      label: 'New Order',
-                      onTap: () {
-                        context.push('/sales-agent/create-order');
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        final cartState = ref.watch(cartProvider);
+                        return QuickActionButton(
+                          icon: cartState.isEmpty
+                              ? Icons.add_shopping_cart
+                              : Icons.shopping_cart,
+                          label: cartState.isEmpty
+                              ? 'New Order'
+                              : 'New Order (${cartState.totalItems})',
+                          onTap: () {
+                            context.push('/sales-agent/create-order');
+                          },
+                        );
                       },
                     ),
                   ),
@@ -262,7 +286,7 @@ class _DashboardTab extends ConsumerWidget {
                       icon: Icons.person_add,
                       label: 'Add Customer',
                       onTap: () {
-                        // TODO: Navigate to add customer
+                        context.push('/sales-agent/customers/add');
                       },
                     ),
                   ),
@@ -387,19 +411,7 @@ class _DashboardTab extends ConsumerWidget {
 
 
 
-class _CustomersTab extends StatelessWidget {
-  const _CustomersTab();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Customers')),
-      body: const Center(
-        child: Text('Customers Tab - Coming Soon'),
-      ),
-    );
-  }
-}
 
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab();

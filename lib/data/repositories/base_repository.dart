@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dartz/dartz.dart';
@@ -6,58 +6,56 @@ import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
 import '../../core/errors/error_handler.dart';
 import '../../core/utils/logger.dart';
-import '../../core/config/supabase_config.dart';
+
+
 
 /// Base repository class that provides common functionality for all repositories
 abstract class BaseRepository {
   final SupabaseClient _client;
-  final firebase_auth.FirebaseAuth _firebaseAuth;
   final AppLogger _logger = AppLogger();
 
   BaseRepository({
     SupabaseClient? client,
-    firebase_auth.FirebaseAuth? firebaseAuth,
-  }) : _client = client ?? Supabase.instance.client,
-       _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance;
+  }) : _client = client ?? Supabase.instance.client;
 
   /// Get the Supabase client
   SupabaseClient get client => _client;
 
-  /// Get the Firebase Auth instance
-  firebase_auth.FirebaseAuth get firebaseAuth => _firebaseAuth;
-
-  /// Create authenticated Supabase client with Firebase token
+  /// Get authenticated Supabase client
   Future<SupabaseClient> getAuthenticatedClient() async {
-    try {
-      final user = _firebaseAuth.currentUser;
-      if (user != null) {
-        final idToken = await user.getIdToken();
-        if (idToken != null) {
-          // Create a new client with Firebase token for RLS
-          return SupabaseClient(
-            SupabaseConfig.url,
-            SupabaseConfig.anonKey,
-            headers: {
-              'Authorization': 'Bearer $idToken',
-            },
-          );
-        }
+    // Check if user is authenticated
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      debugPrint('BaseRepository: No authenticated user found');
+      throw Exception('User not authenticated. Please log in and try again.');
+    }
+
+    // For web platform, ensure we have a valid session
+    if (kIsWeb) {
+      final session = _client.auth.currentSession;
+      if (session == null || session.isExpired) {
+        debugPrint('BaseRepository: Session expired or invalid for web platform');
+        throw Exception('Session expired. Please log in again.');
       }
 
-      // Fallback to default client
-      debugPrint('BaseRepository: Using default client (no Firebase auth)');
-      return _client;
-    } catch (e) {
-      debugPrint('BaseRepository: Error creating authenticated client: $e');
-      return _client;
+      debugPrint('BaseRepository: Using authenticated client for web platform');
+      debugPrint('BaseRepository: User ID: ${currentUser.id}');
+      debugPrint('BaseRepository: User email: ${currentUser.email}');
     }
+
+    // Return the client which should have the authentication context
+    return _client;
   }
 
-  /// Get current Firebase user UID
-  String? get currentUserUid => _firebaseAuth.currentUser?.uid;
+  /// Get current Supabase user ID
+  String? get currentUserUid {
+    return _client.auth.currentUser?.id;
+  }
 
   /// Check if user is authenticated
-  bool get isAuthenticated => _firebaseAuth.currentUser != null;
+  bool get isAuthenticated {
+    return _client.auth.currentUser != null;
+  }
 
   /// Handle Supabase errors and convert them to user-friendly messages
   String handleSupabaseError(Object error) {

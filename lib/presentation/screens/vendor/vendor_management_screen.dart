@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/vendor.dart';
 import '../../providers/repository_providers.dart';
 import '../../widgets/profile_image_picker.dart';
+import '../../../core/utils/responsive_utils.dart';
 
 class VendorManagementScreen extends ConsumerStatefulWidget {
   const VendorManagementScreen({super.key});
@@ -34,11 +36,15 @@ class _VendorManagementScreenState extends ConsumerState<VendorManagementScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final vendorsStream = ref.watch(vendorsStreamProvider({
-      'searchQuery': _searchQuery.isEmpty ? null : _searchQuery,
-      'cuisineTypes': _selectedCuisineType != null ? [_selectedCuisineType!] : null,
-      'location': null,
-    }));
+
+    // Use platform-aware data fetching
+    final vendorsAsync = kIsWeb
+        ? ref.watch(platformVendorsProvider)
+        : ref.watch(vendorsStreamProvider({
+            'searchQuery': _searchQuery.isEmpty ? null : _searchQuery,
+            'cuisineTypes': _selectedCuisineType != null ? [_selectedCuisineType!] : null,
+            'location': null,
+          }));
 
     return Scaffold(
       appBar: AppBar(
@@ -59,7 +65,11 @@ class _VendorManagementScreenState extends ConsumerState<VendorManagementScreen>
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              ref.invalidate(vendorsStreamProvider);
+              if (kIsWeb) {
+                ref.invalidate(platformVendorsProvider);
+              } else {
+                ref.invalidate(vendorsStreamProvider);
+              }
             },
           ),
         ],
@@ -131,8 +141,8 @@ class _VendorManagementScreenState extends ConsumerState<VendorManagementScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildVendorsList(vendorsStream, showAll: true),
-                _buildVendorsList(vendorsStream, showAll: false),
+                _buildVendorsList(vendorsAsync, showAll: true),
+                _buildVendorsList(vendorsAsync, showAll: false),
                 _buildAnalyticsTab(),
               ],
             ),
@@ -142,10 +152,38 @@ class _VendorManagementScreenState extends ConsumerState<VendorManagementScreen>
     );
   }
 
-  Widget _buildVendorsList(AsyncValue<List<dynamic>> vendorsStream, {required bool showAll}) {
-    return vendorsStream.when(
+  Widget _buildVendorsList(AsyncValue vendorsAsync, {required bool showAll}) {
+    return vendorsAsync.when(
       data: (vendorsData) {
-        if (vendorsData.isEmpty) {
+        List<Vendor> vendors;
+
+        // Handle different data types based on platform
+        if (kIsWeb && vendorsData is List<Vendor>) {
+          // Web platform returns List<Vendor> from platformVendorsProvider
+          vendors = vendorsData;
+        } else if (vendorsData is List<dynamic>) {
+          // Mobile platform returns List<dynamic> from vendorsStreamProvider
+          vendors = vendorsData.map((data) => Vendor.fromJson(data)).toList();
+        } else {
+          vendors = [];
+        }
+
+        // Apply search and cuisine type filters for web platform
+        if (kIsWeb) {
+          if (_searchQuery.isNotEmpty) {
+            vendors = vendors
+                .where((vendor) => vendor.businessName.toLowerCase().contains(_searchQuery.toLowerCase()))
+                .toList();
+          }
+
+          if (_selectedCuisineType != null) {
+            vendors = vendors
+                .where((vendor) => vendor.cuisineTypes.contains(_selectedCuisineType))
+                .toList();
+          }
+        }
+
+        if (vendors.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -174,12 +212,9 @@ class _VendorManagementScreenState extends ConsumerState<VendorManagementScreen>
           );
         }
 
-        // Convert dynamic data to Vendor objects
-        final vendors = vendorsData.map((data) => Vendor.fromJson(data)).toList();
-
         // Filter based on tab
-        final filteredVendors = showAll 
-            ? vendors 
+        final filteredVendors = showAll
+            ? vendors
             : vendors.where((vendor) => !vendor.isVerified).toList();
 
         if (filteredVendors.isEmpty && !showAll) {
@@ -198,15 +233,16 @@ class _VendorManagementScreenState extends ConsumerState<VendorManagementScreen>
 
         return RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(vendorsStreamProvider);
+            if (kIsWeb) {
+              ref.invalidate(platformVendorsProvider);
+            } else {
+              ref.invalidate(vendorsStreamProvider);
+            }
           },
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: filteredVendors.length,
-            itemBuilder: (context, index) {
-              final vendor = filteredVendors[index];
-              return _buildVendorCard(vendor);
-            },
+          child: ResponsiveContainer(
+            child: context.isDesktop
+                ? _buildDesktopVendorsList(filteredVendors)
+                : _buildMobileVendorsList(filteredVendors),
           ),
         );
       },
@@ -220,12 +256,46 @@ class _VendorManagementScreenState extends ConsumerState<VendorManagementScreen>
             Text('Error loading vendors: $error'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => ref.invalidate(vendorsStreamProvider),
+              onPressed: () {
+                if (kIsWeb) {
+                  ref.invalidate(platformVendorsProvider);
+                } else {
+                  ref.invalidate(vendorsStreamProvider);
+                }
+              },
               child: const Text('Retry'),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileVendorsList(List<Vendor> vendors) {
+    return ListView.builder(
+      padding: context.responsivePadding,
+      itemCount: vendors.length,
+      itemBuilder: (context, index) {
+        final vendor = vendors[index];
+        return _buildVendorCard(vendor);
+      },
+    );
+  }
+
+  Widget _buildDesktopVendorsList(List<Vendor> vendors) {
+    return GridView.builder(
+      padding: context.responsivePadding,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: context.gridColumns,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.3,
+      ),
+      itemCount: vendors.length,
+      itemBuilder: (context, index) {
+        final vendor = vendors[index];
+        return _buildVendorCard(vendor);
+      },
     );
   }
 

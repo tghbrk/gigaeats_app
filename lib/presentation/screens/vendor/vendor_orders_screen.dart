@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/order.dart';
 import '../../providers/repository_providers.dart';
+import '../../../core/utils/responsive_utils.dart';
 
 class VendorOrdersScreen extends ConsumerStatefulWidget {
   const VendorOrdersScreen({super.key});
@@ -59,7 +61,11 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              ref.invalidate(ordersStreamProvider);
+              if (kIsWeb) {
+                ref.invalidate(platformOrdersProvider);
+              } else {
+                ref.invalidate(ordersStreamProvider);
+              }
             },
           ),
         ],
@@ -69,71 +75,170 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
   }
 
   Widget _buildOrdersList() {
-    final ordersStream = ref.watch(ordersStreamProvider(_selectedStatus));
+    // Use platform-aware data fetching
+    if (kIsWeb) {
+      // For web platform, use FutureProvider
+      final ordersAsync = ref.watch(platformOrdersProvider);
 
-    return ordersStream.when(
-      data: (orders) {
-        if (orders.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.receipt_long,
-                  size: 64,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No orders found',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey.shade600,
+      return ordersAsync.when(
+        data: (allOrders) {
+          // Apply status filtering for web
+          final orders = _selectedStatus != null
+              ? allOrders.where((order) => order.status == _selectedStatus).toList()
+              : allOrders;
+
+          if (orders.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.receipt_long,
+                    size: 64,
+                    color: Colors.grey.shade400,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _selectedStatus == null 
-                      ? 'No orders yet'
-                      : 'No ${_selectedStatus!.displayName.toLowerCase()} orders',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade500,
+                  const SizedBox(height: 16),
+                  Text(
+                    'No orders found',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    _selectedStatus == null
+                        ? 'No orders yet'
+                        : 'No ${_selectedStatus!.displayName.toLowerCase()} orders',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(platformOrdersProvider);
+            },
+            child: ResponsiveContainer(
+              child: context.isDesktop
+                  ? _buildDesktopOrdersList(orders)
+                  : _buildMobileOrdersList(orders),
             ),
           );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(ordersStreamProvider);
-          },
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              return _buildOrderCard(order);
-            },
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error loading orders: $error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(platformOrdersProvider),
+                child: const Text('Retry'),
+              ),
+            ],
           ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('Error loading orders: $error'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => ref.invalidate(ordersStreamProvider),
-              child: const Text('Retry'),
-            ),
-          ],
         ),
+      );
+    } else {
+      // For mobile platform, use StreamProvider
+      final ordersStream = ref.watch(ordersStreamProvider(_selectedStatus));
+
+      return ordersStream.when(
+        data: (orders) {
+          if (orders.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.receipt_long,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No orders found',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _selectedStatus == null
+                        ? 'No orders yet'
+                        : 'No ${_selectedStatus!.displayName.toLowerCase()} orders',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(ordersStreamProvider);
+            },
+            child: ResponsiveContainer(
+              child: context.isDesktop
+                  ? _buildDesktopOrdersList(orders)
+                  : _buildMobileOrdersList(orders),
+            ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error loading orders: $error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(ordersStreamProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildMobileOrdersList(List<Order> orders) {
+    return ListView.builder(
+      padding: context.responsivePadding,
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return _buildOrderCard(order);
+      },
+    );
+  }
+
+  Widget _buildDesktopOrdersList(List<Order> orders) {
+    return GridView.builder(
+      padding: context.responsivePadding,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: context.gridColumns,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.1,
       ),
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return _buildOrderCard(order);
+      },
     );
   }
 

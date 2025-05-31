@@ -558,7 +558,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     final tempVendor = Vendor(
       id: product.vendorId,
       businessName: 'Vendor ${product.vendorId}', // TODO: Get actual vendor name
-      firebaseUid: 'temp-firebase-uid',
+      userId: 'temp-user-id',
       businessRegistrationNumber: 'TEMP-REG-001',
       businessAddress: 'Temporary Address',
       businessType: 'Restaurant',

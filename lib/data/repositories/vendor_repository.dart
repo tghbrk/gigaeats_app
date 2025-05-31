@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -9,8 +8,7 @@ import 'base_repository.dart';
 class VendorRepository extends BaseRepository {
   VendorRepository({
     SupabaseClient? client,
-    firebase_auth.FirebaseAuth? firebaseAuth,
-  }) : super(client: client, firebaseAuth: firebaseAuth);
+  }) : super(client: client);
 
   /// Get vendors with optional filters
   Future<List<Vendor>> getVendors({
@@ -25,11 +23,12 @@ class VendorRepository extends BaseRepository {
     int offset = 0,
   }) async {
     return executeQuery(() async {
-      var query = client
+      final authenticatedClient = await getAuthenticatedClient();
+      var query = authenticatedClient
           .from('vendors')
           .select('*')
-          .eq('is_active', true)
-          .eq('is_verified', true);
+          .eq('is_active', true);
+          // Temporarily removed is_verified filter for testing
 
       // Apply search filter
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -59,6 +58,12 @@ class VendorRepository extends BaseRepository {
       final response = await query
           .order('rating', ascending: false)
           .range(offset, offset + limit - 1);
+
+      // Handle empty results gracefully
+      if (response.isEmpty) {
+        debugPrint('VendorRepository: No vendors found with current filters');
+        return [];
+      }
 
       return response.map((json) {
         try {
@@ -109,7 +114,7 @@ class VendorRepository extends BaseRepository {
           .from('vendors')
           .select('''
             *,
-            user:users!vendors_firebase_uid_fkey(
+            user:users!vendors_user_id_fkey(
               id,
               email,
               full_name,
@@ -117,8 +122,8 @@ class VendorRepository extends BaseRepository {
               profile_image_url
             )
           ''')
-          .eq('is_active', true)
-          .eq('is_verified', true);
+          .eq('is_active', true);
+          // Temporarily removed is_verified filter for testing
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query = query.ilike('business_name', '%$searchQuery%');
@@ -145,7 +150,7 @@ class VendorRepository extends BaseRepository {
           .from('vendors')
           .select('''
             *,
-            user:users!vendors_firebase_uid_fkey(
+            user:users!vendors_user_id_fkey(
               id,
               email,
               full_name,
@@ -160,14 +165,14 @@ class VendorRepository extends BaseRepository {
     });
   }
 
-  /// Get vendor by Firebase UID (for vendor users)
-  Future<Vendor?> getVendorByFirebaseUid(String firebaseUid) async {
+  /// Get vendor by User ID (for vendor users)
+  Future<Vendor?> getVendorByUserId(String userId) async {
     return executeQuery(() async {
       final response = await client
           .from('vendors')
           .select('''
             *,
-            user:users!vendors_firebase_uid_fkey(
+            user:users!vendors_user_id_fkey(
               id,
               email,
               full_name,
@@ -175,7 +180,7 @@ class VendorRepository extends BaseRepository {
               profile_image_url
             )
           ''')
-          .eq('firebase_uid', firebaseUid)
+          .eq('user_id', userId)
           .maybeSingle();
 
       return response != null ? Vendor.fromJson(response) : null;
@@ -186,16 +191,16 @@ class VendorRepository extends BaseRepository {
   Future<Vendor> upsertVendor(Vendor vendor) async {
     return executeQuery(() async {
       final vendorData = vendor.toJson();
-      
+
       // Remove nested user data as it's handled separately
       vendorData.remove('user');
-      
+
       final response = await client
           .from('vendors')
           .upsert(vendorData)
           .select('''
             *,
-            user:users!vendors_firebase_uid_fkey(
+            user:users!vendors_user_id_fkey(
               id,
               email,
               full_name,
@@ -221,7 +226,13 @@ class VendorRepository extends BaseRepository {
     int offset = 0,
   }) async {
     return executeQuery(() async {
-      var query = client
+      debugPrint('VendorRepository: Getting products for vendor $vendorId');
+      debugPrint('VendorRepository: Platform is ${kIsWeb ? "web" : "mobile"}');
+
+      // Use authenticated client for web platform
+      final queryClient = kIsWeb ? await getAuthenticatedClient() : client;
+
+      var query = queryClient
           .from('menu_items')
           .select('*')
           .eq('vendor_id', vendorId);
@@ -250,6 +261,8 @@ class VendorRepository extends BaseRepository {
           .order('is_featured', ascending: false)
           .order('rating', ascending: false)
           .range(offset, offset + limit - 1);
+
+      debugPrint('VendorRepository: Found ${response.length} products');
 
       return response.map((json) {
         try {
@@ -312,8 +325,7 @@ class VendorRepository extends BaseRepository {
           .from('vendors')
           .select('*')
           .eq('is_active', true)
-          .eq('is_verified', true)
-          .gte('rating', 4.0)
+          // Temporarily removed is_verified and rating filters for testing
           .order('rating', ascending: false)
           .order('total_orders', ascending: false)
           .limit(limit);
@@ -370,7 +382,7 @@ class VendorRepository extends BaseRepository {
           .from('vendors')
           .select('''
             *,
-            user:users!vendors_firebase_uid_fkey(
+            user:users!vendors_user_id_fkey(
               id,
               email,
               full_name,
@@ -379,7 +391,7 @@ class VendorRepository extends BaseRepository {
             )
           ''')
           .eq('is_active', true)
-          .eq('is_verified', true)
+          // Temporarily removed is_verified filter for testing
           .order('rating', ascending: false)
           .limit(limit);
 

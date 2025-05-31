@@ -35,7 +35,7 @@ class ProductCard extends StatelessWidget {
               width: double.infinity,
               child: Stack(
                 children: [
-                  product.imageUrl != null
+                  product.imageUrl != null && product.imageUrl!.isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: product.imageUrl!,
                           fit: BoxFit.cover,
@@ -47,7 +47,11 @@ class ProductCard extends StatelessWidget {
                               child: CircularProgressIndicator(),
                             ),
                           ),
-                          errorWidget: (context, url, error) => _buildPlaceholderImage(theme),
+                          errorWidget: (context, url, error) {
+                            debugPrint('ProductCard: Image load error for ${product.name}: $error');
+                            debugPrint('ProductCard: Failed URL: $url');
+                            return _buildPlaceholderImage(theme);
+                          },
                         )
                       : _buildPlaceholderImage(theme),
 
@@ -272,10 +276,14 @@ class ProductListTile extends StatelessWidget {
                       color: theme.colorScheme.surfaceContainerHighest,
                       child: const Icon(Icons.fastfood),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: const Icon(Icons.fastfood),
-                    ),
+                    errorWidget: (context, url, error) {
+                      debugPrint('ProductListTile: Image load error for ${product.name}: $error');
+                      debugPrint('ProductListTile: Failed URL: $url');
+                      return Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.fastfood),
+                      );
+                    },
                   )
                 : Container(
                     color: theme.colorScheme.surfaceContainerHighest,

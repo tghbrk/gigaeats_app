@@ -8,8 +8,8 @@ class Vendor extends Equatable {
   final String id;
   @JsonKey(name: 'business_name')
   final String businessName;
-  @JsonKey(name: 'firebase_uid')
-  final String firebaseUid;
+  @JsonKey(name: 'user_id')
+  final String? userId;
   @JsonKey(name: 'business_registration_number')
   final String businessRegistrationNumber;
   @JsonKey(name: 'business_address')
@@ -54,7 +54,7 @@ class Vendor extends Equatable {
   const Vendor({
     required this.id,
     required this.businessName,
-    required this.firebaseUid,
+    this.userId,
     required this.businessRegistrationNumber,
     required this.businessAddress,
     required this.businessType,
@@ -84,7 +84,7 @@ class Vendor extends Equatable {
   Vendor copyWith({
     String? id,
     String? businessName,
-    String? firebaseUid,
+    String? userId,
     String? businessRegistrationNumber,
     String? businessAddress,
     String? businessType,
@@ -110,7 +110,7 @@ class Vendor extends Equatable {
     return Vendor(
       id: id ?? this.id,
       businessName: businessName ?? this.businessName,
-      firebaseUid: firebaseUid ?? this.firebaseUid,
+      userId: userId ?? this.userId,
       businessRegistrationNumber: businessRegistrationNumber ?? this.businessRegistrationNumber,
       businessAddress: businessAddress ?? this.businessAddress,
       businessType: businessType ?? this.businessType,
@@ -139,7 +139,7 @@ class Vendor extends Equatable {
   List<Object?> get props => [
         id,
         businessName,
-        firebaseUid,
+        userId,
         businessRegistrationNumber,
         businessAddress,
         businessType,
@@ -200,7 +200,7 @@ class Vendor extends Equatable {
 
   // Placeholder fields for backward compatibility
   String get ownerName => 'Owner'; // Placeholder
-  String get email => '$firebaseUid@example.com'; // Placeholder
+  String get email => '${userId ?? 'unknown'}@example.com'; // Placeholder
   String get phoneNumber => '+60123456789'; // Placeholder
   String? get profileImageUrl => null; // Not available in current schema
 }

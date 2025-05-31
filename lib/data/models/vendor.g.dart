@@ -9,7 +9,7 @@ part of 'vendor.dart';
 Vendor _$VendorFromJson(Map<String, dynamic> json) => Vendor(
   id: json['id'] as String,
   businessName: json['business_name'] as String,
-  firebaseUid: json['firebase_uid'] as String,
+  userId: json['user_id'] as String?,
   businessRegistrationNumber: json['business_registration_number'] as String,
   businessAddress: json['business_address'] as String,
   businessType: json['business_type'] as String,
@@ -44,7 +44,7 @@ Vendor _$VendorFromJson(Map<String, dynamic> json) => Vendor(
 Map<String, dynamic> _$VendorToJson(Vendor instance) => <String, dynamic>{
   'id': instance.id,
   'business_name': instance.businessName,
-  'firebase_uid': instance.firebaseUid,
+  'user_id': instance.userId,
   'business_registration_number': instance.businessRegistrationNumber,
   'business_address': instance.businessAddress,
   'business_type': instance.businessType,

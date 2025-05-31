@@ -10,8 +10,8 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
   id: json['id'] as String,
   email: json['email'] as String,
   fullName: json['full_name'] as String,
-  phoneNumber: json['phone_number'] as String,
-  role: $enumDecode(_$UserRoleEnumMap, json['role']),
+  phoneNumber: json['phone_number'] as String?,
+  role: _roleFromJson(json['role']),
   profileImageUrl: json['profile_image_url'] as String?,
   isVerified: json['is_verified'] as bool,
   isActive: json['is_active'] as bool,
@@ -25,7 +25,7 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'email': instance.email,
   'full_name': instance.fullName,
   'phone_number': instance.phoneNumber,
-  'role': _$UserRoleEnumMap[instance.role]!,
+  'role': _roleToJson(instance.role),
   'profile_image_url': instance.profileImageUrl,
   'is_verified': instance.isVerified,
   'is_active': instance.isActive,
@@ -34,18 +34,11 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'metadata': instance.metadata,
 };
 
-const _$UserRoleEnumMap = {
-  UserRole.salesAgent: 'salesAgent',
-  UserRole.vendor: 'vendor',
-  UserRole.admin: 'admin',
-  UserRole.customer: 'customer',
-};
-
 SalesAgent _$SalesAgentFromJson(Map<String, dynamic> json) => SalesAgent(
   id: json['id'] as String,
   email: json['email'] as String,
   fullName: json['full_name'] as String,
-  phoneNumber: json['phone_number'] as String,
+  phoneNumber: json['phone_number'] as String?,
   profileImageUrl: json['profile_image_url'] as String?,
   isVerified: json['is_verified'] as bool,
   isActive: json['is_active'] as bool,
@@ -86,7 +79,7 @@ Vendor _$VendorFromJson(Map<String, dynamic> json) => Vendor(
   id: json['id'] as String,
   email: json['email'] as String,
   fullName: json['full_name'] as String,
-  phoneNumber: json['phone_number'] as String,
+  phoneNumber: json['phone_number'] as String?,
   profileImageUrl: json['profile_image_url'] as String?,
   isVerified: json['is_verified'] as bool,
   isActive: json['is_active'] as bool,

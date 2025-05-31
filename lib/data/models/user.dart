@@ -11,7 +11,8 @@ class User extends Equatable {
   @JsonKey(name: 'full_name')
   final String fullName;
   @JsonKey(name: 'phone_number')
-  final String phoneNumber;
+  final String? phoneNumber;
+  @JsonKey(fromJson: _roleFromJson, toJson: _roleToJson)
   final UserRole role;
   @JsonKey(name: 'profile_image_url')
   final String? profileImageUrl;
@@ -29,7 +30,7 @@ class User extends Equatable {
     required this.id,
     required this.email,
     required this.fullName,
-    required this.phoneNumber,
+    this.phoneNumber,
     required this.role,
     this.profileImageUrl,
     required this.isVerified,
@@ -111,7 +112,7 @@ class SalesAgent extends User {
     required super.id,
     required super.email,
     required super.fullName,
-    required super.phoneNumber,
+    super.phoneNumber,
     super.profileImageUrl,
     required super.isVerified,
     required super.isActive,
@@ -209,7 +210,7 @@ class Vendor extends User {
     required super.id,
     required super.email,
     required super.fullName,
-    required super.phoneNumber,
+    super.phoneNumber,
     super.profileImageUrl,
     required super.isVerified,
     required super.isActive,
@@ -247,4 +248,16 @@ class Vendor extends User {
         totalOrders,
         businessHours,
       ];
+}
+
+// Helper functions for UserRole JSON serialization
+UserRole _roleFromJson(dynamic value) {
+  if (value is String) {
+    return UserRole.fromString(value);
+  }
+  return UserRole.customer; // Default fallback
+}
+
+String _roleToJson(UserRole role) {
+  return role.value;
 }

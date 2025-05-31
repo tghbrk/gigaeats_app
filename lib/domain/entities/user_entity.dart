@@ -5,7 +5,7 @@ class UserEntity extends Equatable {
   final String id;
   final String email;
   final String fullName;
-  final String phoneNumber;
+  final String? phoneNumber;
   final UserRoleEntity role;
   final bool isVerified;
   final bool isActive;
@@ -17,7 +17,7 @@ class UserEntity extends Equatable {
     required this.id,
     required this.email,
     required this.fullName,
-    required this.phoneNumber,
+    this.phoneNumber,
     required this.role,
     required this.isVerified,
     required this.isActive,

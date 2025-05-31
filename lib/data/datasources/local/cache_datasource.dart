@@ -4,7 +4,7 @@ import '../../../core/errors/exceptions.dart';
 import '../../../core/utils/logger.dart';
 import '../../services/cache_service.dart';
 import '../../models/user.dart';
-import '../../models/vendor.dart';
+import '../../models/vendor.dart' as vendor_model;
 import '../../models/order.dart';
 import '../../models/product.dart';
 
@@ -17,10 +17,10 @@ abstract class CacheDataSource {
   Future<List<User>> getCachedUsers();
 
   // Vendor caching
-  Future<void> cacheVendor(Vendor vendor);
-  Future<Vendor?> getCachedVendor(String vendorId);
+  Future<void> cacheVendor(vendor_model.Vendor vendor);
+  Future<vendor_model.Vendor?> getCachedVendor(String vendorId);
   Future<void> removeCachedVendor(String vendorId);
-  Future<List<Vendor>> getCachedVendors();
+  Future<List<vendor_model.Vendor>> getCachedVendors();
 
   // Order caching
   Future<void> cacheOrder(Order order);
@@ -111,7 +111,7 @@ class CacheDataSourceImpl implements CacheDataSource {
   }
 
   @override
-  Future<void> cacheVendor(Vendor vendor) async {
+  Future<void> cacheVendor(vendor_model.Vendor vendor) async {
     try {
       await _cacheService.store(
         'vendor_${vendor.id}',
@@ -129,7 +129,7 @@ class CacheDataSourceImpl implements CacheDataSource {
   }
 
   @override
-  Future<Vendor?> getCachedVendor(String vendorId) async {
+  Future<vendor_model.Vendor?> getCachedVendor(String vendorId) async {
     try {
       final cachedData = await _cacheService.get<Map<String, dynamic>>(
         'vendor_$vendorId',
@@ -138,7 +138,7 @@ class CacheDataSourceImpl implements CacheDataSource {
 
       if (cachedData == null) return null;
 
-      return Vendor.fromJson(cachedData);
+      return vendor_model.Vendor.fromJson(cachedData);
     } catch (e) {
       _logger.warning('Failed to get cached vendor: $vendorId', e);
       return null;
@@ -156,7 +156,7 @@ class CacheDataSourceImpl implements CacheDataSource {
   }
 
   @override
-  Future<List<Vendor>> getCachedVendors() async {
+  Future<List<vendor_model.Vendor>> getCachedVendors() async {
     try {
       final cachedData = await _cacheService.get<List<dynamic>>(
         'vendors_list',
@@ -166,7 +166,7 @@ class CacheDataSourceImpl implements CacheDataSource {
       if (cachedData == null) return [];
 
       return cachedData
-          .map((json) => Vendor.fromJson(json as Map<String, dynamic>))
+          .map((json) => vendor_model.Vendor.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
       _logger.error('Failed to get cached vendors', e);

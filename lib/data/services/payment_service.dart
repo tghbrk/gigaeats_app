@@ -154,7 +154,7 @@ class PaymentService {
     try {
       final billData = {
         'collection_id': _collectionId,
-        'email': order.customerEmail ?? 'customer@example.com',
+        'email': 'customer@example.com', // TODO: Get customer email from customer record
         'name': order.customerName,
         'amount': (order.totalAmount * 100).toInt().toString(), // Convert to cents
         'description': 'Order ${order.orderNumber}',

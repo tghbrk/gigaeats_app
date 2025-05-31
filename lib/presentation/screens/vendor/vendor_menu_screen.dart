@@ -72,7 +72,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((product) {
         return product.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            product.description.toLowerCase().contains(_searchQuery.toLowerCase());
+            product.safeDescription.toLowerCase().contains(_searchQuery.toLowerCase());
       }).toList();
     }
 
@@ -287,7 +287,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
                     const SizedBox(height: 4),
 
                     Text(
-                      product.description,
+                      product.safeDescription,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
@@ -313,7 +313,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        if (product.isVegetarian)
+                        if (product.safeIsVegetarian)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
@@ -329,7 +329,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
                               ),
                             ),
                           ),
-                        if (product.isHalal) ...[
+                        if (product.safeIsHalal) ...[
                           const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

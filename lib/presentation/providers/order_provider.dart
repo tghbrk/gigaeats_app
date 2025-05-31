@@ -361,7 +361,7 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
 
   Future<Order?> loadOrderById(String orderId) async {
     try {
-      final order = await _orderService.getOrderById(orderId);
+      final order = await _orderRepository.getOrderById(orderId);
 
       if (order != null) {
         // Update the order in the local state if it exists

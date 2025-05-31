@@ -104,7 +104,7 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
 
         final filteredVendors = vendorsState.vendors.where((vendor) {
           return vendor.businessName.toLowerCase().contains(query.toLowerCase()) ||
-              vendor.description.toLowerCase().contains(query.toLowerCase()) ||
+              (vendor.description?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
               vendor.cuisineTypes.any((cuisine) => 
                   cuisine.toLowerCase().contains(query.toLowerCase()));
         }).toList();
@@ -132,7 +132,7 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
   Widget _buildCustomerResults() {
     return Consumer(
       builder: (context, ref, child) {
-        final customersState = ref.watch(customersProvider);
+        final customersState = ref.watch(customerProvider);
         
         if (customersState.isLoading) {
           return const Center(child: CircularProgressIndicator());
@@ -203,7 +203,7 @@ class AdvancedSearchDelegate extends SearchDelegate<String> {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(vendor.description, maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(vendor.description ?? 'No description available', maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 4),
           Row(
             children: [

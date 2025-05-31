@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../data/models/order.dart';
+import '../../../data/models/order.dart' hide PaymentMethod, PaymentStatus;
 import '../../../data/models/payment_method.dart';
 import '../../../data/services/payment_service.dart';
 import '../../widgets/custom_button.dart';

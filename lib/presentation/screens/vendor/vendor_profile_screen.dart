@@ -328,7 +328,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
     return Column(
       children: [
         _buildInfoRow('Business Name', _vendor!.businessName),
-        _buildInfoRow('Description', _vendor!.description),
+        _buildInfoRow('Description', _vendor!.description ?? 'No description available'),
         _buildInfoRow('Rating', '${_vendor!.rating.toStringAsFixed(1)} stars'),
         _buildInfoRow('Total Reviews', '${_vendor!.totalReviews} reviews'),
         _buildInfoRow('SSM Number', _vendor!.businessInfo.ssmNumber),
@@ -363,7 +363,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
       children: _vendor!.businessInfo.operatingHours.schedule.entries.map((entry) {
         return _buildInfoRow(
           entry.key,
-          entry.value.isOpen
+          entry.value.safeIsOpen
               ? '${entry.value.openTime ?? 'N/A'} - ${entry.value.closeTime ?? 'N/A'}'
               : 'Closed',
         );

@@ -345,7 +345,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
             _buildDetailRow('Order Number', '#${order.orderNumber}'),
             _buildDetailRow('Customer', order.customerName),
             _buildDetailRow('Vendor', order.vendorName),
-            _buildDetailRow('Order Date', _formatDate(order.orderDate)),
+            _buildDetailRow('Order Date', _formatDate(order.createdAt)),
             _buildDetailRow('Total Amount', 'RM ${order.totalAmount.toStringAsFixed(2)}'),
             
             const SizedBox(height: 16),
@@ -414,7 +414,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                       const SizedBox(height: 4),
                       Text(
                         '${order.deliveryAddress.street}\n'
-                        '${order.deliveryAddress.city}, ${order.deliveryAddress.state} ${order.deliveryAddress.postcode}',
+                        '${order.deliveryAddress.city}, ${order.deliveryAddress.state} ${order.deliveryAddress.postalCode}',
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
@@ -523,7 +523,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
 
   List<TimelineStep> _getTimelineSteps(Order order) {
     final now = DateTime.now();
-    final orderDate = order.orderDate;
+    final orderDate = order.createdAt;
     
     return [
       TimelineStep(

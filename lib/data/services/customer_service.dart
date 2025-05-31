@@ -179,7 +179,11 @@ class CustomerService {
     // }
 
     // Sort by last order date (most recent first)
-    customers.sort((a, b) => b.lastOrderDate.compareTo(a.lastOrderDate));
+    customers.sort((a, b) {
+      final aDate = a.lastOrderDate ?? DateTime(1970);
+      final bDate = b.lastOrderDate ?? DateTime(1970);
+      return bDate.compareTo(aDate);
+    });
 
     return customers.take(limit).toList();
   }

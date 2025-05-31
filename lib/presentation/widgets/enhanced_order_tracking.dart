@@ -165,6 +165,45 @@ class EnhancedOrderTracking extends ConsumerWidget {
   }
 
   Widget _buildTrackingTimeline(Order order) {
+    // Handle cancelled orders differently
+    if (order.status == OrderStatus.cancelled) {
+      final steps = [
+        _TimelineStep(
+          title: 'Order Placed',
+          time: order.createdAt,
+          isCompleted: true,
+          icon: Icons.shopping_cart,
+        ),
+        _TimelineStep(
+          title: 'Order Cancelled',
+          time: order.updatedAt,
+          isCompleted: true,
+          icon: Icons.cancel,
+          isCancelled: true,
+        ),
+      ];
+
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Order Progress',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...steps.map((step) => _buildTimelineItem(step)),
+            ],
+          ),
+        ),
+      );
+    }
+
     final steps = [
       _TimelineStep(
         title: 'Order Placed',
@@ -226,6 +265,13 @@ class EnhancedOrderTracking extends ConsumerWidget {
   }
 
   Widget _buildTimelineItem(_TimelineStep step) {
+    final backgroundColor = step.isCancelled
+        ? Colors.red
+        : (step.isCompleted ? Colors.green : Colors.grey[300]);
+    final textColor = step.isCancelled
+        ? Colors.red
+        : (step.isCompleted ? Colors.black : Colors.grey[600]);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -234,7 +280,7 @@ class EnhancedOrderTracking extends ConsumerWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: step.isCompleted ? Colors.green : Colors.grey[300],
+              color: backgroundColor,
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -252,7 +298,7 @@ class EnhancedOrderTracking extends ConsumerWidget {
                   step.title,
                   style: TextStyle(
                     fontWeight: step.isCompleted ? FontWeight.bold : FontWeight.normal,
-                    color: step.isCompleted ? Colors.black : Colors.grey[600],
+                    color: textColor,
                   ),
                 ),
                 if (step.time != null)
@@ -372,11 +418,13 @@ class _TimelineStep {
   final DateTime? time;
   final bool isCompleted;
   final IconData icon;
+  final bool isCancelled;
 
   _TimelineStep({
     required this.title,
     this.time,
     required this.isCompleted,
     required this.icon,
+    this.isCancelled = false,
   });
 }

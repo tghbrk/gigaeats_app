@@ -483,12 +483,53 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
             child: const Text('No'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              ref.read(ordersProvider.notifier).cancelOrder(
-                order.id,
-                'Cancelled by sales agent',
+
+              // Show loading dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
               );
+
+              try {
+                await ref.read(ordersProvider.notifier).cancelOrder(
+                  order.id,
+                  'Cancelled by sales agent',
+                );
+
+                if (mounted) {
+                  Navigator.of(context).pop(); // Close loading dialog
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Order cancelled successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  // Refresh the orders list for both web and mobile platforms
+                  if (kIsWeb) {
+                    ref.invalidate(platformOrdersProvider);
+                  } else {
+                    ref.read(ordersProvider.notifier).loadOrders();
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.of(context).pop(); // Close loading dialog
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to cancel order: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Yes, Cancel'),
           ),

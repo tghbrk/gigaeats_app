@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/order.dart';
 import '../../providers/repository_providers.dart';
-import '../../../core/utils/responsive_utils.dart';
+import '../../providers/order_provider.dart';
 import '../../widgets/responsive_app_bar.dart';
 
 class OrderTrackingScreen extends ConsumerWidget {
@@ -60,7 +60,7 @@ class OrderTrackingScreen extends ConsumerWidget {
               ),
             );
           }
-          return _buildOrderDetails(context, order);
+          return _buildOrderDetails(context, ref, order);
         },
         loading: () => const Center(
           child: Column(
@@ -114,7 +114,7 @@ class OrderTrackingScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildOrderDetails(BuildContext context, Order order) {
+  Widget _buildOrderDetails(BuildContext context, WidgetRef ref, Order order) {
     final theme = Theme.of(context);
 
     return SingleChildScrollView(
@@ -282,7 +282,7 @@ class OrderTrackingScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => _cancelOrder(context, order.id),
+                onPressed: () => _cancelOrder(context, ref, order.id),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
@@ -297,6 +297,41 @@ class OrderTrackingScreen extends ConsumerWidget {
   }
 
   Widget _buildStatusTimeline(OrderStatus currentStatus) {
+    // Handle cancelled orders differently
+    if (currentStatus == OrderStatus.cancelled) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Order Cancelled',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
     final statuses = [
       OrderStatus.pending,
       OrderStatus.confirmed,
@@ -365,7 +400,7 @@ class OrderTrackingScreen extends ConsumerWidget {
     }
   }
 
-  void _cancelOrder(BuildContext context, String orderId) {
+  void _cancelOrder(BuildContext context, WidgetRef ref, String orderId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -377,12 +412,49 @@ class OrderTrackingScreen extends ConsumerWidget {
             child: const Text('No'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              // TODO: Implement order cancellation
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Order cancellation requested')),
+
+              // Show loading dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
               );
+
+              try {
+                // Cancel the order using the order provider
+                await ref.read(orderTrackingProvider(orderId).notifier).cancelOrder('Cancelled by customer');
+
+                // Close loading dialog
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Order cancelled successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  // Refresh the order data
+                  ref.invalidate(orderDetailsStreamProvider(orderId));
+                }
+              } catch (e) {
+                // Close loading dialog
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to cancel order: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Yes'),
           ),

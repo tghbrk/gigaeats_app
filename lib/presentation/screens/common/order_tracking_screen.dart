@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/order.dart';
 import '../../providers/repository_providers.dart';
+import '../../../core/utils/responsive_utils.dart';
+import '../../widgets/responsive_app_bar.dart';
 
 class OrderTrackingScreen extends ConsumerWidget {
   final String orderId;
@@ -16,46 +18,94 @@ class OrderTrackingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final orderStream = ref.watch(orderDetailsStreamProvider(orderId));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Order Tracking'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(orderDetailsStreamProvider(orderId));
-            },
-          ),
-        ],
-      ),
+    return ResponsiveScaffold(
+      title: 'Order Tracking',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () {
+            ref.invalidate(orderDetailsStreamProvider(orderId));
+          },
+        ),
+      ],
       body: orderStream.when(
         data: (order) {
           if (order == null) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text('Order not found'),
+                  const Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Order not found',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'The order you\'re looking for doesn\'t exist or has been removed.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Go Back'),
+                  ),
                 ],
               ),
             );
           }
           return _buildOrderDetails(context, order);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading order details...'),
+            ],
+          ),
+        ),
         error: (error, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
-              Text('Error: $error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(orderDetailsStreamProvider(orderId)),
-                child: const Text('Retry'),
+              Text(
+                'Failed to load order',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.red[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Error: ${error.toString()}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Go Back'),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.invalidate(orderDetailsStreamProvider(orderId)),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
             ],
           ),

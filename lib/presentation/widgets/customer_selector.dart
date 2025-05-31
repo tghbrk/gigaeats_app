@@ -1,21 +1,32 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/models/customer.dart';
 import '../providers/customer_provider.dart';
-import '../providers/auth_provider.dart';
-import 'search_bar_widget.dart';
+import '../widgets/search_bar_widget.dart';
+import '../widgets/customer_card.dart';
 
 class CustomerSelector extends ConsumerStatefulWidget {
   final Customer? selectedCustomer;
-  final ValueChanged<Customer?> onCustomerSelected;
-  final bool allowQuickCreate;
+  final Function(Customer?) onCustomerSelected;
+  final bool allowManualEntry;
+  final String? manualCustomerName;
+  final String? manualCustomerPhone;
+  final String? manualCustomerEmail;
+  final Function(String name, String phone, String email)? onManualEntryChanged;
 
   const CustomerSelector({
     super.key,
     this.selectedCustomer,
     required this.onCustomerSelected,
-    this.allowQuickCreate = true,
+    this.allowManualEntry = true,
+    this.manualCustomerName,
+    this.manualCustomerPhone,
+    this.manualCustomerEmail,
+    this.onManualEntryChanged,
   });
 
   @override
@@ -24,116 +35,276 @@ class CustomerSelector extends ConsumerStatefulWidget {
 
 class _CustomerSelectorState extends ConsumerState<CustomerSelector> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  bool _showCreateForm = false;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+
+  bool _isManualEntry = false;
+  CustomerType? _selectedType;
+  Timer? _debounceTimer;
+  String _currentSearchQuery = '';
+
+  // Memoized filter parameters to prevent infinite rebuilds
+  Map<String, dynamic>? _cachedFilterParams;
+  String? _lastSearchQuery;
+  CustomerType? _lastSelectedType;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = widget.manualCustomerName ?? '';
+    _phoneController.text = widget.manualCustomerPhone ?? '';
+    _emailController.text = widget.manualCustomerEmail ?? '';
+    
+    // If no customer is selected and manual entry data exists, start in manual mode
+    if (widget.selectedCustomer == null && widget.manualCustomerName?.isNotEmpty == true) {
+      _isManualEntry = true;
+    }
+  }
+
+  /// Get current filter parameters for web provider (memoized to prevent infinite rebuilds)
+  Map<String, dynamic> get _webFilterParams {
+    // Check if parameters have changed
+    if (_cachedFilterParams == null ||
+        _lastSearchQuery != _currentSearchQuery ||
+        _lastSelectedType != _selectedType) {
+
+      debugPrint('🔍 CustomerSelector: _webFilterParams - parameters changed, rebuilding cache');
+      debugPrint('🔍 CustomerSelector: _currentSearchQuery = "$_currentSearchQuery" (was "$_lastSearchQuery")');
+      debugPrint('🔍 CustomerSelector: _selectedType = $_selectedType (was $_lastSelectedType)');
+
+      // Update cached values
+      _lastSearchQuery = _currentSearchQuery;
+      _lastSelectedType = _selectedType;
+
+      // Build new parameters
+      _cachedFilterParams = {
+        'searchQuery': _currentSearchQuery.isNotEmpty ? _currentSearchQuery : null,
+        'type': _selectedType,
+        'isActive': true,
+        'limit': 50,
+        'offset': 0,
+      };
+
+      debugPrint('🔍 CustomerSelector: New cached params: $_cachedFilterParams');
+    } else {
+      debugPrint('🔍 CustomerSelector: _webFilterParams - using cached parameters: $_cachedFilterParams');
+    }
+
+    return _cachedFilterParams!;
+  }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final authState = ref.watch(authStateProvider);
-    final salesAgentId = authState.user?.id;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Select Customer',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            if (widget.allowQuickCreate)
-              TextButton.icon(
-                onPressed: () => setState(() => _showCreateForm = !_showCreateForm),
-                icon: Icon(_showCreateForm ? Icons.close : Icons.add),
-                label: Text(_showCreateForm ? 'Cancel' : 'New Customer'),
-              ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-
-        // Selected Customer Display
-        if (widget.selectedCustomer != null && !_showCreateForm)
-          _buildSelectedCustomer(),
-
-        // Search Bar (only show if no customer selected or creating new)
-        if (widget.selectedCustomer == null || _showCreateForm)
-          Column(
-            children: [
-              SearchBarWidget(
-                controller: _searchController,
-                hintText: 'Search customers by name, email, or phone...',
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                onClear: () {
-                  setState(() {
-                    _searchQuery = '';
-                    _searchController.clear();
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-
-        // Quick Create Form
-        if (_showCreateForm)
-          _buildQuickCreateForm()
-        // Customer List
-        else if (widget.selectedCustomer == null)
-          _buildCustomerList(salesAgentId),
-      ],
-    );
-  }
-
-  Widget _buildSelectedCustomer() {
-    final customer = widget.selectedCustomer!;
-    final theme = Theme.of(context);
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with toggle
             Row(
               children: [
+                Text(
+                  'Customer Information',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                if (widget.allowManualEntry)
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Select Existing'),
+                        icon: Icon(Icons.search),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Manual Entry'),
+                        icon: Icon(Icons.edit),
+                      ),
+                    ],
+                    selected: {_isManualEntry},
+                    onSelectionChanged: (Set<bool> selection) {
+                      setState(() {
+                        _isManualEntry = selection.first;
+                        if (_isManualEntry) {
+                          widget.onCustomerSelected(null);
+                        } else {
+                          _nameController.clear();
+                          _phoneController.clear();
+                          _emailController.clear();
+                          widget.onManualEntryChanged?.call('', '', '');
+                        }
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Content based on mode
+            if (_isManualEntry)
+              _buildManualEntryForm()
+            else
+              _buildCustomerSelection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManualEntryForm() {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _nameController,
+          decoration: const InputDecoration(
+            labelText: 'Customer Name *',
+            hintText: 'Enter customer or company name',
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) {
+            widget.onManualEntryChanged?.call(
+              value,
+              _phoneController.text,
+              _emailController.text,
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _phoneController,
+          decoration: const InputDecoration(
+            labelText: 'Phone Number *',
+            hintText: '+60123456789',
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: TextInputType.phone,
+          onChanged: (value) {
+            widget.onManualEntryChanged?.call(
+              _nameController.text,
+              value,
+              _emailController.text,
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _emailController,
+          decoration: const InputDecoration(
+            labelText: 'Email Address',
+            hintText: 'customer@company.com',
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: TextInputType.emailAddress,
+          onChanged: (value) {
+            widget.onManualEntryChanged?.call(
+              _nameController.text,
+              _phoneController.text,
+              value,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomerSelection() {
+    return Column(
+      children: [
+        // Search and filters
+        SearchBarWidget(
+          controller: _searchController,
+          hintText: 'Search customers...',
+          onChanged: _onSearchChanged,
+          onClear: _onSearchCleared,
+        ),
+        const SizedBox(height: 8),
+
+        // Type filter
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              FilterChip(
+                label: const Text('All Types'),
+                selected: _selectedType == null,
+                onSelected: (_) {
+                  setState(() {
+                    _selectedType = null;
+                    _cachedFilterParams = null; // Invalidate cache
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              ...CustomerType.values.map((type) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(type.displayName),
+                  selected: _selectedType == type,
+                  onSelected: (_) {
+                    setState(() {
+                      _selectedType = _selectedType == type ? null : type;
+                      _cachedFilterParams = null; // Invalidate cache
+                    });
+                  },
+                ),
+              )),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Selected customer display
+        if (widget.selectedCustomer != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        customer.organizationName,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        'Selected: ${widget.selectedCustomer!.organizationName}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        customer.contactPersonName,
-                        style: theme.textTheme.bodyMedium,
+                        widget.selectedCustomer!.contactPersonName,
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        customer.phoneNumber,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
+                        widget.selectedCustomer!.phoneNumber,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -141,244 +312,180 @@ class _CustomerSelectorState extends ConsumerState<CustomerSelector> {
                 IconButton(
                   onPressed: () => widget.onCustomerSelected(null),
                   icon: const Icon(Icons.close),
-                  tooltip: 'Remove selection',
+                  tooltip: 'Clear selection',
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                customer.type.displayName,
-                style: TextStyle(
-                  color: theme.colorScheme.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
+          )
+        else
+          // Customer list
+          SizedBox(
+            height: 300,
+            child: _buildCustomerList(),
+          ),
+
+        const SizedBox(height: 16),
+
+        // Add new customer button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              context.push('/sales-agent/customers/add');
+            },
+            icon: const Icon(Icons.person_add),
+            label: const Text('Add New Customer'),
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildCustomerList(String? salesAgentId) {
-    if (_searchQuery.isNotEmpty) {
-      return _buildSearchResults(salesAgentId);
+  Widget _buildCustomerList() {
+    if (kIsWeb) {
+      final customersAsync = ref.watch(webCustomersProvider(_webFilterParams));
+      
+      return customersAsync.when(
+        data: (customers) => _buildCustomerListView(customers),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red),
+              const SizedBox(height: 8),
+              Text('Error: $error'),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(webCustomersProvider(_webFilterParams));
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
     } else {
-      return _buildRecentCustomers(salesAgentId);
+      final customerState = ref.watch(customerProvider);
+      
+      if (customerState.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      
+      if (customerState.errorMessage != null) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red),
+              const SizedBox(height: 8),
+              Text('Error: ${customerState.errorMessage}'),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(customerProvider.notifier).loadCustomers();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      }
+      
+      return _buildCustomerListView(customerState.customers);
     }
   }
 
-  Widget _buildSearchResults(String? salesAgentId) {
-    final searchParams = {
-      'query': _searchQuery,
-      'salesAgentId': salesAgentId,
-    };
-
-    final searchResults = ref.watch(customerSearchProvider(searchParams));
-
-    return searchResults.when(
-      data: (customers) {
-        if (customers.isEmpty) {
-          return _buildEmptyState('No customers found matching "$_searchQuery"');
-        }
-
-        return _buildCustomerListView(customers);
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => _buildErrorState('Error searching customers: $error'),
-    );
-  }
-
-  Widget _buildRecentCustomers(String? salesAgentId) {
-    final recentCustomers = ref.watch(recentCustomersProvider(salesAgentId));
-
-    return recentCustomers.when(
-      data: (customers) {
-        if (customers.isEmpty) {
-          return _buildEmptyState('No customers found');
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Recent Customers',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildCustomerListView(customers),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => _buildErrorState('Error loading customers: $error'),
-    );
-  }
-
   Widget _buildCustomerListView(List<Customer> customers) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: customers.length,
-      itemBuilder: (context, index) {
-        final customer = customers[index];
-        return _buildCustomerTile(customer);
-      },
-    );
-  }
-
-  Widget _buildCustomerTile(Customer customer) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(
-            customer.organizationName.substring(0, 1).toUpperCase(),
-            style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          customer.organizationName,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(customer.contactPersonName),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    customer.type.displayName,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${customer.totalOrders} orders',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () => widget.onCustomerSelected(customer),
-      ),
-    );
-  }
-
-  Widget _buildQuickCreateForm() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    if (customers.isEmpty) {
+      return Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Quick Create Customer',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'For detailed customer creation, use the customer management section.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Navigate to full customer creation form
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Full customer creation form coming soon!'),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create New Customer'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.people_outline,
-              size: 64,
+              size: 48,
               color: Colors.grey[400],
             ),
             const SizedBox(height: 16),
             Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              'No customers found',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Colors.grey[600],
               ),
-              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try adjusting your search or filters',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
-      ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: customers.length,
+      itemBuilder: (context, index) {
+        final customer = customers[index];
+        return CustomerCard(
+          customer: customer,
+          onTap: () => widget.onCustomerSelected(customer),
+          showActions: false,
+        );
+      },
     );
   }
 
-  Widget _buildErrorState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
+  void _onSearchChanged(String query) {
+    debugPrint('🔍 CustomerSelector: _onSearchChanged called with query: "$query"');
+    debugPrint('🔍 CustomerSelector: Current _currentSearchQuery: "$_currentSearchQuery"');
+    debugPrint('🔍 CustomerSelector: kIsWeb = $kIsWeb');
+
+    if (kIsWeb) {
+      debugPrint('🔍 CustomerSelector: Web platform - setting up debounced search');
+
+      // Cancel previous timer
+      _debounceTimer?.cancel();
+      debugPrint('🔍 CustomerSelector: Previous timer cancelled');
+
+      // Set up new timer for debounced search
+      _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+        debugPrint('🔍 CustomerSelector: Debounce timer fired for query: "$query"');
+        if (mounted) {
+          debugPrint('🔍 CustomerSelector: Widget still mounted, calling setState');
+          setState(() {
+            _currentSearchQuery = query;
+            debugPrint('🔍 CustomerSelector: _currentSearchQuery updated to: "$_currentSearchQuery"');
+          });
+        } else {
+          debugPrint('🔍 CustomerSelector: Widget not mounted, skipping setState');
+        }
+      });
+      debugPrint('🔍 CustomerSelector: New debounce timer set');
+    } else {
+      debugPrint('🔍 CustomerSelector: Mobile platform - calling searchCustomers');
+      ref.read(customerProvider.notifier).searchCustomers(query);
+    }
+  }
+
+  void _onSearchCleared() {
+    debugPrint('🧹 CustomerSelector: _onSearchCleared called');
+    _searchController.clear();
+
+    if (kIsWeb) {
+      debugPrint('🧹 CustomerSelector: Web platform - clearing search and invalidating cache');
+      _debounceTimer?.cancel();
+      _cachedFilterParams = null; // Invalidate cache
+      setState(() {
+        _currentSearchQuery = '';
+      });
+    } else {
+      debugPrint('🧹 CustomerSelector: Mobile platform - clearing search via _onSearchChanged');
+      _onSearchChanged('');
+    }
   }
 }

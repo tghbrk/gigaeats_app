@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/models/customer.dart';
 import '../../providers/customer_provider.dart';
-import '../../widgets/loading_widget.dart';
-import '../../widgets/error_widget.dart';
+
+import '../../../core/utils/responsive_utils.dart';
 
 class CustomerDetailsScreen extends ConsumerWidget {
   final String customerId;
@@ -17,357 +17,170 @@ class CustomerDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final customerAsync = ref.watch(customerProvider(customerId));
+    final customerAsync = ref.watch(customerByIdProvider(customerId));
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Customer Details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              context.push('/sales-agent/customers/$customerId/edit');
+            },
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              switch (value) {
+                case 'delete':
+                  _showDeleteDialog(context, ref);
+                  break;
+                case 'add_note':
+                  _showAddNoteDialog(context, ref);
+                  break;
+                case 'add_tag':
+                  _showAddTagDialog(context, ref);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'add_note',
+                child: ListTile(
+                  leading: Icon(Icons.note_add),
+                  title: Text('Add Note'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'add_tag',
+                child: ListTile(
+                  leading: Icon(Icons.label),
+                  title: Text('Add Tag'),
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'delete',
+                child: ListTile(
+                  leading: Icon(Icons.delete, color: Colors.red),
+                  title: Text('Delete Customer', style: TextStyle(color: Colors.red)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: customerAsync.when(
-        data: (customer) {
-          if (customer == null) {
-            return const CustomErrorWidget(
-              message: 'Customer not found',
-            );
-          }
-          return _buildCustomerDetails(context, ref, customer);
-        },
-        loading: () => const LoadingWidget(message: 'Loading customer details...'),
-        error: (error, stack) => CustomErrorWidget(
-          message: 'Error loading customer: $error',
-          onRetry: () => ref.invalidate(customerProvider(customerId)),
+        data: (customer) => customer != null
+            ? _buildCustomerDetails(context, customer, ref)
+            : _buildNotFound(context),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _buildErrorState(context, error.toString()),
+      ),
+    );
+  }
+
+  Widget _buildCustomerDetails(BuildContext context, Customer customer, WidgetRef ref) {
+    return ResponsiveContainer(
+      child: SingleChildScrollView(
+        padding: context.responsivePadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Customer Header
+            _buildCustomerHeader(context, customer),
+            const SizedBox(height: 24),
+
+            // Customer Information Cards
+            if (context.isDesktop)
+              _buildDesktopLayout(context, customer, ref)
+            else
+              _buildMobileLayout(context, customer, ref),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCustomerDetails(BuildContext context, WidgetRef ref, Customer customer) {
+  Widget _buildCustomerHeader(BuildContext context, Customer customer) {
     final theme = Theme.of(context);
-
-    return CustomScrollView(
-      slivers: [
-        // App Bar
-        SliverAppBar(
-          expandedHeight: 200,
-          pinned: true,
-          flexibleSpace: FlexibleSpaceBar(
-            title: Text(
-              customer.organizationName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    offset: Offset(0, 1),
-                    blurRadius: 3,
-                    color: Colors.black54,
-                  ),
-                ],
-              ),
-            ),
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primary.withValues(alpha: 0.8),
-                  ],
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: theme.colorScheme.primary,
+              child: Text(
+                customer.organizationName.isNotEmpty
+                    ? customer.organizationName[0].toUpperCase()
+                    : 'C',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              child: Center(
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  child: Text(
-                    customer.organizationName.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 36,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    customer.organizationName,
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            PopupMenuButton<String>(
-              onSelected: (value) => _handleAction(context, ref, value, customer),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
+                  const SizedBox(height: 4),
+                  Text(
+                    customer.contactPersonName,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
                     children: [
-                      Icon(Icons.edit),
-                      SizedBox(width: 8),
-                      Text('Edit Customer'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'orders',
-                  child: Row(
-                    children: [
-                      Icon(Icons.receipt_long),
-                      SizedBox(width: 8),
-                      Text('View Orders'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'create_order',
-                  child: Row(
-                    children: [
-                      Icon(Icons.add_shopping_cart),
-                      SizedBox(width: 8),
-                      Text('Create Order'),
-                    ],
-                  ),
-                ),
-                if (customer.isActive)
-                  const PopupMenuItem(
-                    value: 'deactivate',
-                    child: Row(
-                      children: [
-                        Icon(Icons.block, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Deactivate', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  )
-                else
-                  const PopupMenuItem(
-                    value: 'activate',
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text('Activate', style: TextStyle(color: Colors.green)),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-
-        // Content
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Status and Type
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                      Icon(
+                        _getTypeIcon(customer.type),
+                        size: 16,
+                        color: theme.colorScheme.primary,
                       ),
-                      decoration: BoxDecoration(
-                        color: customer.isActive
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            customer.isActive ? Icons.check_circle : Icons.block,
-                            size: 16,
-                            color: customer.isActive ? Colors.green : Colors.grey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            customer.isActive ? 'Active' : 'Inactive',
-                            style: TextStyle(
-                              color: customer.isActive ? Colors.green : Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
+                      const SizedBox(width: 4),
+                      Text(
                         customer.type.displayName,
-                        style: TextStyle(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ),
-                    if (customer.isVerified) ...[
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 16),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                          horizontal: 8,
+                          vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
+                          color: customer.isActive
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.verified,
-                              size: 16,
-                              color: Colors.blue,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Verified',
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          customer.isActive ? 'Active' : 'Inactive',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: customer.isActive ? Colors.green : Colors.red,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Statistics Cards
-                _buildStatisticsCards(customer),
-
-                const SizedBox(height: 24),
-
-                // Contact Information
-                _buildSectionCard(
-                  title: 'Contact Information',
-                  icon: Icons.contact_phone,
-                  child: _buildContactInfo(customer),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Address Information
-                _buildSectionCard(
-                  title: 'Address',
-                  icon: Icons.location_on,
-                  child: _buildAddressInfo(customer.address),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Business Information
-                if (customer.businessInfo != null)
-                  Column(
-                    children: [
-                      _buildSectionCard(
-                        title: 'Business Information',
-                        icon: Icons.business,
-                        child: _buildBusinessInfo(customer.businessInfo!),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
                   ),
-
-                // Preferences
-                _buildSectionCard(
-                  title: 'Preferences',
-                  icon: Icons.settings,
-                  child: _buildPreferences(customer.preferences),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Notes and Tags
-                if (customer.notes != null || customer.tags.isNotEmpty)
-                  _buildSectionCard(
-                    title: 'Notes & Tags',
-                    icon: Icons.note,
-                    child: _buildNotesAndTags(customer),
-                  ),
-
-                const SizedBox(height: 32),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatisticsCards(Customer customer) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            title: 'Total Orders',
-            value: customer.totalOrders.toString(),
-            icon: Icons.shopping_bag,
-            color: Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            title: 'Total Spent',
-            value: 'RM ${customer.totalSpent.toStringAsFixed(0)}',
-            icon: Icons.attach_money,
-            color: Colors.green,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            title: 'Avg Order',
-            value: 'RM ${customer.averageOrderValue.toStringAsFixed(0)}',
-            icon: Icons.trending_up,
-            color: Colors.orange,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -375,218 +188,480 @@ class CustomerDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
+  Widget _buildDesktopLayout(BuildContext context, Customer customer, WidgetRef ref) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              _buildContactInfoCard(context, customer),
+              const SizedBox(height: 16),
+              _buildAddressCard(context, customer),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          flex: 1,
+          child: Column(
+            children: [
+              _buildStatsCard(context, customer),
+              const SizedBox(height: 16),
+              _buildTagsCard(context, customer, ref),
+              if (customer.notes != null) ...[
+                const SizedBox(height: 16),
+                _buildNotesCard(context, customer),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context, Customer customer, WidgetRef ref) {
+    return Column(
+      children: [
+        _buildContactInfoCard(context, customer),
+        const SizedBox(height: 16),
+        _buildAddressCard(context, customer),
+        const SizedBox(height: 16),
+        _buildStatsCard(context, customer),
+        const SizedBox(height: 16),
+        _buildTagsCard(context, customer, ref),
+        if (customer.notes != null) ...[
+          const SizedBox(height: 16),
+          _buildNotesCard(context, customer),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildContactInfoCard(BuildContext context, Customer customer) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(icon, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            Text(
+              'Contact Information',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
-            child,
+            _buildInfoRow(Icons.email, 'Email', customer.email),
+            _buildInfoRow(Icons.phone, 'Phone', customer.phoneNumber),
+            if (customer.alternatePhoneNumber != null)
+              _buildInfoRow(Icons.phone_android, 'Alternate Phone', customer.alternatePhoneNumber!),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildContactInfo(Customer customer) {
-    return Column(
-      children: [
-        _buildInfoRow('Contact Person', customer.contactPersonName),
-        _buildInfoRow('Email', customer.email),
-        _buildInfoRow('Phone', customer.phoneNumber),
-        if (customer.alternatePhoneNumber != null)
-          _buildInfoRow('Alternate Phone', customer.alternatePhoneNumber!),
-      ],
-    );
-  }
-
-  Widget _buildAddressInfo(CustomerAddress address) {
-    return Column(
-      children: [
-        _buildInfoRow('Street', address.street),
-        _buildInfoRow('City', address.city),
-        _buildInfoRow('State', address.state),
-        _buildInfoRow('Postcode', address.postcode),
-        if (address.buildingName != null)
-          _buildInfoRow('Building', address.buildingName!),
-        if (address.floor != null)
-          _buildInfoRow('Floor', address.floor!),
-        if (address.deliveryInstructions != null)
-          _buildInfoRow('Delivery Instructions', address.deliveryInstructions!),
-      ],
-    );
-  }
-
-  Widget _buildBusinessInfo(CustomerBusinessInfo businessInfo) {
-    return Column(
-      children: [
-        if (businessInfo.companyRegistrationNumber != null)
-          _buildInfoRow('Registration No.', businessInfo.companyRegistrationNumber!),
-        if (businessInfo.taxId != null)
-          _buildInfoRow('Tax ID', businessInfo.taxId!),
-        _buildInfoRow('Industry', businessInfo.industry),
-        _buildInfoRow('Employees', businessInfo.employeeCount.toString()),
-        if (businessInfo.website != null)
-          _buildInfoRow('Website', businessInfo.website!),
-        if (businessInfo.businessHours.isNotEmpty)
-          _buildInfoRow('Business Hours', businessInfo.businessHours.join(', ')),
-      ],
-    );
-  }
-
-  Widget _buildPreferences(CustomerPreferences preferences) {
-    return Column(
-      children: [
-        if (preferences.preferredCuisines.isNotEmpty)
-          _buildInfoRow('Preferred Cuisines', preferences.preferredCuisines.join(', ')),
-        if (preferences.dietaryRestrictions.isNotEmpty)
-          _buildInfoRow('Dietary Restrictions', preferences.dietaryRestrictions.join(', ')),
-        if (preferences.halalOnly)
-          _buildInfoRow('Halal Only', 'Yes'),
-        if (preferences.vegetarianOptions)
-          _buildInfoRow('Vegetarian Options', 'Required'),
-        _buildInfoRow(
-          'Budget Range',
-          'RM ${preferences.budgetRangeMin} - RM ${preferences.budgetRangeMax}',
+  Widget _buildAddressCard(BuildContext context, Customer customer) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Address',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow(Icons.location_on, 'Address', customer.address.fullAddress),
+          ],
         ),
-        if (preferences.preferredDeliveryTimes.isNotEmpty)
-          _buildInfoRow(
-            'Preferred Delivery Times',
-            preferences.preferredDeliveryTimes.join(', '),
-          ),
-      ],
+      ),
     );
   }
 
-  Widget _buildNotesAndTags(Customer customer) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (customer.notes != null) ...[
-          const Text(
-            'Notes:',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          Text(customer.notes!),
-          const SizedBox(height: 16),
-        ],
-        if (customer.tags.isNotEmpty) ...[
-          const Text(
-            'Tags:',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: customer.tags.map((tag) {
-              return Chip(
-                label: Text(tag),
-                backgroundColor: Colors.grey.withValues(alpha: 0.1),
-              );
-            }).toList(),
-          ),
-        ],
-      ],
+  Widget _buildStatsCard(BuildContext context, Customer customer) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Statistics',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildStatRow('Total Orders', customer.totalOrders.toString()),
+            _buildStatRow('Total Spent', 'RM ${customer.totalSpent.toStringAsFixed(2)}'),
+            _buildStatRow('Average Order', 'RM ${customer.averageOrderValue.toStringAsFixed(2)}'),
+            _buildStatRow('Last Order', customer.lastOrderDate != null ? _formatDate(customer.lastOrderDate!) : 'No orders yet'),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildTagsCard(BuildContext context, Customer customer, WidgetRef ref) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Tags',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (customer.tags.isEmpty)
+              Text(
+                'No tags added',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: customer.tags.map((tag) {
+                  return Chip(
+                    label: Text(tag),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () => _removeTag(context, ref, tag),
+                  );
+                }).toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotesCard(BuildContext context, Customer customer) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Notes',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              customer.notes ?? '',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
-              ),
-            ),
-          ),
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(value),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _handleAction(BuildContext context, WidgetRef ref, String action, Customer customer) {
-    switch (action) {
-      case 'edit':
-        context.push('/sales-agent/customers/${customer.id}/edit');
-        break;
-      case 'orders':
-        // TODO: Navigate to customer orders
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Customer orders view coming soon!')),
-        );
-        break;
-      case 'create_order':
-        // TODO: Navigate to create order with pre-selected customer
-        context.push('/sales-agent/create-order');
-        break;
-      case 'activate':
-      case 'deactivate':
-        _toggleCustomerStatus(context, ref, customer);
-        break;
+  Widget _buildStatRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotFound(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.person_off,
+            size: 64,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Customer not found',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.pop(),
+            child: const Text('Go Back'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading customer',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Trigger a refresh by invalidating the provider
+                // Note: We need to use a ref here, but since this is a ConsumerWidget,
+                // we'll need to pass the ref from the build method
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getTypeIcon(CustomerType type) {
+    switch (type) {
+      case CustomerType.corporate:
+        return Icons.business;
+      case CustomerType.school:
+        return Icons.school;
+      case CustomerType.hospital:
+        return Icons.local_hospital;
+      case CustomerType.government:
+        return Icons.account_balance;
+      case CustomerType.event:
+        return Icons.event;
+      case CustomerType.catering:
+        return Icons.restaurant;
+      case CustomerType.other:
+        return Icons.business_center;
     }
   }
 
-  void _toggleCustomerStatus(BuildContext context, WidgetRef ref, Customer customer) async {
-    final success = await ref.read(customersProvider.notifier).updateCustomer(
-      customerId: customer.id,
-      isActive: !customer.isActive,
-    );
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
 
-    if (success != null) {
-      // Refresh the customer data
-      ref.invalidate(customerProvider(customer.id));
-
-      // Show success message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Customer ${customer.isActive ? 'deactivated' : 'activated'} successfully',
-            ),
-          ),
-        );
-      }
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
     } else {
-      // Show error message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update customer status'),
-            backgroundColor: Colors.red,
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  void _showDeleteDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Customer'),
+        content: const Text('Are you sure you want to delete this customer? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
-        );
-      }
+          TextButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              navigator.pop();
+
+              final success = await ref.read(customerProvider.notifier).deleteCustomer(customerId);
+              if (success && context.mounted) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Customer deleted successfully')),
+                );
+                context.pop(); // Go back to customers list
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddNoteDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Note'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'Enter note...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              final note = controller.text.trim();
+
+              if (note.isNotEmpty) {
+                navigator.pop();
+                final success = await ref.read(customerProvider.notifier).addNote(customerId, note);
+                if (success && context.mounted) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Note added successfully')),
+                  );
+                  ref.invalidate(customerByIdProvider(customerId));
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddTagDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Tag'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter tag...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              final tag = controller.text.trim();
+
+              if (tag.isNotEmpty) {
+                navigator.pop();
+                final success = await ref.read(customerProvider.notifier).addTag(customerId, tag);
+                if (success && context.mounted) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Tag added successfully')),
+                  );
+                  ref.invalidate(customerByIdProvider(customerId));
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeTag(BuildContext context, WidgetRef ref, String tag) async {
+    final success = await ref.read(customerProvider.notifier).removeTag(customerId, tag);
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tag removed successfully')),
+      );
+      ref.invalidate(customerByIdProvider(customerId));
     }
   }
 }

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flutter Auth Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        .result { margin-top: 20px; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flutter Auth Configuration Test</h1>
+        <p>Testing the same Supabase configuration that Flutter app uses</p>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="test@gigaeats.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="Test123!">
+        </div>
+        
+        <button onclick="testSignIn()">Test Sign In</button>
+        <button onclick="testConfig()">Test Configuration</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Use the same configuration as Flutter app
+        const supabaseUrl = 'https://abknoalhfltlhhdbclpv.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFia25vYWxoZmx0bGhoZGJjbHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDIxOTEsImV4cCI6MjA2MzkxODE5MX0.NAThyz5_xSTkWX7pynS7APPFZUnOc8DyjMN2K-cTt-g';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+            console.log(message);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testConfig() {
+            clearResults();
+            log('Testing Supabase configuration...', 'info');
+            log(`URL: ${supabaseUrl}`, 'info');
+            log(`Key: ${supabaseKey.substring(0, 20)}...`, 'info');
+            
+            try {
+                // Test basic connection
+                const { data, error } = await supabaseClient.auth.getSession();
+                if (error) {
+                    log(`Configuration test failed: ${error.message}`, 'error');
+                } else {
+                    log('Configuration test successful - Supabase client initialized', 'success');
+                    log(`Current session: ${data.session ? 'Active' : 'None'}`, 'info');
+                }
+            } catch (e) {
+                log(`Configuration test error: ${e.message}`, 'error');
+            }
+        }
+
+        async function testSignIn() {
+            clearResults();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log(`Testing sign-in for: ${email}`, 'info');
+            
+            try {
+                // Step 1: Sign in
+                log('Step 1: Attempting sign-in...', 'info');
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (authError) {
+                    log(`❌ Sign-in failed: ${authError.message}`, 'error');
+                    return;
+                }
+                
+                log('✅ Sign-in successful!', 'success');
+                log(`User ID: ${authData.user.id}`, 'info');
+                log(`Email: ${authData.user.email}`, 'info');
+                
+                // Step 2: Get user profile
+                log('Step 2: Fetching user profile...', 'info');
+                const { data: profileData, error: profileError } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('supabase_user_id', authData.user.id)
+                    .single();
+                
+                if (profileError) {
+                    log(`❌ Profile fetch failed: ${profileError.message}`, 'error');
+                    return;
+                }
+                
+                log('✅ Profile fetch successful!', 'success');
+                log(`Full Name: ${profileData.full_name}`, 'info');
+                log(`Role: ${profileData.role}`, 'info');
+                log(`Phone: ${profileData.phone_number || 'Not set'}`, 'info');
+                log(`Verified: ${profileData.is_verified}`, 'info');
+                log(`Active: ${profileData.is_active}`, 'info');
+                
+                // Step 3: Test sign out
+                log('Step 3: Testing sign out...', 'info');
+                const { error: signOutError } = await supabaseClient.auth.signOut();
+                
+                if (signOutError) {
+                    log(`❌ Sign out failed: ${signOutError.message}`, 'error');
+                } else {
+                    log('✅ Sign out successful!', 'success');
+                }
+                
+                log('🎉 All tests completed successfully!', 'success');
+                
+            } catch (e) {
+                log(`❌ Unexpected error: ${e.message}`, 'error');
+            }
+        }
+
+        // Test configuration on page load
+        window.onload = function() {
+            testConfig();
+        };
+    </script>
+</body>
+</html>

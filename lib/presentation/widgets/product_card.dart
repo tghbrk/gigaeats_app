@@ -35,7 +35,7 @@ class ProductCard extends StatelessWidget {
               width: double.infinity,
               child: Stack(
                 children: [
-                  product.imageUrl != null
+                  product.imageUrl != null && product.imageUrl!.isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: product.imageUrl!,
                           fit: BoxFit.cover,
@@ -47,7 +47,11 @@ class ProductCard extends StatelessWidget {
                               child: CircularProgressIndicator(),
                             ),
                           ),
-                          errorWidget: (context, url, error) => _buildPlaceholderImage(theme),
+                          errorWidget: (context, url, error) {
+                            debugPrint('ProductCard: Image load error for ${product.name}: $error');
+                            debugPrint('ProductCard: Failed URL: $url');
+                            return _buildPlaceholderImage(theme);
+                          },
                         )
                       : _buildPlaceholderImage(theme),
 
@@ -58,24 +62,24 @@ class ProductCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (product.isHalal)
+                        if (product.safeIsHalal)
                           _buildBadge('HALAL', Colors.green, Colors.white),
-                        if (product.isVegetarian)
+                        if (product.safeIsVegetarian)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: _buildBadge('VEG', Colors.orange, Colors.white),
                           ),
-                        if (product.isSpicy)
+                        if (product.safeIsSpicy)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: _buildBadge('🌶️ ${product.spicyLevel}', Colors.red, Colors.white),
+                            child: _buildBadge('🌶️ ${product.safeSpicyLevel}', Colors.red, Colors.white),
                           ),
                       ],
                     ),
                   ),
 
                   // Featured Badge
-                  if (product.isFeatured)
+                  if (product.safeIsFeatured)
                     Positioned(
                       top: 8,
                       right: 8,
@@ -104,7 +108,7 @@ class ProductCard extends StatelessWidget {
 
                   // Description
                   Text(
-                    product.description,
+                    product.safeDescription,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -117,7 +121,7 @@ class ProductCard extends StatelessWidget {
                   // Rating and Category
                   Row(
                     children: [
-                      if (product.rating > 0) ...[
+                      if (product.safeRating > 0) ...[
                         Icon(
                           Icons.star,
                           size: 14,
@@ -125,7 +129,7 @@ class ProductCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          product.rating.toStringAsFixed(1),
+                          product.safeRating.toStringAsFixed(1),
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -272,10 +276,14 @@ class ProductListTile extends StatelessWidget {
                       color: theme.colorScheme.surfaceContainerHighest,
                       child: const Icon(Icons.fastfood),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: const Icon(Icons.fastfood),
-                    ),
+                    errorWidget: (context, url, error) {
+                      debugPrint('ProductListTile: Image load error for ${product.name}: $error');
+                      debugPrint('ProductListTile: Failed URL: $url');
+                      return Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.fastfood),
+                      );
+                    },
                   )
                 : Container(
                     color: theme.colorScheme.surfaceContainerHighest,
@@ -295,7 +303,7 @@ class ProductListTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              product.description,
+              product.safeDescription,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall,
@@ -311,7 +319,7 @@ class ProductListTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (product.isHalal)
+                if (product.safeIsHalal)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(

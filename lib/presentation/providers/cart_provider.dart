@@ -175,7 +175,7 @@ class CartNotifier extends StateNotifier<CartState> {
         id: _uuid.v4(),
         productId: product.id,
         name: product.name,
-        description: product.description,
+        description: product.safeDescription,
         unitPrice: product.pricing.effectivePrice,
         quantity: quantity,
         imageUrl: product.imageUrl ?? (product.galleryImages.isNotEmpty ? product.galleryImages.first : null),

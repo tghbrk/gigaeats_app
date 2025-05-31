@@ -6,45 +6,74 @@ part 'vendor.g.dart';
 @JsonSerializable()
 class Vendor extends Equatable {
   final String id;
+  @JsonKey(name: 'business_name')
   final String businessName;
-  final String ownerName;
-  final String email;
-  final String phoneNumber;
-  final String description;
-  final VendorAddress address;
+  @JsonKey(name: 'user_id')
+  final String? userId;
+  @JsonKey(name: 'business_registration_number')
+  final String businessRegistrationNumber;
+  @JsonKey(name: 'business_address')
+  final String businessAddress;
+  @JsonKey(name: 'business_type')
+  final String businessType;
+  @JsonKey(name: 'cuisine_types')
   final List<String> cuisineTypes;
-  final VendorBusinessInfo businessInfo;
-  final VendorSettings settings;
-  final double rating;
-  final int totalReviews;
-  final bool isActive;
-  final bool isVerified;
+  @JsonKey(name: 'is_halal_certified')
   final bool isHalalCertified;
-  final String? profileImageUrl;
+  @JsonKey(name: 'halal_certification_number')
+  final String? halalCertificationNumber;
+  final String? description;
+  final double rating;
+  @JsonKey(name: 'total_reviews')
+  final int totalReviews;
+  @JsonKey(name: 'total_orders')
+  final int totalOrders;
+  @JsonKey(name: 'is_active')
+  final bool isActive;
+  @JsonKey(name: 'is_verified')
+  final bool isVerified;
+  @JsonKey(name: 'cover_image_url')
   final String? coverImageUrl;
+  @JsonKey(name: 'gallery_images')
   final List<String> galleryImages;
+  @JsonKey(name: 'business_hours')
+  final Map<String, dynamic>? businessHours;
+  @JsonKey(name: 'service_areas')
+  final List<String>? serviceAreas;
+  @JsonKey(name: 'minimum_order_amount')
+  final double? minimumOrderAmount;
+  @JsonKey(name: 'delivery_fee')
+  final double? deliveryFee;
+  @JsonKey(name: 'free_delivery_threshold')
+  final double? freeDeliveryThreshold;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
 
   const Vendor({
     required this.id,
     required this.businessName,
-    required this.ownerName,
-    required this.email,
-    required this.phoneNumber,
-    required this.description,
-    required this.address,
+    this.userId,
+    required this.businessRegistrationNumber,
+    required this.businessAddress,
+    required this.businessType,
     required this.cuisineTypes,
-    required this.businessInfo,
-    required this.settings,
+    this.isHalalCertified = false,
+    this.halalCertificationNumber,
+    this.description,
     this.rating = 0.0,
     this.totalReviews = 0,
+    this.totalOrders = 0,
     this.isActive = true,
     this.isVerified = false,
-    this.isHalalCertified = false,
-    this.profileImageUrl,
     this.coverImageUrl,
     this.galleryImages = const [],
+    this.businessHours,
+    this.serviceAreas,
+    this.minimumOrderAmount,
+    this.deliveryFee,
+    this.freeDeliveryThreshold,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -55,44 +84,52 @@ class Vendor extends Equatable {
   Vendor copyWith({
     String? id,
     String? businessName,
-    String? ownerName,
-    String? email,
-    String? phoneNumber,
-    String? description,
-    VendorAddress? address,
+    String? userId,
+    String? businessRegistrationNumber,
+    String? businessAddress,
+    String? businessType,
     List<String>? cuisineTypes,
-    VendorBusinessInfo? businessInfo,
-    VendorSettings? settings,
+    bool? isHalalCertified,
+    String? halalCertificationNumber,
+    String? description,
     double? rating,
     int? totalReviews,
+    int? totalOrders,
     bool? isActive,
     bool? isVerified,
-    bool? isHalalCertified,
-    String? profileImageUrl,
     String? coverImageUrl,
     List<String>? galleryImages,
+    Map<String, dynamic>? businessHours,
+    List<String>? serviceAreas,
+    double? minimumOrderAmount,
+    double? deliveryFee,
+    double? freeDeliveryThreshold,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return Vendor(
       id: id ?? this.id,
       businessName: businessName ?? this.businessName,
-      ownerName: ownerName ?? this.ownerName,
-      email: email ?? this.email,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      description: description ?? this.description,
-      address: address ?? this.address,
+      userId: userId ?? this.userId,
+      businessRegistrationNumber: businessRegistrationNumber ?? this.businessRegistrationNumber,
+      businessAddress: businessAddress ?? this.businessAddress,
+      businessType: businessType ?? this.businessType,
       cuisineTypes: cuisineTypes ?? this.cuisineTypes,
-      businessInfo: businessInfo ?? this.businessInfo,
-      settings: settings ?? this.settings,
+      isHalalCertified: isHalalCertified ?? this.isHalalCertified,
+      halalCertificationNumber: halalCertificationNumber ?? this.halalCertificationNumber,
+      description: description ?? this.description,
       rating: rating ?? this.rating,
       totalReviews: totalReviews ?? this.totalReviews,
+      totalOrders: totalOrders ?? this.totalOrders,
       isActive: isActive ?? this.isActive,
       isVerified: isVerified ?? this.isVerified,
-      isHalalCertified: isHalalCertified ?? this.isHalalCertified,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       galleryImages: galleryImages ?? this.galleryImages,
+      businessHours: businessHours ?? this.businessHours,
+      serviceAreas: serviceAreas ?? this.serviceAreas,
+      minimumOrderAmount: minimumOrderAmount ?? this.minimumOrderAmount,
+      deliveryFee: deliveryFee ?? this.deliveryFee,
+      freeDeliveryThreshold: freeDeliveryThreshold ?? this.freeDeliveryThreshold,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -102,25 +139,70 @@ class Vendor extends Equatable {
   List<Object?> get props => [
         id,
         businessName,
-        ownerName,
-        email,
-        phoneNumber,
-        description,
-        address,
+        userId,
+        businessRegistrationNumber,
+        businessAddress,
+        businessType,
         cuisineTypes,
-        businessInfo,
-        settings,
+        isHalalCertified,
+        halalCertificationNumber,
+        description,
         rating,
         totalReviews,
+        totalOrders,
         isActive,
         isVerified,
-        isHalalCertified,
-        profileImageUrl,
         coverImageUrl,
         galleryImages,
+        businessHours,
+        serviceAreas,
+        minimumOrderAmount,
+        deliveryFee,
+        freeDeliveryThreshold,
         createdAt,
         updatedAt,
       ];
+
+  // Helper getters for backward compatibility with UI components
+  String get fullAddress => businessAddress;
+
+  // Create a simple address object for compatibility
+  VendorAddress get address => VendorAddress(
+    street: businessAddress,
+    city: serviceAreas?.isNotEmpty == true ? serviceAreas!.first : 'Unknown',
+    state: 'Selangor', // Default for Malaysia
+    postcode: '50000', // Default
+  );
+
+  // Create a simple business info object for compatibility
+  VendorBusinessInfo get businessInfo => VendorBusinessInfo(
+    ssmNumber: businessRegistrationNumber,
+    halalCertNumber: halalCertificationNumber,
+    minimumOrderAmount: minimumOrderAmount ?? 0.0,
+    deliveryRadius: 10.0, // Default
+    paymentMethods: ['Cash', 'Online Banking'], // Default
+    operatingHours: VendorOperatingHours(
+      schedule: businessHours != null ?
+        {
+          'monday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+          'tuesday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+          'wednesday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+          'thursday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+          'friday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+          'saturday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+          'sunday': DaySchedule(isOpen: false),
+        } : {},
+    ),
+  );
+
+  // Create default settings for compatibility
+  VendorSettings get settings => VendorSettings();
+
+  // Placeholder fields for backward compatibility
+  String get ownerName => 'Owner'; // Placeholder
+  String get email => '${userId ?? 'unknown'}@example.com'; // Placeholder
+  String get phoneNumber => '+60123456789'; // Placeholder
+  String? get profileImageUrl => null; // Not available in current schema
 }
 
 @JsonSerializable()
@@ -208,21 +290,33 @@ class VendorOperatingHours extends Equatable {
 
 @JsonSerializable()
 class DaySchedule extends Equatable {
-  final bool isOpen;
+  @JsonKey(defaultValue: false)
+  final bool? isOpen;
   final String? openTime;
   final String? closeTime;
   final String? breakStart;
   final String? breakEnd;
 
   const DaySchedule({
-    required this.isOpen,
+    this.isOpen,
     this.openTime,
     this.closeTime,
     this.breakStart,
     this.breakEnd,
   });
 
-  factory DaySchedule.fromJson(Map<String, dynamic> json) => _$DayScheduleFromJson(json);
+  // Helper getter for safe access
+  bool get safeIsOpen => isOpen ?? false;
+
+  factory DaySchedule.fromJson(Map<String, dynamic> json) {
+    return DaySchedule(
+      isOpen: json['isOpen'] as bool?,
+      openTime: json['openTime'] as String?,
+      closeTime: json['closeTime'] as String?,
+      breakStart: json['breakStart'] as String?,
+      breakEnd: json['breakEnd'] as String?,
+    );
+  }
   Map<String, dynamic> toJson() => _$DayScheduleToJson(this);
 
   @override

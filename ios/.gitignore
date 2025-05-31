@@ -24,8 +24,15 @@ Flutter/app.flx
 Flutter/app.zip
 Flutter/flutter_assets/
 Flutter/flutter_export_environment.sh
+Flutter/engine/
 ServiceDefinitions.json
 Runner/GeneratedPluginRegistrant.*
+Runner.xcworkspace/
+Runner.xcodeproj/project.xcworkspace/
+Runner.xcodeproj/xcuserdata/
+Runner.xcworkspace/xcuserdata/
+Podfile.lock
+Podfile.symlinks/
 
 # Exceptions to above rules.
 !default.mode1v3

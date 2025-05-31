@@ -8,56 +8,64 @@ part of 'vendor.dart';
 
 Vendor _$VendorFromJson(Map<String, dynamic> json) => Vendor(
   id: json['id'] as String,
-  businessName: json['businessName'] as String,
-  ownerName: json['ownerName'] as String,
-  email: json['email'] as String,
-  phoneNumber: json['phoneNumber'] as String,
-  description: json['description'] as String,
-  address: VendorAddress.fromJson(json['address'] as Map<String, dynamic>),
-  cuisineTypes: (json['cuisineTypes'] as List<dynamic>)
+  businessName: json['business_name'] as String,
+  userId: json['user_id'] as String?,
+  businessRegistrationNumber: json['business_registration_number'] as String,
+  businessAddress: json['business_address'] as String,
+  businessType: json['business_type'] as String,
+  cuisineTypes: (json['cuisine_types'] as List<dynamic>)
       .map((e) => e as String)
       .toList(),
-  businessInfo: VendorBusinessInfo.fromJson(
-    json['businessInfo'] as Map<String, dynamic>,
-  ),
-  settings: VendorSettings.fromJson(json['settings'] as Map<String, dynamic>),
+  isHalalCertified: json['is_halal_certified'] as bool? ?? false,
+  halalCertificationNumber: json['halal_certification_number'] as String?,
+  description: json['description'] as String?,
   rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-  totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 0,
-  isActive: json['isActive'] as bool? ?? true,
-  isVerified: json['isVerified'] as bool? ?? false,
-  isHalalCertified: json['isHalalCertified'] as bool? ?? false,
-  profileImageUrl: json['profileImageUrl'] as String?,
-  coverImageUrl: json['coverImageUrl'] as String?,
+  totalReviews: (json['total_reviews'] as num?)?.toInt() ?? 0,
+  totalOrders: (json['total_orders'] as num?)?.toInt() ?? 0,
+  isActive: json['is_active'] as bool? ?? true,
+  isVerified: json['is_verified'] as bool? ?? false,
+  coverImageUrl: json['cover_image_url'] as String?,
   galleryImages:
-      (json['galleryImages'] as List<dynamic>?)
+      (json['gallery_images'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList() ??
       const [],
-  createdAt: DateTime.parse(json['createdAt'] as String),
-  updatedAt: DateTime.parse(json['updatedAt'] as String),
+  businessHours: json['business_hours'] as Map<String, dynamic>?,
+  serviceAreas: (json['service_areas'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  minimumOrderAmount: (json['minimum_order_amount'] as num?)?.toDouble(),
+  deliveryFee: (json['delivery_fee'] as num?)?.toDouble(),
+  freeDeliveryThreshold: (json['free_delivery_threshold'] as num?)?.toDouble(),
+  createdAt: DateTime.parse(json['created_at'] as String),
+  updatedAt: DateTime.parse(json['updated_at'] as String),
 );
 
 Map<String, dynamic> _$VendorToJson(Vendor instance) => <String, dynamic>{
   'id': instance.id,
-  'businessName': instance.businessName,
-  'ownerName': instance.ownerName,
-  'email': instance.email,
-  'phoneNumber': instance.phoneNumber,
+  'business_name': instance.businessName,
+  'user_id': instance.userId,
+  'business_registration_number': instance.businessRegistrationNumber,
+  'business_address': instance.businessAddress,
+  'business_type': instance.businessType,
+  'cuisine_types': instance.cuisineTypes,
+  'is_halal_certified': instance.isHalalCertified,
+  'halal_certification_number': instance.halalCertificationNumber,
   'description': instance.description,
-  'address': instance.address,
-  'cuisineTypes': instance.cuisineTypes,
-  'businessInfo': instance.businessInfo,
-  'settings': instance.settings,
   'rating': instance.rating,
-  'totalReviews': instance.totalReviews,
-  'isActive': instance.isActive,
-  'isVerified': instance.isVerified,
-  'isHalalCertified': instance.isHalalCertified,
-  'profileImageUrl': instance.profileImageUrl,
-  'coverImageUrl': instance.coverImageUrl,
-  'galleryImages': instance.galleryImages,
-  'createdAt': instance.createdAt.toIso8601String(),
-  'updatedAt': instance.updatedAt.toIso8601String(),
+  'total_reviews': instance.totalReviews,
+  'total_orders': instance.totalOrders,
+  'is_active': instance.isActive,
+  'is_verified': instance.isVerified,
+  'cover_image_url': instance.coverImageUrl,
+  'gallery_images': instance.galleryImages,
+  'business_hours': instance.businessHours,
+  'service_areas': instance.serviceAreas,
+  'minimum_order_amount': instance.minimumOrderAmount,
+  'delivery_fee': instance.deliveryFee,
+  'free_delivery_threshold': instance.freeDeliveryThreshold,
+  'created_at': instance.createdAt.toIso8601String(),
+  'updated_at': instance.updatedAt.toIso8601String(),
 };
 
 VendorAddress _$VendorAddressFromJson(Map<String, dynamic> json) =>
@@ -129,7 +137,7 @@ Map<String, dynamic> _$VendorOperatingHoursToJson(
 };
 
 DaySchedule _$DayScheduleFromJson(Map<String, dynamic> json) => DaySchedule(
-  isOpen: json['isOpen'] as bool,
+  isOpen: json['isOpen'] as bool? ?? false,
   openTime: json['openTime'] as String?,
   closeTime: json['closeTime'] as String?,
   breakStart: json['breakStart'] as String?,

@@ -52,34 +52,51 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkAuthenticationStatus() async {
+    print('SplashScreen: Starting authentication check...');
     // Wait for animation to complete
     await Future.delayed(const Duration(milliseconds: 2500));
 
     if (!mounted) return;
 
     try {
+      print('SplashScreen: Reading auth state...');
       // Check authentication state
       final authState = ref.read(authStateProvider);
+      print('SplashScreen: Auth state status: ${authState.status}');
+      print('SplashScreen: Auth state user: ${authState.user?.email}');
 
       if (authState.status == AuthStatus.authenticated && authState.user != null) {
         // User is authenticated, navigate to appropriate dashboard
+        print('SplashScreen: User authenticated, navigating to dashboard...');
         final dashboardRoute = AppRouter.getDashboardRoute(authState.user!.role);
+        print('SplashScreen: Dashboard route: $dashboardRoute');
         if (mounted) {
           context.go(dashboardRoute);
         }
-      } else {
+      } else if (authState.status == AuthStatus.unauthenticated) {
         // User is not authenticated, navigate to login
+        print('SplashScreen: User not authenticated, navigating to login...');
         if (mounted) {
           context.go(AppRoutes.login);
+        }
+      } else {
+        // Still loading or initial state, wait a bit more
+        print('SplashScreen: Auth state still loading, waiting...');
+        await Future.delayed(const Duration(milliseconds: 1000));
+        if (mounted) {
+          _checkAuthenticationStatus(); // Retry
         }
       }
     } catch (e) {
       // Error occurred, navigate to login
+      print('SplashScreen: Error during auth check: $e');
       if (mounted) {
         context.go(AppRoutes.login);
       }
     }
   }
+
+
 
   @override
   void dispose() {
@@ -144,7 +161,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 32),
+
+
 
                     // Loading Indicator
                     SizedBox(

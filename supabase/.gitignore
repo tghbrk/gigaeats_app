@@ -1,0 +1,18 @@
+# Supabase CLI temp files
+.temp/
+
+# Local environment files
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local

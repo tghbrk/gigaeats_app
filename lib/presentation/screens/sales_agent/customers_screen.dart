@@ -1,13 +1,15 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/customer.dart';
 import '../../providers/customer_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../widgets/customer_card.dart';
 import '../../widgets/search_bar_widget.dart';
-import '../../widgets/loading_widget.dart';
-import '../../widgets/error_widget.dart';
+
+import '../../../core/utils/responsive_utils.dart';
 
 class CustomersScreen extends ConsumerStatefulWidget {
   const CustomersScreen({super.key});
@@ -16,436 +18,291 @@ class CustomersScreen extends ConsumerStatefulWidget {
   ConsumerState<CustomersScreen> createState() => _CustomersScreenState();
 }
 
-class _CustomersScreenState extends ConsumerState<CustomersScreen>
-    with TickerProviderStateMixin {
+class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   final TextEditingController _searchController = TextEditingController();
-  late TabController _tabController;
-  
-  String _searchQuery = '';
   CustomerType? _selectedType;
   bool? _isActiveFilter;
+  Timer? _debounceTimer;
+  String _currentSearchQuery = '';
+
+  // Memoized filter parameters to prevent infinite rebuilds
+  Map<String, dynamic>? _cachedFilterParams;
+  String? _lastSearchQuery;
+  CustomerType? _lastSelectedType;
+  bool? _lastIsActiveFilter;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    
-    // Load customers on init
+    debugPrint('🔄 CustomersScreen: initState() called');
+
+    // Load customers when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadCustomers(refresh: true);
+      debugPrint('🔄 CustomersScreen: PostFrameCallback executed');
+      if (!kIsWeb) {
+        debugPrint('🔄 CustomersScreen: Mobile platform - loading customers via notifier');
+        // For mobile, use the notifier
+        ref.read(customerProvider.notifier).loadCustomers();
+      } else {
+        debugPrint('🔄 CustomersScreen: Web platform - provider will be watched automatically');
+      }
+      // For web, the provider will be watched automatically
     });
+  }
+
+  /// Get current filter parameters for web provider (memoized to prevent infinite rebuilds)
+  Map<String, dynamic> get _webFilterParams {
+    // Check if parameters have changed
+    if (_cachedFilterParams == null ||
+        _lastSearchQuery != _currentSearchQuery ||
+        _lastSelectedType != _selectedType ||
+        _lastIsActiveFilter != _isActiveFilter) {
+
+      debugPrint('🔍 CustomersScreen: _webFilterParams - parameters changed, rebuilding cache');
+      debugPrint('🔍 CustomersScreen: _currentSearchQuery = "$_currentSearchQuery" (was "$_lastSearchQuery")');
+      debugPrint('🔍 CustomersScreen: _selectedType = $_selectedType (was $_lastSelectedType)');
+      debugPrint('🔍 CustomersScreen: _isActiveFilter = $_isActiveFilter (was $_lastIsActiveFilter)');
+
+      // Update cached values
+      _lastSearchQuery = _currentSearchQuery;
+      _lastSelectedType = _selectedType;
+      _lastIsActiveFilter = _isActiveFilter;
+
+      // Build new parameters
+      _cachedFilterParams = {
+        'searchQuery': _currentSearchQuery.isNotEmpty ? _currentSearchQuery : null,
+        'type': _selectedType,
+        'isActive': _isActiveFilter,
+        'limit': 50,
+        'offset': 0,
+      };
+
+      debugPrint('🔍 CustomersScreen: New cached params: $_cachedFilterParams');
+    } else {
+      debugPrint('🔍 CustomersScreen: _webFilterParams - using cached parameters: $_cachedFilterParams');
+    }
+
+    return _cachedFilterParams!;
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
-    _tabController.dispose();
     super.dispose();
-  }
-
-  void _loadCustomers({bool refresh = false}) {
-    final authState = ref.read(authStateProvider);
-    final salesAgentId = authState.user?.id;
-
-    ref.read(customersProvider.notifier).loadCustomers(
-      searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
-      type: _selectedType,
-      salesAgentId: salesAgentId,
-      isActive: _isActiveFilter,
-      refresh: refresh,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final customerState = ref.watch(customersProvider);
+    debugPrint('🏗️ CustomersScreen: build() called');
+    debugPrint('🏗️ CustomersScreen: kIsWeb = $kIsWeb');
+
+    // Use platform-aware data fetching
+    if (kIsWeb) {
+      debugPrint('🏗️ CustomersScreen: Building web layout');
+      return _buildWebLayout();
+    } else {
+      debugPrint('🏗️ CustomersScreen: Building mobile layout');
+      return _buildMobileLayout();
+    }
+  }
+
+  Widget _buildWebLayout() {
+    debugPrint('🌐 CustomersScreen: _buildWebLayout() called');
+    debugPrint('🌐 CustomersScreen: About to watch webCustomersProvider with params: $_webFilterParams');
+
+    final customersAsync = ref.watch(webCustomersProvider(_webFilterParams));
+
+    debugPrint('🌐 CustomersScreen: webCustomersProvider watched, state: ${customersAsync.runtimeType}');
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Customers'),
-        elevation: 0,
         actions: [
           IconButton(
-            onPressed: () => _showFilterDialog(),
-            icon: const Icon(Icons.filter_list),
-            tooltip: 'Filter customers',
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              ref.invalidate(webCustomersProvider(_webFilterParams));
+            },
           ),
           IconButton(
-            onPressed: () => _loadCustomers(refresh: true),
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
+            icon: const Icon(Icons.filter_list),
+            onPressed: () => _showFilterBottomSheet(context),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          onTap: (index) {
-            setState(() {
-              switch (index) {
-                case 0:
-                  _selectedType = null;
-                  _isActiveFilter = null;
-                  break;
-                case 1:
-                  _selectedType = null;
-                  _isActiveFilter = true;
-                  break;
-                case 2:
-                  _selectedType = CustomerType.corporate;
-                  _isActiveFilter = null;
-                  break;
-                case 3:
-                  _selectedType = CustomerType.school;
-                  _isActiveFilter = null;
-                  break;
-              }
-            });
-            _loadCustomers(refresh: true);
-          },
-          tabs: const [
-            Tab(text: 'All'),
-            Tab(text: 'Active'),
-            Tab(text: 'Corporate'),
-            Tab(text: 'Schools'),
-          ],
-        ),
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: theme.colorScheme.surface,
-            child: SearchBarWidget(
-              controller: _searchController,
-              hintText: 'Search customers by name, email, or phone...',
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-                // Debounce search
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  if (_searchQuery == value) {
-                    _loadCustomers(refresh: true);
-                  }
-                });
-              },
-              onClear: () {
-                setState(() {
-                  _searchQuery = '';
-                });
-                _loadCustomers(refresh: true);
-              },
-            ),
-          ),
-
-          // Customer List
-          Expanded(
-            child: _buildCustomerList(customerState),
-          ),
-        ],
+      body: customersAsync.when(
+        data: (customers) => _buildCustomersList(customers),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _buildErrorState(error.toString()),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: "customers_add_customer_fab",
-        onPressed: () => _navigateToCreateCustomer(),
+        onPressed: () {
+          context.push('/sales-agent/customers/add');
+        },
         icon: const Icon(Icons.person_add),
         label: const Text('Add Customer'),
       ),
     );
   }
 
-  Widget _buildCustomerList(CustomerState customerState) {
-    if (customerState.isLoading && customerState.customers.isEmpty) {
-      return const LoadingWidget(message: 'Loading customers...');
-    }
+  Widget _buildMobileLayout() {
+    final customersState = ref.watch(customerProvider);
 
-    if (customerState.errorMessage != null && customerState.customers.isEmpty) {
-      return CustomErrorWidget(
-        message: customerState.errorMessage!,
-        onRetry: () => _loadCustomers(refresh: true),
-      );
-    }
-
-    if (customerState.customers.isEmpty) {
-      return _buildEmptyState();
-    }
-
-    return RefreshIndicator(
-      onRefresh: () async => _loadCustomers(refresh: true),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: customerState.customers.length + 
-                   (customerState.hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == customerState.customers.length) {
-            // Load more indicator
-            if (customerState.isLoading) {
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            } else {
-              // Load more button
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: ElevatedButton(
-                  onPressed: () => _loadCustomers(),
-                  child: const Text('Load More'),
-                ),
-              );
-            }
-          }
-
-          final customer = customerState.customers[index];
-          return _buildCustomerCard(customer);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Customers'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              ref.read(customerProvider.notifier).loadCustomers();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () => _showFilterBottomSheet(context),
+          ),
+        ],
+      ),
+      body: customersState.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : customersState.errorMessage != null
+              ? _buildErrorState(customersState.errorMessage!)
+              : _buildCustomersList(customersState.customers),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          context.push('/sales-agent/customers/add');
         },
+        icon: const Icon(Icons.person_add),
+        label: const Text('Add Customer'),
       ),
     );
   }
 
-  Widget _buildCustomerCard(Customer customer) {
-    final theme = Theme.of(context);
+  Widget _buildCustomersList(List<Customer> customers) {
+    if (customers.isEmpty) {
+      return _buildEmptyState();
+    }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _navigateToCustomerDetails(customer.id),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return RefreshIndicator(
+      onRefresh: () async {
+        if (kIsWeb) {
+          ref.invalidate(webCustomersProvider(_webFilterParams));
+        } else {
+          ref.read(customerProvider.notifier).loadCustomers();
+        }
+      },
+      child: ResponsiveContainer(
+        child: Column(
+          children: [
+            // Search and filters
+            Padding(
+              padding: context.responsivePadding,
+              child: Column(
                 children: [
-                  // Avatar
-                  CircleAvatar(
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    radius: 24,
-                    child: Text(
-                      customer.organizationName.substring(0, 1).toUpperCase(),
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
+                  SearchBarWidget(
+                    controller: _searchController,
+                    hintText: 'Search customers...',
+                    onChanged: _onSearchChanged,
+                    onClear: _onSearchCleared,
                   ),
-                  const SizedBox(width: 16),
-
-                  // Customer Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          customer.organizationName,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          customer.contactPersonName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          customer.phoneNumber,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Status and Actions
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: customer.isActive
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          customer.isActive ? 'Active' : 'Inactive',
-                          style: TextStyle(
-                            color: customer.isActive ? Colors.green : Colors.grey,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      PopupMenuButton<String>(
-                        onSelected: (value) => _handleCustomerAction(value, customer),
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'view',
-                            child: Row(
-                              children: [
-                                Icon(Icons.visibility),
-                                SizedBox(width: 8),
-                                Text('View Details'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit),
-                                SizedBox(width: 8),
-                                Text('Edit'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'orders',
-                            child: Row(
-                              children: [
-                                Icon(Icons.receipt_long),
-                                SizedBox(width: 8),
-                                Text('View Orders'),
-                              ],
-                            ),
-                          ),
-                          if (customer.isActive)
-                            const PopupMenuItem(
-                              value: 'deactivate',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.block, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Deactivate', style: TextStyle(color: Colors.red)),
-                                ],
-                              ),
-                            )
-                          else
-                            const PopupMenuItem(
-                              value: 'activate',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: Colors.green),
-                                  SizedBox(width: 8),
-                                  Text('Activate', style: TextStyle(color: Colors.green)),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  if (_hasActiveFilters()) ...[
+                    const SizedBox(height: 8),
+                    _buildActiveFilters(),
+                  ],
                 ],
               ),
-
-              const SizedBox(height: 12),
-
-              // Customer Stats
-              Row(
-                children: [
-                  _buildStatChip(
-                    icon: Icons.shopping_bag,
-                    label: '${customer.totalOrders} orders',
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildStatChip(
-                    icon: Icons.attach_money,
-                    label: 'RM ${customer.totalSpent.toStringAsFixed(0)}',
-                    color: Colors.green,
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      customer.type.displayName,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            
+            // Customer list
+            Expanded(
+              child: context.isDesktop
+                  ? _buildDesktopCustomersList(customers)
+                  : _buildMobileCustomersList(customers),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildStatChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+  Widget _buildMobileCustomersList(List<Customer> customers) {
+    return ListView.builder(
+      padding: context.responsivePadding,
+      itemCount: customers.length,
+      itemBuilder: (context, index) {
+        final customer = customers[index];
+        return CustomerCard(
+          customer: customer,
+          onEdit: () => _editCustomer(customer),
+          onDelete: () => _deleteCustomer(customer),
+        );
+      },
     );
+  }
+
+  Widget _buildDesktopCustomersList(List<Customer> customers) {
+    return GridView.builder(
+      padding: context.responsivePadding,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: context.gridColumns,
+        childAspectRatio: _getCardAspectRatio(context),
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: customers.length,
+      itemBuilder: (context, index) {
+        final customer = customers[index];
+        return CustomerCard(
+          customer: customer,
+          onEdit: () => _editCustomer(customer),
+          onDelete: () => _deleteCustomer(customer),
+        );
+      },
+    );
+  }
+
+  double _getCardAspectRatio(BuildContext context) {
+    // Adjust aspect ratio based on grid columns to ensure proper card height
+    final columns = context.gridColumns;
+    if (columns >= 4) return 2.8; // Large desktop - more compact
+    if (columns == 3) return 3.2; // Desktop - balanced
+    return 2.5; // Tablet - taller cards
   }
 
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: context.responsivePadding,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.people_outline,
-              size: 80,
-              color: Colors.grey[400],
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
               'No customers found',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey[600],
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Start by adding your first customer',
+              'Add your first customer to get started',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => _navigateToCreateCustomer(),
+              onPressed: () {
+                context.push('/sales-agent/customers/add');
+              },
               icon: const Icon(Icons.person_add),
               label: const Text('Add Customer'),
             ),
@@ -455,71 +312,343 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen>
     );
   }
 
-  void _showFilterDialog() {
-    // TODO: Implement filter dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Filter dialog coming soon!')),
-    );
-  }
-
-  void _handleCustomerAction(String action, Customer customer) {
-    switch (action) {
-      case 'view':
-        _navigateToCustomerDetails(customer.id);
-        break;
-      case 'edit':
-        _navigateToEditCustomer(customer.id);
-        break;
-      case 'orders':
-        // TODO: Navigate to customer orders
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Customer orders view coming soon!')),
-        );
-        break;
-      case 'activate':
-      case 'deactivate':
-        _toggleCustomerStatus(customer);
-        break;
-    }
-  }
-
-  void _toggleCustomerStatus(Customer customer) async {
-    final success = await ref.read(customersProvider.notifier).updateCustomer(
-      customerId: customer.id,
-      isActive: !customer.isActive,
-    );
-
-    if (success != null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Customer ${customer.isActive ? 'deactivated' : 'activated'} successfully',
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Padding(
+        padding: context.responsivePadding,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
             ),
-          ),
-        );
-      }
+            const SizedBox(height: 16),
+            Text(
+              'Error loading customers',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                if (kIsWeb) {
+                  ref.invalidate(webCustomersProvider(_webFilterParams));
+                } else {
+                  ref.read(customerProvider.notifier).loadCustomers();
+                }
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveFilters() {
+    final chips = <Widget>[];
+
+    if (_selectedType != null) {
+      chips.add(
+        FilterChip(
+          label: Text(_selectedType!.displayName),
+          selected: true,
+          onSelected: (_) {},
+          onDeleted: () {
+            setState(() {
+              _selectedType = null;
+            });
+            _applyFilters();
+          },
+        ),
+      );
+    }
+
+    if (_isActiveFilter != null) {
+      chips.add(
+        FilterChip(
+          label: Text(_isActiveFilter! ? 'Active Only' : 'Inactive Only'),
+          selected: true,
+          onSelected: (_) {},
+          onDeleted: () {
+            setState(() {
+              _isActiveFilter = null;
+            });
+            _applyFilters();
+          },
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: chips,
+    );
+  }
+
+  bool _hasActiveFilters() {
+    return _selectedType != null || _isActiveFilter != null;
+  }
+
+  void _onSearchChanged(String query) {
+    debugPrint('🔍 CustomersScreen: _onSearchChanged called with query: "$query"');
+    debugPrint('🔍 CustomersScreen: Current _currentSearchQuery: "$_currentSearchQuery"');
+    debugPrint('🔍 CustomersScreen: kIsWeb = $kIsWeb');
+
+    if (kIsWeb) {
+      debugPrint('🔍 CustomersScreen: Web platform - setting up debounced search');
+
+      // Cancel previous timer
+      _debounceTimer?.cancel();
+      debugPrint('🔍 CustomersScreen: Previous timer cancelled');
+
+      // Set up new timer for debounced search
+      _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+        debugPrint('🔍 CustomersScreen: Debounce timer fired for query: "$query"');
+        if (mounted) {
+          debugPrint('🔍 CustomersScreen: Widget still mounted, calling setState');
+          setState(() {
+            _currentSearchQuery = query;
+            debugPrint('🔍 CustomersScreen: _currentSearchQuery updated to: "$_currentSearchQuery"');
+          });
+        } else {
+          debugPrint('🔍 CustomersScreen: Widget not mounted, skipping setState');
+        }
+      });
+      debugPrint('🔍 CustomersScreen: New debounce timer set');
     } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update customer status'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('🔍 CustomersScreen: Mobile platform - calling searchCustomers');
+      ref.read(customerProvider.notifier).searchCustomers(query);
     }
   }
 
-  void _navigateToCustomerDetails(String customerId) {
-    context.push('/sales-agent/customers/$customerId');
+  void _onSearchCleared() {
+    debugPrint('🧹 CustomersScreen: _onSearchCleared called');
+    _searchController.clear();
+
+    if (kIsWeb) {
+      debugPrint('🧹 CustomersScreen: Web platform - clearing search and invalidating cache');
+      _debounceTimer?.cancel();
+      _cachedFilterParams = null; // Invalidate cache
+      setState(() {
+        _currentSearchQuery = '';
+      });
+    } else {
+      debugPrint('🧹 CustomersScreen: Mobile platform - clearing search via _onSearchChanged');
+      _onSearchChanged('');
+    }
   }
 
-  void _navigateToEditCustomer(String customerId) {
-    context.push('/sales-agent/customers/$customerId/edit');
+  void _applyFilters() {
+    debugPrint('🔧 CustomersScreen: _applyFilters called');
+
+    if (kIsWeb) {
+      debugPrint('🔧 CustomersScreen: Web platform - invalidating cache and triggering rebuild');
+      // Invalidate cache to force new parameters
+      _cachedFilterParams = null;
+
+      // For web, trigger a rebuild with new filter parameters
+      setState(() {
+        // The _webFilterParams getter will include the updated filters
+      });
+    } else {
+      debugPrint('🔧 CustomersScreen: Mobile platform - applying filters via notifier');
+      final notifier = ref.read(customerProvider.notifier);
+      notifier.filterByType(_selectedType);
+      notifier.filterByActiveStatus(_isActiveFilter);
+    }
   }
 
-  void _navigateToCreateCustomer() {
-    context.push('/sales-agent/customers/create');
+  void _showFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => CustomerFiltersBottomSheet(
+        selectedType: _selectedType,
+        isActiveFilter: _isActiveFilter,
+        onTypeChanged: (type) {
+          setState(() {
+            _selectedType = type;
+          });
+          _applyFilters();
+        },
+        onActiveFilterChanged: (isActive) {
+          setState(() {
+            _isActiveFilter = isActive;
+          });
+          _applyFilters();
+        },
+        onClearFilters: () {
+          setState(() {
+            _selectedType = null;
+            _isActiveFilter = null;
+          });
+          _applyFilters();
+        },
+      ),
+    );
+  }
+
+  void _editCustomer(Customer customer) {
+    context.push('/sales-agent/customers/${customer.id}/edit');
+  }
+
+  void _deleteCustomer(Customer customer) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Customer'),
+        content: Text('Are you sure you want to delete ${customer.organizationName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              navigator.pop();
+              final success = await ref.read(customerProvider.notifier).deleteCustomer(customer.id);
+              if (success && mounted) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Customer deleted successfully')),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CustomerFiltersBottomSheet extends StatelessWidget {
+  final CustomerType? selectedType;
+  final bool? isActiveFilter;
+  final ValueChanged<CustomerType?> onTypeChanged;
+  final ValueChanged<bool?> onActiveFilterChanged;
+  final VoidCallback onClearFilters;
+
+  const CustomerFiltersBottomSheet({
+    super.key,
+    this.selectedType,
+    this.isActiveFilter,
+    required this.onTypeChanged,
+    required this.onActiveFilterChanged,
+    required this.onClearFilters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Filter Customers',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              TextButton(
+                onPressed: () {
+                  onClearFilters();
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Clear All'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Customer Type Filter
+          Text(
+            'Customer Type',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              FilterChip(
+                label: const Text('All Types'),
+                selected: selectedType == null,
+                onSelected: (_) {
+                  onTypeChanged(null);
+                  Navigator.of(context).pop();
+                },
+              ),
+              ...CustomerType.values.map((type) => FilterChip(
+                label: Text(type.displayName),
+                selected: selectedType == type,
+                onSelected: (_) {
+                  onTypeChanged(type);
+                  Navigator.of(context).pop();
+                },
+              )),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Active Status Filter
+          Text(
+            'Status',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              FilterChip(
+                label: const Text('All'),
+                selected: isActiveFilter == null,
+                onSelected: (_) {
+                  onActiveFilterChanged(null);
+                  Navigator.of(context).pop();
+                },
+              ),
+              FilterChip(
+                label: const Text('Active Only'),
+                selected: isActiveFilter == true,
+                onSelected: (_) {
+                  onActiveFilterChanged(true);
+                  Navigator.of(context).pop();
+                },
+              ),
+              FilterChip(
+                label: const Text('Inactive Only'),
+                selected: isActiveFilter == false,
+                onSelected: (_) {
+                  onActiveFilterChanged(false);
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
   }
 }

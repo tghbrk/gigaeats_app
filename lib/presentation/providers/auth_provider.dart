@@ -1,20 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../data/models/user.dart';
 import '../../data/models/user_role.dart';
-import '../../data/services/auth_service.dart';
+import '../../data/services/supabase_auth_service.dart';
 
 // Shared Preferences Provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
 });
 
-// Auth Service Provider
-final authServiceProvider = Provider<AuthService>((ref) {
+// Supabase Auth Service Provider
+final supabaseAuthServiceProvider = Provider<SupabaseAuthService>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  return AuthService(prefs: prefs);
+  return SupabaseAuthService(
+    prefs: prefs,
+  );
 });
 
 // Current User Provider
@@ -22,7 +26,7 @@ final currentUserProvider = StateProvider<User?>((ref) => null);
 
 // Authentication State Provider
 final authStateProvider = StateNotifierProvider<AuthStateNotifier, AuthState>((ref) {
-  final authService = ref.watch(authServiceProvider);
+  final authService = ref.watch(supabaseAuthServiceProvider);
   return AuthStateNotifier(authService);
 });
 
@@ -55,38 +59,74 @@ class AuthState {
 
 // Auth State Notifier
 class AuthStateNotifier extends StateNotifier<AuthState> {
-  final AuthService _authService;
+  final SupabaseAuthService _authService;
 
   AuthStateNotifier(this._authService) : super(const AuthState(status: AuthStatus.initial)) {
     _checkAuthStatus();
   }
 
   Future<void> _checkAuthStatus() async {
+    print('AuthStateNotifier: Starting auth status check...');
     state = state.copyWith(status: AuthStatus.loading);
 
     try {
-      if (_authService.isAuthenticated && _authService.userRole != null) {
-        // Create user object from Firebase data - in production this would come from your backend API
-        final user = User(
-          id: _authService.userId ?? '',
-          email: _authService.currentFirebaseUser?.email ?? '',
-          fullName: _authService.currentFirebaseUser?.displayName ?? 'User',
-          phoneNumber: _authService.currentFirebaseUser?.phoneNumber ?? '',
-          role: _authService.userRole!,
-          isVerified: _authService.currentFirebaseUser?.emailVerified ?? false,
-          isActive: true,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+      print('AuthStateNotifier: Checking if user is authenticated...');
+      if (_authService.isAuthenticated) {
+        print('AuthStateNotifier: User is authenticated');
+        final currentUser = _authService.currentUser;
+        if (currentUser != null) {
+          print('AuthStateNotifier: Current user found: ${currentUser.email}');
+          // Try to get user profile from database
+          try {
+            final userId = currentUser.id;
+            final supabase = Supabase.instance.client;
+            print('AuthStateNotifier: Fetching user profile from database...');
 
-        state = state.copyWith(
-          status: AuthStatus.authenticated,
-          user: user,
-        );
+            final response = await supabase
+                .from('users')
+                .select()
+                .eq('supabase_user_id', userId)
+                .single();
+
+            final user = User.fromJson(response);
+            print('AuthStateNotifier: User profile found: ${user.email}');
+
+            state = state.copyWith(
+              status: AuthStatus.authenticated,
+              user: user,
+            );
+          } catch (e) {
+            print('AuthStateNotifier: User profile not found in database, creating fallback: $e');
+            // Fallback to creating user object from Supabase auth data
+            final supabaseUser = currentUser as supabase.User;
+            final user = User(
+              id: supabaseUser.id,
+              email: supabaseUser.email ?? '',
+              fullName: supabaseUser.userMetadata?['full_name'] ?? 'User',
+              phoneNumber: supabaseUser.phone ?? '',
+              role: _authService.userRole ?? UserRole.salesAgent,
+              isVerified: supabaseUser.emailConfirmedAt != null || supabaseUser.phoneConfirmedAt != null,
+              isActive: true,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+
+            print('AuthStateNotifier: Created fallback user: ${user.email}');
+            state = state.copyWith(
+              status: AuthStatus.authenticated,
+              user: user,
+            );
+          }
+        } else {
+          print('AuthStateNotifier: Current user is null');
+          state = state.copyWith(status: AuthStatus.unauthenticated);
+        }
       } else {
+        print('AuthStateNotifier: User is not authenticated');
         state = state.copyWith(status: AuthStatus.unauthenticated);
       }
     } catch (e) {
+      print('AuthStateNotifier: Error checking auth status: $e');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: e.toString(),
@@ -95,33 +135,40 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signIn(String email, String password) async {
-    debugPrint('AuthProvider: Starting sign in process');
+    print('🔐 AuthProvider: Starting sign in process for $email');
+    debugPrint('🔐 AuthProvider: Starting sign in process for $email');
     state = state.copyWith(status: AuthStatus.loading);
 
     try {
-      debugPrint('AuthProvider: Calling auth service sign in');
+      print('🔐 AuthProvider: Calling Supabase auth service sign in');
+      debugPrint('🔐 AuthProvider: Calling Supabase auth service sign in');
       final result = await _authService.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      debugPrint('AuthProvider: Auth service result - success: ${result.isSuccess}, user: ${result.user?.email}');
+      print('🔐 AuthProvider: Auth service result - success: ${result.isSuccess}, user: ${result.user?.email}');
+      debugPrint('🔐 AuthProvider: Auth service result - success: ${result.isSuccess}, user: ${result.user?.email}');
 
       if (result.isSuccess && result.user != null) {
-        debugPrint('AuthProvider: Setting authenticated state');
+        print('✅ AuthProvider: Setting authenticated state');
+        debugPrint('✅ AuthProvider: Setting authenticated state');
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: result.user,
         );
+        print('✅ AuthProvider: State updated - status: ${state.status}, user: ${state.user?.email}');
       } else {
-        debugPrint('AuthProvider: Setting unauthenticated state with error: ${result.errorMessage}');
+        print('❌ AuthProvider: Setting unauthenticated state with error: ${result.errorMessage}');
+        debugPrint('❌ AuthProvider: Setting unauthenticated state with error: ${result.errorMessage}');
         state = state.copyWith(
           status: AuthStatus.unauthenticated,
           errorMessage: result.errorMessage,
         );
       }
     } catch (e) {
-      debugPrint('AuthProvider: Exception during sign in: $e');
+      print('💥 AuthProvider: Exception during sign in: $e');
+      debugPrint('💥 AuthProvider: Exception during sign in: $e');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: e.toString(),
@@ -140,7 +187,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(status: AuthStatus.loading);
 
     try {
-      debugPrint('AuthProvider: Calling auth service register');
+      debugPrint('AuthProvider: Calling Supabase auth service register');
       final result = await _authService.registerWithEmailAndPassword(
         email: email,
         password: password,
@@ -174,22 +221,40 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signOut() async {
+    print('🔐 AuthProvider: Starting sign out process');
+    debugPrint('🔐 AuthProvider: Starting sign out process');
     state = state.copyWith(status: AuthStatus.loading);
 
     try {
       await _authService.signOut();
-      state = state.copyWith(
+      print('🔐 AuthProvider: Sign out successful');
+      debugPrint('🔐 AuthProvider: Sign out successful');
+
+      // Clear all user data and set to unauthenticated
+      state = const AuthState(
         status: AuthStatus.unauthenticated,
         user: null,
+        errorMessage: null,
       );
     } catch (e) {
-      state = state.copyWith(
-        errorMessage: e.toString(),
+      print('🔐 AuthProvider: Sign out error: $e');
+      debugPrint('🔐 AuthProvider: Sign out error: $e');
+
+      // Even if sign out fails, clear local state
+      state = const AuthState(
+        status: AuthStatus.unauthenticated,
+        user: null,
+        errorMessage: null,
       );
     }
   }
 
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  /// Force refresh authentication state
+  Future<void> refreshAuthState() async {
+    await _checkAuthStatus();
   }
 }

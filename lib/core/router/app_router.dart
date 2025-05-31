@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,228 +11,343 @@ import '../../presentation/screens/sales_agent/sales_agent_dashboard.dart';
 import '../../presentation/screens/sales_agent/create_order_screen.dart';
 import '../../presentation/screens/sales_agent/vendor_details_screen.dart';
 import '../../presentation/screens/sales_agent/cart_screen.dart';
-import '../../presentation/screens/sales_agent/customers_screen.dart';
-import '../../presentation/screens/sales_agent/customer_details_screen.dart';
-import '../../presentation/screens/sales_agent/customer_form_screen.dart';
 import '../../presentation/screens/sales_agent/orders_screen.dart';
+import '../../presentation/screens/sales_agent/vendors_screen.dart';
+import '../../presentation/screens/sales_agent/customers_screen.dart';
+import '../../presentation/screens/sales_agent/add_customer_screen.dart';
+import '../../presentation/screens/sales_agent/customer_details_screen.dart';
+import '../../presentation/screens/sales_agent/edit_customer_screen.dart';
 import '../../presentation/screens/vendor/vendor_dashboard.dart';
+import '../../presentation/screens/vendor/vendor_orders_screen.dart';
+import '../../presentation/screens/vendor/vendor_management_screen.dart';
 import '../../presentation/screens/admin/admin_dashboard.dart';
-import '../../presentation/screens/order_tracking_screen.dart';
 import '../../core/constants/app_constants.dart';
+import '../../presentation/screens/test/data_test_screen.dart';
+import '../../presentation/screens/test/test_menu_screen.dart';
+import '../../presentation/screens/test/order_creation_test_screen.dart';
+import '../../presentation/screens/test/customer_selector_test_screen.dart';
+import '../../presentation/screens/test/customer_infinite_loop_test.dart';
+import '../../presentation/screens/test/consolidated_test_screen.dart';
+import '../../presentation/providers/auth_provider.dart';
+import '../../presentation/screens/common/order_tracking_screen.dart';
+
+// Authentication state notifier for router refresh
+class _AuthStateNotifier extends ChangeNotifier {
+  final Ref _ref;
+  
+  _AuthStateNotifier(this._ref) {
+    // Listen to auth state changes
+    _ref.listen(authStateProvider, (previous, next) {
+      notifyListeners();
+    });
+  }
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
-  return AppRouter.router;
+  return GoRouter(
+    initialLocation: AppRoutes.splash,
+    refreshListenable: _AuthStateNotifier(ref),
+    redirect: (context, state) => _handleRedirect(context, state, ref),
+    routes: _buildRoutes(),
+    errorBuilder: (context, state) => _buildErrorPage(context, state),
+  );
 });
 
-class AppRouter {
-  static final GoRouter router = GoRouter(
-    initialLocation: AppRoutes.splash,
-    routes: [
-      // Splash Screen
-      GoRoute(
-        path: AppRoutes.splash,
-        name: 'splash',
-        builder: (context, state) => const SplashScreen(),
-      ),
+// Handle authentication-based redirects
+String? _handleRedirect(BuildContext context, GoRouterState state, Ref ref) {
+  final authState = ref.read(authStateProvider);
+  final location = state.uri.toString();
 
-      // Authentication Routes
-      GoRoute(
-        path: AppRoutes.login,
-        name: 'login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.register,
-        name: 'register',
-        builder: (context, state) => const RegisterScreen(),
-      ),
+  debugPrint('🔀 Router: Handling redirect for $location');
+  debugPrint('🔀 Router: Auth status: ${authState.status}');
 
-      // Sales Agent Routes
-      GoRoute(
-        path: AppRoutes.salesAgentDashboard,
-        name: 'sales-agent-dashboard',
-        builder: (context, state) => const SalesAgentDashboard(),
-        routes: [
-          GoRoute(
-            path: 'create-order',
-            name: 'create-order',
-            builder: (context, state) => const CreateOrderScreen(),
+  // Allow access to splash screen during initial load
+  if (location == AppRoutes.splash) {
+    return null;
+  }
+
+  // Allow access to auth routes when not authenticated
+  if (location == AppRoutes.login || location == AppRoutes.register) {
+    // If already authenticated, redirect to dashboard
+    if (authState.status == AuthStatus.authenticated && authState.user != null) {
+      return AppRouter.getDashboardRoute(authState.user!.role);
+    }
+    return null;
+  }
+
+  // Allow access to test routes in debug mode
+  if (location.startsWith('/test') && kDebugMode) {
+    return null;
+  }
+
+  // Check authentication for protected routes
+  if (authState.status == AuthStatus.loading || authState.status == AuthStatus.initial) {
+    // Still loading, stay on splash
+    return AppRoutes.splash;
+  }
+
+  if (authState.status == AuthStatus.unauthenticated || authState.user == null) {
+    // Not authenticated, redirect to login
+    debugPrint('🔀 Router: User not authenticated, redirecting to login');
+    return AppRoutes.login;
+  }
+
+  // User is authenticated, check if they can access the route
+  if (!AppRouter.canAccessRoute(location, authState.user!.role)) {
+    debugPrint('🔀 Router: User cannot access route $location, redirecting to dashboard');
+    return AppRouter.getDashboardRoute(authState.user!.role);
+  }
+
+  // Allow access
+  return null;
+}
+
+// Build error page
+Widget _buildErrorPage(BuildContext context, GoRouterState state) {
+  return Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            size: 64,
+            color: Colors.red,
           ),
-          GoRoute(
-            path: 'cart',
-            name: 'cart',
-            builder: (context, state) => const CartScreen(),
+          const SizedBox(height: 16),
+          Text(
+            'Page Not Found',
+            style: Theme.of(context).textTheme.headlineMedium,
           ),
-          GoRoute(
-            path: 'orders',
-            name: 'sales-agent-orders',
-            builder: (context, state) => const OrdersScreen(),
+          const SizedBox(height: 8),
+          Text(
+            'The page you are looking for does not exist.',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-          GoRoute(
-            path: 'vendors',
-            name: 'sales-agent-vendors',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'customers',
-            name: 'sales-agent-customers',
-            builder: (context, state) => const CustomersScreen(),
-            routes: [
-              GoRoute(
-                path: 'create',
-                name: 'create-customer',
-                builder: (context, state) => const CustomerFormScreen(),
-              ),
-              GoRoute(
-                path: ':customerId',
-                name: 'customer-details',
-                builder: (context, state) {
-                  final customerId = state.pathParameters['customerId']!;
-                  return CustomerDetailsScreen(customerId: customerId);
-                },
-                routes: [
-                  GoRoute(
-                    path: 'edit',
-                    name: 'edit-customer',
-                    builder: (context, state) {
-                      final customerId = state.pathParameters['customerId']!;
-                      return CustomerFormScreen(customerId: customerId);
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          GoRoute(
-            path: 'profile',
-            name: 'sales-agent-profile',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'commissions',
-            name: 'sales-agent-commissions',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.go(AppRoutes.splash),
+            child: const Text('Go Home'),
           ),
         ],
-      ),
-
-      // Vendor Routes
-      GoRoute(
-        path: AppRoutes.vendorDashboard,
-        name: 'vendor-dashboard',
-        builder: (context, state) => const VendorDashboard(),
-        routes: [
-          GoRoute(
-            path: 'orders',
-            name: 'vendor-orders',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'menu',
-            name: 'vendor-menu',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'profile',
-            name: 'vendor-profile',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'analytics',
-            name: 'vendor-analytics',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-        ],
-      ),
-
-      // Admin Routes
-      GoRoute(
-        path: AppRoutes.adminDashboard,
-        name: 'admin-dashboard',
-        builder: (context, state) => const AdminDashboard(),
-        routes: [
-          GoRoute(
-            path: 'users',
-            name: 'admin-users',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'orders',
-            name: 'admin-orders',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'vendors',
-            name: 'admin-vendors',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-          GoRoute(
-            path: 'reports',
-            name: 'admin-reports',
-            builder: (context, state) => const Placeholder(), // TODO: Implement
-          ),
-        ],
-      ),
-
-      // Shared Routes
-      GoRoute(
-        path: AppRoutes.orderDetails,
-        name: 'order-details',
-        builder: (context, state) {
-          final orderId = state.pathParameters['orderId']!;
-          return OrderTrackingScreen(orderId: orderId);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.vendorDetails,
-        name: 'vendor-details',
-        builder: (context, state) {
-          final vendorId = state.pathParameters['vendorId']!;
-          return VendorDetailsScreen(vendorId: vendorId);
-        },
-      ),
-
-      GoRoute(
-        path: AppRoutes.settings,
-        name: 'settings',
-        builder: (context, state) => const Placeholder(), // TODO: Implement
-      ),
-    ],
-    redirect: (context, state) {
-      // TODO: Implement authentication and role-based redirection logic
-      return null;
-    },
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Page Not Found',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'The page you are looking for does not exist.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.go(AppRoutes.splash),
-              child: const Text('Go Home'),
-            ),
-          ],
-        ),
       ),
     ),
   );
+}
 
+// Build all routes
+List<RouteBase> _buildRoutes() {
+  return [
+    // Splash Screen
+    GoRoute(
+      path: AppRoutes.splash,
+      name: 'splash',
+      builder: (context, state) => const SplashScreen(),
+    ),
+
+    // Authentication Routes
+    GoRoute(
+      path: AppRoutes.login,
+      name: 'login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.register,
+      name: 'register',
+      builder: (context, state) => const RegisterScreen(),
+    ),
+
+    // Sales Agent Routes
+    GoRoute(
+      path: AppRoutes.salesAgentDashboard,
+      name: 'sales-agent-dashboard',
+      builder: (context, state) => const SalesAgentDashboard(),
+      routes: [
+        GoRoute(
+          path: 'create-order',
+          name: 'create-order',
+          builder: (context, state) => const CreateOrderScreen(),
+        ),
+        GoRoute(
+          path: 'cart',
+          name: 'cart',
+          builder: (context, state) => const CartScreen(),
+        ),
+        GoRoute(
+          path: 'orders',
+          name: 'sales-agent-orders',
+          builder: (context, state) => const OrdersScreen(),
+        ),
+        GoRoute(
+          path: 'vendors',
+          name: 'sales-agent-vendors',
+          builder: (context, state) => const VendorsScreen(),
+        ),
+        GoRoute(
+          path: 'customers',
+          name: 'sales-agent-customers',
+          builder: (context, state) {
+            debugPrint('🚀 Router: Navigating to CustomersScreen');
+            debugPrint('🚀 Router: Route path: ${state.fullPath}');
+            debugPrint('🚀 Router: Route name: ${state.name}');
+            return const CustomersScreen();
+          },
+          routes: [
+            GoRoute(
+              path: 'add',
+              name: 'add-customer',
+              builder: (context, state) => const AddCustomerScreen(),
+            ),
+            GoRoute(
+              path: ':customerId',
+              name: 'customer-details',
+              builder: (context, state) {
+                final customerId = state.pathParameters['customerId']!;
+                return CustomerDetailsScreen(customerId: customerId);
+              },
+              routes: [
+                GoRoute(
+                  path: 'edit',
+                  name: 'edit-customer',
+                  builder: (context, state) {
+                    final customerId = state.pathParameters['customerId']!;
+                    return EditCustomerScreen(customerId: customerId);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        GoRoute(
+          path: 'profile',
+          name: 'sales-agent-profile',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+        GoRoute(
+          path: 'commissions',
+          name: 'sales-agent-commissions',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+      ],
+    ),
+
+    // Vendor Routes
+    GoRoute(
+      path: AppRoutes.vendorDashboard,
+      name: 'vendor-dashboard',
+      builder: (context, state) => const VendorDashboard(),
+      routes: [
+        GoRoute(
+          path: 'orders',
+          name: 'vendor-orders',
+          builder: (context, state) => const VendorOrdersScreen(),
+        ),
+        GoRoute(
+          path: 'menu',
+          name: 'vendor-menu',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+        GoRoute(
+          path: 'profile',
+          name: 'vendor-profile',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+        GoRoute(
+          path: 'analytics',
+          name: 'vendor-analytics',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+      ],
+    ),
+
+    // Admin Routes
+    GoRoute(
+      path: AppRoutes.adminDashboard,
+      name: 'admin-dashboard',
+      builder: (context, state) => const AdminDashboard(),
+      routes: [
+        GoRoute(
+          path: 'users',
+          name: 'admin-users',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+        GoRoute(
+          path: 'orders',
+          name: 'admin-orders',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+        GoRoute(
+          path: 'vendors',
+          name: 'admin-vendors',
+          builder: (context, state) => const VendorManagementScreen(),
+        ),
+        GoRoute(
+          path: 'reports',
+          name: 'admin-reports',
+          builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+      ],
+    ),
+
+    // Shared Routes
+    GoRoute(
+      path: AppRoutes.orderDetails,
+      name: 'order-details',
+      builder: (context, state) {
+        final orderId = state.pathParameters['orderId']!;
+        return OrderTrackingScreen(orderId: orderId);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.vendorDetails,
+      name: 'vendor-details',
+      builder: (context, state) {
+        final vendorId = state.pathParameters['vendorId']!;
+        return VendorDetailsScreen(vendorId: vendorId);
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.settings,
+      name: 'settings',
+      builder: (context, state) => const Placeholder(), // TODO: Implement
+    ),
+
+    // Test Routes (only in debug mode)
+    GoRoute(
+      path: '/test-data',
+      name: 'test-data',
+      builder: (context, state) => const DataTestScreen(),
+    ),
+    GoRoute(
+      path: '/test-menu',
+      name: 'test-menu',
+      builder: (context, state) => const TestMenuScreen(),
+    ),
+    GoRoute(
+      path: '/test-order-creation',
+      name: 'test-order-creation',
+      builder: (context, state) => const OrderCreationTestScreen(),
+    ),
+    GoRoute(
+      path: '/test-customer-selector',
+      name: 'test-customer-selector',
+      builder: (context, state) => const CustomerSelectorTestScreen(),
+    ),
+    GoRoute(
+      path: '/test-customer-infinite-loop',
+      name: 'test-customer-infinite-loop',
+      builder: (context, state) => const CustomerInfiniteLoopTest(),
+    ),
+    GoRoute(
+      path: '/test-consolidated',
+      name: 'test-consolidated',
+      builder: (context, state) => const ConsolidatedTestScreen(),
+    ),
+  ];
+}
+
+class AppRouter {
   // Helper method to get the appropriate dashboard route based on user role
   static String getDashboardRoute(UserRole role) {
     switch (role) {
@@ -282,8 +398,8 @@ class AppRouter {
 
   // Helper method to check if a route is shared
   static bool _isSharedRoute(String route) {
-    return route == AppRoutes.orderDetails ||
-        route == AppRoutes.vendorDetails ||
+    return route.startsWith('/order-details/') ||
+        route.startsWith('/vendor-details/') ||
         route == AppRoutes.settings ||
         route == AppRoutes.help ||
         route == AppRoutes.about;

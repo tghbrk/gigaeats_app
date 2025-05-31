@@ -33,9 +33,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    print('🚀 _handleLogin called');
+    debugPrint('🚀 _handleLogin called');
+
     if (!_formKey.currentState!.validate()) {
+      print('❌ Form validation failed');
+      debugPrint('❌ Form validation failed');
       return;
     }
+
+    print('✅ Form validation passed');
+    debugPrint('✅ Form validation passed');
 
     setState(() {
       _isLoading = true;
@@ -45,7 +53,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final authNotifier = ref.read(authStateProvider.notifier);
 
       // Debug: Print login attempt
-      debugPrint('Attempting login with email: ${_emailController.text.trim()}');
+      print('🔐 Attempting login with email: ${_emailController.text.trim()}');
+      debugPrint('🔐 Attempting login with email: ${_emailController.text.trim()}');
 
       await authNotifier.signIn(
         _emailController.text.trim(),
@@ -111,7 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _testFirebaseConnection() async {
     try {
       // Test Firebase connection by trying to create a temporary user
-      final authService = ref.read(authServiceProvider);
+      final authService = ref.read(supabaseAuthServiceProvider);
 
       // Try to sign in with a test email to see if Firebase is working
       final result = await authService.signInWithEmailAndPassword(
@@ -143,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _createTestAccount() async {
     try {
-      final authService = ref.read(authServiceProvider);
+      final authService = ref.read(supabaseAuthServiceProvider);
 
       // Create a test account
       final result = await authService.registerWithEmailAndPassword(

@@ -3,6 +3,52 @@ import 'package:equatable/equatable.dart';
 
 part 'order.g.dart';
 
+enum PaymentStatus {
+  pending('pending', 'Pending'),
+  paid('paid', 'Paid'),
+  failed('failed', 'Failed'),
+  refunded('refunded', 'Refunded');
+
+  const PaymentStatus(this.value, this.displayName);
+
+  final String value;
+  final String displayName;
+
+  static PaymentStatus fromString(String value) {
+    return PaymentStatus.values.firstWhere(
+      (status) => status.value == value,
+      orElse: () => PaymentStatus.pending,
+    );
+  }
+
+  bool get isPending => this == PaymentStatus.pending;
+  bool get isPaid => this == PaymentStatus.paid;
+  bool get isFailed => this == PaymentStatus.failed;
+  bool get isRefunded => this == PaymentStatus.refunded;
+}
+
+enum PaymentMethod {
+  fpx('fpx', 'FPX'),
+  grabpay('grabpay', 'GrabPay'),
+  touchngo('touchngo', 'Touch \'n Go'),
+  creditCard('credit_card', 'Credit Card');
+
+  const PaymentMethod(this.value, this.displayName);
+
+  final String value;
+  final String displayName;
+
+  static PaymentMethod fromString(String value) {
+    return PaymentMethod.values.firstWhere(
+      (method) => method.value == value,
+      orElse: () => PaymentMethod.fpx,
+    );
+  }
+
+  @override
+  String toString() => value;
+}
+
 enum OrderStatus {
   pending('pending', 'Pending'),
   confirmed('confirmed', 'Confirmed'),
@@ -39,6 +85,7 @@ class Address extends Equatable {
   final String street;
   final String city;
   final String state;
+  @JsonKey(name: 'postal_code')
   final String postalCode;
   final String country;
   final double? latitude;
@@ -73,20 +120,21 @@ class Address extends Equatable {
       ];
 
   String get fullAddress => '$street, $city, $state $postalCode, $country';
-
-  // Convenience getter for backward compatibility
-  String get postcode => postalCode;
 }
 
 @JsonSerializable()
 class OrderItem extends Equatable {
   final String id;
+  @JsonKey(name: 'menu_item_id')
   final String menuItemId;
   final String name;
   final String description;
+  @JsonKey(name: 'unit_price')
   final double unitPrice;
   final int quantity;
+  @JsonKey(name: 'total_price')
   final double totalPrice;
+  @JsonKey(name: 'image_url')
   final String? imageUrl;
   final Map<String, dynamic>? customizations;
   final String? notes;
@@ -127,11 +175,14 @@ class OrderItem extends Equatable {
 @JsonSerializable()
 class PaymentInfo extends Equatable {
   final String method;
+  @JsonKey(name: 'transaction_id')
   final String? transactionId;
+  @JsonKey(name: 'reference_number')
   final String? referenceNumber;
   final double amount;
   final String currency;
   final String status;
+  @JsonKey(name: 'paid_at')
   final DateTime? paidAt;
   final Map<String, dynamic>? metadata;
 
@@ -167,28 +218,63 @@ class PaymentInfo extends Equatable {
 @JsonSerializable()
 class Order extends Equatable {
   final String id;
+  @JsonKey(name: 'order_number')
   final String orderNumber;
   final OrderStatus status;
+  @JsonKey(name: 'order_items', defaultValue: <OrderItem>[])
   final List<OrderItem> items;
+  @JsonKey(name: 'vendor_id')
   final String vendorId;
+  @JsonKey(name: 'vendor_name')
   final String vendorName;
+  @JsonKey(name: 'customer_id')
   final String customerId;
+  @JsonKey(name: 'customer_name')
   final String customerName;
-  final String? customerEmail;
+  @JsonKey(name: 'sales_agent_id')
   final String? salesAgentId;
+  @JsonKey(name: 'sales_agent_name')
   final String? salesAgentName;
+  @JsonKey(name: 'delivery_date')
   final DateTime deliveryDate;
+  @JsonKey(name: 'delivery_address')
   final Address deliveryAddress;
   final PaymentInfo? payment;
   final double subtotal;
+  @JsonKey(name: 'delivery_fee')
   final double deliveryFee;
+  @JsonKey(name: 'sst_amount')
   final double sstAmount;
+  @JsonKey(name: 'total_amount')
   final double totalAmount;
+  @JsonKey(name: 'commission_amount')
   final double? commissionAmount;
   final String? notes;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
   final Map<String, dynamic>? metadata;
+
+  // Enhanced tracking fields
+  @JsonKey(name: 'estimated_delivery_time')
+  final DateTime? estimatedDeliveryTime;
+  @JsonKey(name: 'actual_delivery_time')
+  final DateTime? actualDeliveryTime;
+  @JsonKey(name: 'preparation_started_at')
+  final DateTime? preparationStartedAt;
+  @JsonKey(name: 'ready_at')
+  final DateTime? readyAt;
+  @JsonKey(name: 'out_for_delivery_at')
+  final DateTime? outForDeliveryAt;
+
+  // Malaysian specific fields
+  @JsonKey(name: 'delivery_zone')
+  final String? deliveryZone;
+  @JsonKey(name: 'special_instructions')
+  final String? specialInstructions;
+  @JsonKey(name: 'contact_phone')
+  final String? contactPhone;
 
   const Order({
     required this.id,
@@ -199,7 +285,6 @@ class Order extends Equatable {
     required this.vendorName,
     required this.customerId,
     required this.customerName,
-    this.customerEmail,
     this.salesAgentId,
     this.salesAgentName,
     required this.deliveryDate,
@@ -214,6 +299,16 @@ class Order extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.metadata,
+    // Enhanced tracking fields
+    this.estimatedDeliveryTime,
+    this.actualDeliveryTime,
+    this.preparationStartedAt,
+    this.readyAt,
+    this.outForDeliveryAt,
+    // Malaysian specific fields
+    this.deliveryZone,
+    this.specialInstructions,
+    this.contactPhone,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
@@ -229,7 +324,6 @@ class Order extends Equatable {
     String? vendorName,
     String? customerId,
     String? customerName,
-    String? customerEmail,
     String? salesAgentId,
     String? salesAgentName,
     DateTime? deliveryDate,
@@ -244,6 +338,16 @@ class Order extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     Map<String, dynamic>? metadata,
+    // Enhanced tracking fields
+    DateTime? estimatedDeliveryTime,
+    DateTime? actualDeliveryTime,
+    DateTime? preparationStartedAt,
+    DateTime? readyAt,
+    DateTime? outForDeliveryAt,
+    // Malaysian specific fields
+    String? deliveryZone,
+    String? specialInstructions,
+    String? contactPhone,
   }) {
     return Order(
       id: id ?? this.id,
@@ -254,7 +358,6 @@ class Order extends Equatable {
       vendorName: vendorName ?? this.vendorName,
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
-      customerEmail: customerEmail ?? this.customerEmail,
       salesAgentId: salesAgentId ?? this.salesAgentId,
       salesAgentName: salesAgentName ?? this.salesAgentName,
       deliveryDate: deliveryDate ?? this.deliveryDate,
@@ -269,6 +372,16 @@ class Order extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       metadata: metadata ?? this.metadata,
+      // Enhanced tracking fields
+      estimatedDeliveryTime: estimatedDeliveryTime ?? this.estimatedDeliveryTime,
+      actualDeliveryTime: actualDeliveryTime ?? this.actualDeliveryTime,
+      preparationStartedAt: preparationStartedAt ?? this.preparationStartedAt,
+      readyAt: readyAt ?? this.readyAt,
+      outForDeliveryAt: outForDeliveryAt ?? this.outForDeliveryAt,
+      // Malaysian specific fields
+      deliveryZone: deliveryZone ?? this.deliveryZone,
+      specialInstructions: specialInstructions ?? this.specialInstructions,
+      contactPhone: contactPhone ?? this.contactPhone,
     );
   }
 
@@ -282,7 +395,6 @@ class Order extends Equatable {
         vendorName,
         customerId,
         customerName,
-        customerEmail,
         salesAgentId,
         salesAgentName,
         deliveryDate,
@@ -297,11 +409,17 @@ class Order extends Equatable {
         createdAt,
         updatedAt,
         metadata,
+        // Enhanced tracking fields
+        estimatedDeliveryTime,
+        actualDeliveryTime,
+        preparationStartedAt,
+        readyAt,
+        outForDeliveryAt,
+        // Malaysian specific fields
+        deliveryZone,
+        specialInstructions,
+        contactPhone,
       ];
-
-  // Convenience getters
-  DateTime get orderDate => createdAt;
-  String get postcode => deliveryAddress.postalCode;
 
   @override
   String toString() {

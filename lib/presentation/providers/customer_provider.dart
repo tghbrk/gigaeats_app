@@ -1,98 +1,71 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/customer.dart';
-import '../../data/services/customer_service.dart';
+import '../../data/repositories/customer_repository.dart';
+import 'repository_providers.dart';
 
-// Customer Service Provider
-final customerServiceProvider = Provider<CustomerService>((ref) {
-  return CustomerService();
-});
-
-// Customer State
+/// Customer state for managing customer data
 class CustomerState {
   final List<Customer> customers;
   final bool isLoading;
   final String? errorMessage;
-  final bool hasMore;
-  final int currentPage;
+  final String searchQuery;
+  final CustomerType? selectedType;
+  final bool? isActiveFilter;
 
-  CustomerState({
+  const CustomerState({
     this.customers = const [],
     this.isLoading = false,
     this.errorMessage,
-    this.hasMore = true,
-    this.currentPage = 0,
+    this.searchQuery = '',
+    this.selectedType,
+    this.isActiveFilter,
   });
 
   CustomerState copyWith({
     List<Customer>? customers,
     bool? isLoading,
     String? errorMessage,
-    bool? hasMore,
-    int? currentPage,
+    String? searchQuery,
+    CustomerType? selectedType,
+    bool? isActiveFilter,
   }) {
     return CustomerState(
       customers: customers ?? this.customers,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
-      hasMore: hasMore ?? this.hasMore,
-      currentPage: currentPage ?? this.currentPage,
+      searchQuery: searchQuery ?? this.searchQuery,
+      selectedType: selectedType ?? this.selectedType,
+      isActiveFilter: isActiveFilter ?? this.isActiveFilter,
     );
   }
 }
 
-// Customer Notifier
+/// Customer notifier for managing customer operations
 class CustomerNotifier extends StateNotifier<CustomerState> {
-  final CustomerService _customerService;
-  // final Ref _ref; // TODO: Use for cross-provider communication
+  final CustomerRepository _repository;
 
-  CustomerNotifier(this._customerService, Ref ref) : super(CustomerState());
+  CustomerNotifier(this._repository) : super(const CustomerState());
 
-  Future<void> loadCustomers({
-    String? searchQuery,
-    CustomerType? type,
-    String? salesAgentId,
-    bool? isActive,
-    bool refresh = false,
-  }) async {
-    if (refresh) {
-      state = CustomerState(isLoading: true);
-    } else if (state.isLoading || !state.hasMore) {
-      return;
-    } else {
-      state = state.copyWith(isLoading: true);
-    }
+  /// Load customers with optional filters
+  Future<void> loadCustomers() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final customers = await _customerService.getCustomers(
-        searchQuery: searchQuery,
-        type: type,
-        salesAgentId: salesAgentId,
-        isActive: isActive,
-        limit: 20,
-        offset: refresh ? 0 : state.customers.length,
+      final customers = await _repository.getCustomers(
+        searchQuery: state.searchQuery.isNotEmpty ? state.searchQuery : null,
+        type: state.selectedType,
+        isActive: state.isActiveFilter,
       );
 
-      if (refresh) {
-        state = state.copyWith(
-          customers: customers,
-          isLoading: false,
-          hasMore: customers.length >= 20,
-          currentPage: 1,
-          errorMessage: null,
-        );
-      } else {
-        state = state.copyWith(
-          customers: [...state.customers, ...customers],
-          isLoading: false,
-          hasMore: customers.length >= 20,
-          currentPage: state.currentPage + 1,
-          errorMessage: null,
-        );
-      }
-    } catch (e) {
-      debugPrint('Error loading customers: $e');
+      state = state.copyWith(
+        customers: customers,
+        isLoading: false,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('CustomerNotifier: Error loading customers: $e');
+      debugPrint('CustomerNotifier: Stack trace: $stackTrace');
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Failed to load customers: ${e.toString()}',
@@ -100,154 +73,177 @@ class CustomerNotifier extends StateNotifier<CustomerState> {
     }
   }
 
-  Future<Customer?> createCustomer({
-    required String salesAgentId,
-    required CustomerType type,
-    required String organizationName,
-    required String contactPersonName,
-    required String email,
-    required String phoneNumber,
-    String? alternatePhoneNumber,
-    required CustomerAddress address,
-    CustomerBusinessInfo? businessInfo,
-    CustomerPreferences? preferences,
-    String? notes,
-    List<String>? tags,
-  }) async {
+  /// Search customers
+  Future<void> searchCustomers(String query) async {
+    state = state.copyWith(searchQuery: query);
+    await loadCustomers();
+  }
+
+  /// Filter by customer type
+  Future<void> filterByType(CustomerType? type) async {
+    state = state.copyWith(selectedType: type);
+    await loadCustomers();
+  }
+
+  /// Filter by active status
+  Future<void> filterByActiveStatus(bool? isActive) async {
+    state = state.copyWith(isActiveFilter: isActive);
+    await loadCustomers();
+  }
+
+  /// Clear all filters
+  Future<void> clearFilters() async {
+    state = state.copyWith(
+      searchQuery: '',
+      selectedType: null,
+      isActiveFilter: null,
+    );
+    await loadCustomers();
+  }
+
+  /// Create new customer
+  Future<Customer?> createCustomer(Customer customer) async {
     try {
-      final customer = await _customerService.createCustomer(
-        salesAgentId: salesAgentId,
-        type: type,
-        organizationName: organizationName,
-        contactPersonName: contactPersonName,
-        email: email,
-        phoneNumber: phoneNumber,
-        alternatePhoneNumber: alternatePhoneNumber,
-        address: address,
-        businessInfo: businessInfo,
-        preferences: preferences,
-        notes: notes,
-        tags: tags,
-      );
+      debugPrint('CustomerNotifier: Starting customer creation...');
+      debugPrint('CustomerNotifier: Customer data: ${customer.toJson()}');
 
-      // Add to the beginning of the list
-      state = state.copyWith(
-        customers: [customer, ...state.customers],
-      );
+      final newCustomer = await _repository.createCustomer(customer);
+      debugPrint('CustomerNotifier: Customer created successfully: ${newCustomer.toJson()}');
 
-      return customer;
+      await loadCustomers(); // Refresh the list
+      return newCustomer;
     } catch (e) {
-      debugPrint('Error creating customer: $e');
-      state = state.copyWith(
-        errorMessage: 'Failed to create customer: ${e.toString()}',
-      );
+      debugPrint('CustomerNotifier: Error creating customer: $e');
+      debugPrint('CustomerNotifier: Error type: ${e.runtimeType}');
+      debugPrint('CustomerNotifier: Stack trace: ${StackTrace.current}');
+      state = state.copyWith(errorMessage: e.toString());
       return null;
     }
   }
 
-  Future<Customer?> updateCustomer({
-    required String customerId,
-    String? organizationName,
-    String? contactPersonName,
-    String? email,
-    String? phoneNumber,
-    String? alternatePhoneNumber,
-    CustomerAddress? address,
-    CustomerBusinessInfo? businessInfo,
-    CustomerPreferences? preferences,
-    bool? isActive,
-    bool? isVerified,
-    String? notes,
-    List<String>? tags,
-  }) async {
+  /// Update customer
+  Future<Customer?> updateCustomer(Customer customer) async {
     try {
-      final updatedCustomer = await _customerService.updateCustomer(
-        customerId: customerId,
-        organizationName: organizationName,
-        contactPersonName: contactPersonName,
-        email: email,
-        phoneNumber: phoneNumber,
-        alternatePhoneNumber: alternatePhoneNumber,
-        address: address,
-        businessInfo: businessInfo,
-        preferences: preferences,
-        isActive: isActive,
-        isVerified: isVerified,
-        notes: notes,
-        tags: tags,
-      );
-
-      if (updatedCustomer != null) {
-        final updatedCustomers = state.customers.map((customer) {
-          return customer.id == customerId ? updatedCustomer : customer;
-        }).toList();
-
-        state = state.copyWith(customers: updatedCustomers);
-      }
-
+      final updatedCustomer = await _repository.updateCustomer(customer);
+      await loadCustomers(); // Refresh the list
       return updatedCustomer;
     } catch (e) {
-      debugPrint('Error updating customer: $e');
-      state = state.copyWith(
-        errorMessage: 'Failed to update customer: ${e.toString()}',
-      );
+      debugPrint('CustomerNotifier: Error updating customer: $e');
+      state = state.copyWith(errorMessage: e.toString());
       return null;
     }
   }
 
+  /// Delete customer (soft delete)
   Future<bool> deleteCustomer(String customerId) async {
     try {
-      final success = await _customerService.deleteCustomer(customerId);
-
-      if (success) {
-        final updatedCustomers = state.customers.where((customer) => customer.id != customerId).toList();
-        state = state.copyWith(customers: updatedCustomers);
-      }
-
-      return success;
+      await _repository.deleteCustomer(customerId);
+      await loadCustomers(); // Refresh the list
+      return true;
     } catch (e) {
-      debugPrint('Error deleting customer: $e');
-      state = state.copyWith(
-        errorMessage: 'Failed to delete customer: ${e.toString()}',
-      );
+      debugPrint('CustomerNotifier: Error deleting customer: $e');
+      state = state.copyWith(errorMessage: e.toString());
       return false;
     }
   }
 
-  void clearError() {
-    state = state.copyWith(errorMessage: null);
+  /// Add note to customer
+  Future<bool> addNote(String customerId, String note) async {
+    try {
+      await _repository.addCustomerNote(customerId, note);
+      await loadCustomers(); // Refresh the list
+      return true;
+    } catch (e) {
+      debugPrint('CustomerNotifier: Error adding note: $e');
+      state = state.copyWith(errorMessage: e.toString());
+      return false;
+    }
+  }
+
+  /// Add tag to customer
+  Future<bool> addTag(String customerId, String tag) async {
+    try {
+      await _repository.addCustomerTag(customerId, tag);
+      await loadCustomers(); // Refresh the list
+      return true;
+    } catch (e) {
+      debugPrint('CustomerNotifier: Error adding tag: $e');
+      state = state.copyWith(errorMessage: e.toString());
+      return false;
+    }
+  }
+
+  /// Remove tag from customer
+  Future<bool> removeTag(String customerId, String tag) async {
+    try {
+      await _repository.removeCustomerTag(customerId, tag);
+      await loadCustomers(); // Refresh the list
+      return true;
+    } catch (e) {
+      debugPrint('CustomerNotifier: Error removing tag: $e');
+      state = state.copyWith(errorMessage: e.toString());
+      return false;
+    }
   }
 }
 
-// Providers
-final customersProvider = StateNotifierProvider<CustomerNotifier, CustomerState>((ref) {
-  final customerService = ref.read(customerServiceProvider);
-  return CustomerNotifier(customerService, ref);
+/// Customer provider
+final customerProvider = StateNotifierProvider<CustomerNotifier, CustomerState>((ref) {
+  final repository = ref.watch(customerRepositoryProvider);
+  return CustomerNotifier(repository);
 });
 
-// Individual customer provider
-final customerProvider = FutureProvider.family<Customer?, String>((ref, customerId) async {
-  final customerService = ref.read(customerServiceProvider);
-  return await customerService.getCustomerById(customerId);
-});
+/// Web-specific customer provider for platform-aware data fetching
+final webCustomersProvider = FutureProvider.family<List<Customer>, Map<String, dynamic>>((ref, params) async {
+  debugPrint('🌐 webCustomersProvider: Called with params: $params');
 
-// Recent customers provider
-final recentCustomersProvider = FutureProvider.family<List<Customer>, String?>((ref, salesAgentId) async {
-  final customerService = ref.read(customerServiceProvider);
-  return await customerService.getRecentCustomers(salesAgentId: salesAgentId);
-});
+  final repository = ref.watch(customerRepositoryProvider);
+  debugPrint('🌐 webCustomersProvider: Repository obtained');
 
-// Customer search provider
-final customerSearchProvider = FutureProvider.family<List<Customer>, Map<String, String?>>((ref, params) async {
-  final customerService = ref.read(customerServiceProvider);
-  return await customerService.searchCustomers(
-    query: params['query'] ?? '',
-    salesAgentId: params['salesAgentId'],
+  final result = await repository.getCustomers(
+    searchQuery: params['searchQuery'] as String?,
+    type: params['type'] as CustomerType?,
+    isActive: params['isActive'] as bool?,
+    limit: params['limit'] as int? ?? 50,
+    offset: params['offset'] as int? ?? 0,
   );
+
+  debugPrint('🌐 webCustomersProvider: Repository returned ${result.length} customers');
+  return result;
 });
 
-// Customer stats provider
-final customerStatsProvider = FutureProvider.family<Map<String, dynamic>, String?>((ref, salesAgentId) async {
-  final customerService = ref.read(customerServiceProvider);
-  return await customerService.getCustomerStats(salesAgentId: salesAgentId);
+/// Simple web customers provider without parameters for basic usage
+final simpleWebCustomersProvider = FutureProvider<List<Customer>>((ref) async {
+  final repository = ref.watch(customerRepositoryProvider);
+  return repository.getCustomers();
+});
+
+/// Customer by ID provider
+final customerByIdProvider = FutureProvider.family<Customer?, String>((ref, customerId) async {
+  final repository = ref.watch(customerRepositoryProvider);
+  return repository.getCustomerById(customerId);
+});
+
+/// Top customers provider
+final topCustomersProvider = FutureProvider<List<Customer>>((ref) async {
+  final repository = ref.watch(customerRepositoryProvider);
+  return repository.getTopCustomers();
+});
+
+/// Customer statistics provider
+final customerStatisticsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final repository = ref.watch(customerRepositoryProvider);
+  return repository.getCustomerStatistics();
+});
+
+/// Recent customers provider
+final recentCustomersProvider = FutureProvider<List<Customer>>((ref) async {
+  final repository = ref.watch(customerRepositoryProvider);
+  return repository.getCustomersWithRecentOrders();
+});
+
+/// Search customers provider
+final searchCustomersProvider = FutureProvider.family<List<Customer>, String>((ref, query) async {
+  final repository = ref.watch(customerRepositoryProvider);
+  return repository.searchCustomers(query);
 });

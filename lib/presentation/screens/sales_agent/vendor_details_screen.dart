@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/vendor.dart';
 import '../../../data/models/product.dart';
 import '../../providers/vendor_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/cart_provider.dart';
 import '../../widgets/product_card.dart';
 import 'product_details_screen.dart';
@@ -27,48 +29,184 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
   late TabController _tabController;
   String _selectedCategory = 'All';
 
+  // ULTIMATE FIX: Create static parameters to prevent provider recreation
+  late final Map<String, dynamic> _staticWebParams;
+
+  // DEBUGGING: Track rebuild causes
+  int _buildCount = 0;
+  DateTime? _lastBuildTime;
+  String? _lastVendorAsyncState;
+  String? _lastCartState;
+  String? _lastWebDataAsyncState;
+
   @override
   void initState() {
     super.initState();
+    debugPrint('🔧 VendorDetailsScreen: initState() called for vendor ${widget.vendorId}');
     _tabController = TabController(length: 2, vsync: this);
+
+    // Create static parameters once and never change them
+    _staticWebParams = {
+      'vendorId': widget.vendorId,
+      'isAvailable': true,
+      'useStream': false,
+    };
+    debugPrint('🔧 VendorDetailsScreen: initState() completed, static params: $_staticWebParams');
+  }
+
+  @override
+  void didUpdateWidget(VendorDetailsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    debugPrint('🔧 VendorDetailsScreen: didUpdateWidget() called');
+    debugPrint('🔧 Old vendor ID: ${oldWidget.vendorId}');
+    debugPrint('🔧 New vendor ID: ${widget.vendorId}');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugPrint('🔧 VendorDetailsScreen: didChangeDependencies() called');
   }
 
   @override
   void dispose() {
+    debugPrint('🔧 VendorDetailsScreen: dispose() called for vendor ${widget.vendorId}');
     _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    _buildCount++;
+    final now = DateTime.now();
+    final timeSinceLastBuild = _lastBuildTime != null ? now.difference(_lastBuildTime!).inMilliseconds : 0;
+    _lastBuildTime = now;
+
+    debugPrint('🔥 VendorDetailsScreen: build() #$_buildCount called for vendor ${widget.vendorId}');
+    debugPrint('🔥 Time since last build: ${timeSinceLastBuild}ms');
+    debugPrint('🔥 Current _selectedCategory = $_selectedCategory');
+
     final vendorAsync = ref.watch(vendorDetailsProvider(widget.vendorId));
-    final productsAsync = ref.watch(vendorProductsProvider(widget.vendorId));
     final cartState = ref.watch(cartProvider);
+
+    final currentVendorAsyncState = vendorAsync.runtimeType.toString();
+    final currentCartState = '${cartState.totalItems} items';
+
+    // Check what changed to trigger this rebuild
+    if (_lastVendorAsyncState != null) {
+      if (_lastVendorAsyncState != currentVendorAsyncState) {
+        debugPrint('🔥 REBUILD CAUSE: vendorAsync state changed from $_lastVendorAsyncState to $currentVendorAsyncState');
+      }
+      if (_lastCartState != currentCartState) {
+        debugPrint('🔥 REBUILD CAUSE: cartState changed from $_lastCartState to $currentCartState');
+      }
+      if (_lastVendorAsyncState == currentVendorAsyncState && _lastCartState == currentCartState) {
+        debugPrint('🔥 REBUILD CAUSE: UNKNOWN - neither vendorAsync nor cartState changed!');
+        debugPrint('🔥 This suggests the rebuild is caused by something else in the widget tree');
+      }
+    }
+
+    _lastVendorAsyncState = currentVendorAsyncState;
+    _lastCartState = currentCartState;
+
+    debugPrint('🔥 VendorDetailsScreen: vendorAsync state: $currentVendorAsyncState');
+    debugPrint('🔥 VendorDetailsScreen: cartState: $currentCartState');
+
+    // ULTIMATE FIX: Use static parameters created in initState to prevent provider recreation
+    AsyncValue<List<Product>> productsAsync;
+    if (kIsWeb) {
+      // Use the static parameters to prevent provider invalidation loops
+      final webDataAsync = ref.watch(webMenuItemsProvider(_staticWebParams));
+      final currentWebDataAsyncState = webDataAsync.runtimeType.toString();
+
+      debugPrint('🔥 VendorDetailsScreen: webDataAsync state: $currentWebDataAsyncState');
+
+      // Check if webDataAsync state changed
+      if (_lastWebDataAsyncState != null && _lastWebDataAsyncState != currentWebDataAsyncState) {
+        debugPrint('🔥 REBUILD CAUSE: webDataAsync state changed from $_lastWebDataAsyncState to $currentWebDataAsyncState');
+      }
+      _lastWebDataAsyncState = currentWebDataAsyncState;
+
+      // Only process data when it's actually loaded to prevent rebuild loops
+      if (webDataAsync is AsyncData<List<Map<String, dynamic>>>) {
+        final webData = webDataAsync.value;
+        debugPrint('🔥 VendorDetailsScreen: Got web data with ${webData.length} items');
+
+        try {
+          // Filter by category in the UI instead of in the provider to prevent loops
+          var filteredData = webData;
+          if (_selectedCategory != 'All') {
+            filteredData = webData.where((item) {
+              final category = item['category'] as String?;
+              return category == _selectedCategory;
+            }).toList();
+          }
+
+          final products = filteredData.map((data) => Product.fromJson(data)).toList();
+          debugPrint('🔥 VendorDetailsScreen: Successfully converted ${products.length} products (filtered from ${webData.length})');
+          productsAsync = AsyncData(products);
+
+          // CRITICAL: Check if this data processing is triggering a rebuild
+          debugPrint('🔥 VendorDetailsScreen: Data processing completed, about to return productsAsync');
+        } catch (e) {
+          debugPrint('🔥 VendorDetailsScreen: Error converting web data to products: $e');
+          productsAsync = AsyncError(e, StackTrace.current);
+        }
+      } else if (webDataAsync is AsyncError) {
+        debugPrint('🔥 VendorDetailsScreen: Web provider error: ${webDataAsync.error}');
+        productsAsync = AsyncError(webDataAsync.error as Object, webDataAsync.stackTrace ?? StackTrace.current);
+      } else {
+        debugPrint('🔥 VendorDetailsScreen: Web provider is loading...');
+        productsAsync = const AsyncLoading();
+      }
+    } else {
+      // For mobile, use the mobile provider directly
+      final mobileParams = {
+        'vendorId': widget.vendorId,
+        'category': _selectedCategory == 'All' ? null : _selectedCategory,
+        'isAvailable': true,
+        'useStream': true,
+      };
+      productsAsync = ref.watch(vendorProductsProvider(mobileParams));
+    }
+
+    debugPrint('🔥 VendorDetailsScreen: About to build Scaffold');
 
     return Scaffold(
       body: vendorAsync.when(
         data: (vendor) {
+          debugPrint('🔥 VendorDetailsScreen: vendorAsync.when.data() called');
           if (vendor == null) {
+            debugPrint('🔥 VendorDetailsScreen: Vendor is null, showing not found');
             return const Center(child: Text('Vendor not found'));
           }
-          return _buildVendorDetails(vendor, productsAsync, cartState);
+          debugPrint('🔥 VendorDetailsScreen: About to call _buildVendorDetails');
+          final result = _buildVendorDetails(vendor, productsAsync, cartState);
+          debugPrint('🔥 VendorDetailsScreen: _buildVendorDetails completed');
+          return result;
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Error loading vendor: $error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(vendorDetailsProvider(widget.vendorId)),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+        loading: () {
+          debugPrint('🔥 VendorDetailsScreen: vendorAsync.when.loading() called');
+          return const Center(child: CircularProgressIndicator());
+        },
+        error: (error, stack) {
+          debugPrint('🔥 VendorDetailsScreen: vendorAsync.when.error() called: $error');
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Error loading vendor: $error'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(vendorDetailsProvider(widget.vendorId)),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        },
       ),
       floatingActionButton: cartState.isEmpty
           ? null
@@ -81,7 +219,13 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
     );
   }
 
+
+
   Widget _buildVendorDetails(Vendor vendor, AsyncValue<List<Product>> productsAsync, CartState cartState) {
+    debugPrint('🔥 _buildVendorDetails: Called with vendor ${vendor.businessName}');
+    debugPrint('🔥 _buildVendorDetails: productsAsync state: ${productsAsync.runtimeType}');
+    debugPrint('🔥 _buildVendorDetails: cartState: ${cartState.totalItems} items');
+
     final theme = Theme.of(context);
 
     return CustomScrollView(
@@ -203,7 +347,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
 
                 // Description
                 Text(
-                  vendor.description,
+                  vendor.description ?? 'No description available',
                   style: theme.textTheme.bodyMedium,
                 ),
 
@@ -234,10 +378,10 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
                 const SizedBox(height: 16),
 
                 // Business Info
-                _buildInfoRow(Icons.location_on, 'Location', vendor.address.fullAddress),
+                _buildInfoRow(Icons.location_on, 'Location', vendor.fullAddress),
                 _buildInfoRow(Icons.access_time, 'Operating Hours', 'Mon-Sun: 9:00 AM - 10:00 PM'),
-                _buildInfoRow(Icons.delivery_dining, 'Delivery Radius', '${vendor.businessInfo.deliveryRadius.toStringAsFixed(0)} km'),
-                _buildInfoRow(Icons.shopping_cart, 'Min Order', 'RM ${vendor.businessInfo.minimumOrderAmount.toStringAsFixed(0)}'),
+                _buildInfoRow(Icons.delivery_dining, 'Delivery Radius', '10 km'),
+                _buildInfoRow(Icons.shopping_cart, 'Min Order', 'RM ${(vendor.minimumOrderAmount ?? 0.0).toStringAsFixed(0)}'),
 
                 if (vendor.isHalalCertified)
                   _buildInfoRow(Icons.verified, 'Halal Certified', 'Yes'),
@@ -307,9 +451,15 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
   }
 
   Widget _buildMenuTab(AsyncValue<List<Product>> productsAsync) {
+    debugPrint('🔥 _buildMenuTab: Called with productsAsync state: ${productsAsync.runtimeType}');
+
     return productsAsync.when(
       data: (products) {
+        debugPrint('VendorDetailsScreen: Got ${products.length} menu items');
+        debugPrint('VendorDetailsScreen: First few items: ${products.take(3).map((p) => p.name).toList()}');
+
         if (products.isEmpty) {
+          debugPrint('VendorDetailsScreen: No products found, showing empty state');
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -322,8 +472,10 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
           );
         }
 
+        debugPrint('VendorDetailsScreen: Successfully loaded ${products.length} products');
+
         // Get unique categories
-        final categories = ['All', ...products.map((p) => p.category).toSet().toList()];
+        final categories = ['All', ...products.map((p) => p.category).toSet()];
 
         // Filter products by selected category
         final filteredProducts = _selectedCategory == 'All'
@@ -349,9 +501,11 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
                       label: Text(category),
                       selected: isSelected,
                       onSelected: (selected) {
+                        debugPrint('VendorDetailsScreen: Category filter changed from $_selectedCategory to $category');
                         setState(() {
                           _selectedCategory = category;
                         });
+                        debugPrint('VendorDetailsScreen: setState completed, new category = $_selectedCategory');
                       },
                     ),
                   );
@@ -383,22 +537,48 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('Error loading menu: $error'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => ref.invalidate(vendorProductsProvider(widget.vendorId)),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+      loading: () {
+        debugPrint('VendorDetailsScreen: Menu items loading...');
+        return const Center(child: CircularProgressIndicator());
+      },
+      error: (error, stack) {
+        debugPrint('VendorDetailsScreen: Menu items error: $error');
+        debugPrint('VendorDetailsScreen: Stack trace: $stack');
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error loading menu: $error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  debugPrint('VendorDetailsScreen: Retrying menu items load...');
+                  if (kIsWeb) {
+                    final webParams = {
+                      'vendorId': widget.vendorId,
+                      'category': _selectedCategory == 'All' ? null : _selectedCategory,
+                      'isAvailable': true,
+                      'useStream': false,
+                    };
+                    ref.invalidate(webMenuItemsProvider(webParams));
+                  } else {
+                    final mobileParams = {
+                      'vendorId': widget.vendorId,
+                      'category': _selectedCategory == 'All' ? null : _selectedCategory,
+                      'isAvailable': true,
+                      'useStream': true,
+                    };
+                    ref.invalidate(vendorProductsProvider(mobileParams));
+                  }
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -419,20 +599,20 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
             'Owner: ${vendor.ownerName}',
             'Email: ${vendor.email}',
             'Phone: ${vendor.phoneNumber}',
-            'SSM: ${vendor.businessInfo.ssmNumber}',
+            'SSM: ${vendor.businessRegistrationNumber}',
           ]),
           const SizedBox(height: 16),
           _buildInfoCard('Operating Information', [
-            'Min Order: RM ${vendor.businessInfo.minimumOrderAmount.toStringAsFixed(0)}',
-            'Delivery Radius: ${vendor.businessInfo.deliveryRadius.toStringAsFixed(0)} km',
-            'Payment Methods: ${vendor.businessInfo.paymentMethods.join(', ')}',
+            'Min Order: RM ${(vendor.minimumOrderAmount ?? 0.0).toStringAsFixed(0)}',
+            'Delivery Radius: 10 km',
+            'Payment Methods: Cash, Online Banking',
           ]),
           if (vendor.isHalalCertified) ...[
             const SizedBox(height: 16),
             _buildInfoCard('Certifications', [
               'Halal Certified: Yes',
-              if (vendor.businessInfo.halalCertNumber != null)
-                'Halal Cert No: ${vendor.businessInfo.halalCertNumber}',
+              if (vendor.halalCertificationNumber != null)
+                'Halal Cert No: ${vendor.halalCertificationNumber}',
             ]),
           ],
         ],

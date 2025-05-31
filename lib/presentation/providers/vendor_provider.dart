@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/vendor.dart';
 import '../../data/models/product.dart';
 import '../../data/services/vendor_service.dart';
+import 'repository_providers.dart';
 
 // Vendor Service Provider
 final vendorServiceProvider = Provider<VendorService>((ref) {
-  return VendorService();
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return VendorService(vendorRepository: vendorRepository);
 });
 
 // Vendors List Provider
@@ -15,8 +17,8 @@ final vendorsProvider = StateNotifierProvider<VendorsNotifier, VendorsState>((re
   return VendorsNotifier(vendorService);
 });
 
-// Featured Vendors Provider
-final featuredVendorsProvider = FutureProvider<List<Vendor>>((ref) async {
+// Featured Vendors Provider (using service layer)
+final featuredVendorsServiceProvider = FutureProvider<List<Vendor>>((ref) async {
   final vendorService = ref.watch(vendorServiceProvider);
   return vendorService.getFeaturedVendors();
 });
@@ -27,8 +29,8 @@ final vendorDetailsProvider = FutureProvider.family<Vendor?, String>((ref, vendo
   return vendorService.getVendorById(vendorId);
 });
 
-// Vendor Products Provider
-final vendorProductsProvider = FutureProvider.family<List<Product>, String>((ref, vendorId) async {
+// Vendor Products Provider (using service layer)
+final vendorProductsServiceProvider = FutureProvider.family<List<Product>, String>((ref, vendorId) async {
   final vendorService = ref.watch(vendorServiceProvider);
   return vendorService.getVendorProducts(vendorId);
 });

@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/order.dart';
 import '../../providers/order_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../widgets/custom_button.dart';
+import '../../../core/utils/responsive_utils.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -31,50 +34,110 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
 
   @override
   Widget build(BuildContext context) {
-    final ordersState = ref.watch(ordersProvider);
+    // Use platform-aware data fetching
+    if (kIsWeb) {
+      // For web platform, use FutureProvider
+      final ordersAsync = ref.watch(platformOrdersProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Orders'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.read(ordersProvider.notifier).loadOrders();
-            },
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Active', icon: Icon(Icons.pending_actions)),
-            Tab(text: 'Completed', icon: Icon(Icons.check_circle)),
-            Tab(text: 'All', icon: Icon(Icons.list)),
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Orders'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                ref.invalidate(platformOrdersProvider);
+              },
+            ),
           ],
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Active', icon: Icon(Icons.pending_actions)),
+              Tab(text: 'Completed', icon: Icon(Icons.check_circle)),
+              Tab(text: 'All', icon: Icon(Icons.list)),
+            ],
+          ),
         ),
-      ),
-      body: ordersState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ordersState.errorMessage != null
-              ? _buildErrorState(ordersState.errorMessage!)
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOrdersList(ref.watch(activeOrdersProvider)),
-                    _buildOrdersList(ref.watch(completedOrdersProvider)),
-                    _buildOrdersList(ordersState.orders),
-                  ],
-                ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "orders_new_order_fab",
-        onPressed: () {
-          // Navigate to create order screen
-          context.push('/sales-agent/create-order');
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('New Order'),
-      ),
-    );
+        body: ordersAsync.when(
+          data: (allOrders) {
+            // Filter orders for different tabs
+            final activeOrders = allOrders
+                .where((order) =>
+                    order.status != OrderStatus.delivered &&
+                    order.status != OrderStatus.cancelled)
+                .toList();
+            final completedOrders = allOrders
+                .where((order) => order.status == OrderStatus.delivered)
+                .toList();
+
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOrdersList(activeOrders),
+                _buildOrdersList(completedOrders),
+                _buildOrdersList(allOrders),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => _buildErrorState(error.toString()),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            // Navigate to create order screen
+            context.push('/sales-agent/create-order');
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('New Order'),
+        ),
+      );
+    } else {
+      // For mobile platform, use existing notifier pattern
+      final ordersState = ref.watch(ordersProvider);
+
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Orders'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                ref.read(ordersProvider.notifier).loadOrders();
+              },
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Active', icon: Icon(Icons.pending_actions)),
+              Tab(text: 'Completed', icon: Icon(Icons.check_circle)),
+              Tab(text: 'All', icon: Icon(Icons.list)),
+            ],
+          ),
+        ),
+        body: ordersState.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : ordersState.errorMessage != null
+                ? _buildErrorState(ordersState.errorMessage!)
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildOrdersList(ref.watch(activeOrdersProvider)),
+                      _buildOrdersList(ref.watch(completedOrdersProvider)),
+                      _buildOrdersList(ordersState.orders),
+                    ],
+                  ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            // Navigate to create order screen
+            context.push('/sales-agent/create-order');
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('New Order'),
+        ),
+      );
+    }
   }
 
   Widget _buildErrorState(String errorMessage) {
@@ -121,16 +184,45 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
 
     return RefreshIndicator(
       onRefresh: () async {
-        ref.read(ordersProvider.notifier).loadOrders();
+        if (kIsWeb) {
+          ref.invalidate(platformOrdersProvider);
+        } else {
+          ref.read(ordersProvider.notifier).loadOrders();
+        }
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: orders.length,
-        itemBuilder: (context, index) {
-          final order = orders[index];
-          return _buildOrderCard(order);
-        },
+      child: ResponsiveContainer(
+        child: context.isDesktop
+            ? _buildDesktopOrdersList(orders)
+            : _buildMobileOrdersList(orders),
       ),
+    );
+  }
+
+  Widget _buildMobileOrdersList(List<Order> orders) {
+    return ListView.builder(
+      padding: context.responsivePadding,
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return _buildOrderCard(order);
+      },
+    );
+  }
+
+  Widget _buildDesktopOrdersList(List<Order> orders) {
+    return GridView.builder(
+      padding: context.responsivePadding,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: context.gridColumns,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return _buildOrderCard(order);
+      },
     );
   }
 

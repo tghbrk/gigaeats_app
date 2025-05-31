@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/models/vendor.dart';
 import '../../providers/vendor_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../widgets/vendor_card.dart';
 import '../../widgets/search_bar_widget.dart';
 
@@ -28,7 +29,6 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
   Widget build(BuildContext context) {
     final vendorsState = ref.watch(vendorsProvider);
     final featuredVendorsAsync = ref.watch(featuredVendorsProvider);
-    // final cuisineTypesAsync = ref.watch(cuisineTypesProvider); // TODO: Use for filtering
 
     return Scaffold(
       appBar: AppBar(
@@ -253,9 +253,12 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
                         padding: EdgeInsets.only(
                           bottom: index < vendorsState.vendors.length - 1 ? 16 : 32,
                         ),
-                        child: VendorCard(
-                          vendor: vendor,
-                          onTap: () => _navigateToVendorDetails(vendor),
+                        child: Card(
+                          child: ListTile(
+                            title: Text(vendor.businessName),
+                            subtitle: Text(vendor.description ?? 'No description'),
+                            onTap: () => _navigateToVendorDetails(vendor),
+                          ),
                         ),
                       );
                     },

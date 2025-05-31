@@ -447,7 +447,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   }
 
   Widget _buildNutritionCard() {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context); // TODO: Use for styling
     final nutrition = widget.product.nutrition!;
 
     return Card(

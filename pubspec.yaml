@@ -44,7 +44,7 @@ dependencies:
   intl: ^0.20.2
   url_launcher: ^6.1.0
   permission_handler: ^12.0.0+1
-  uuid: ^4.0.0
+  uuid: ^4.4.0
   equatable: ^2.0.5
   path: ^1.8.3
 
@@ -71,6 +71,15 @@ dependencies:
   # Payment & Location
   geolocator: ^14.0.1
   geocoding: ^3.0.0
+
+  # Payment Gateways
+  flutter_stripe: ^11.1.0
+  http: ^1.1.0
+  crypto: ^3.0.3
+
+  # File handling
+  file_picker: ^8.0.0+1
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:

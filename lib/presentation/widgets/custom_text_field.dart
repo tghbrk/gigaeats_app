@@ -98,7 +98,7 @@ class CustomTextField extends StatelessWidget {
             prefixIcon: prefixIcon != null
                 ? Icon(
                     prefixIcon,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   )
                 : null,
             suffixIcon: suffixIcon,
@@ -109,13 +109,13 @@ class CustomTextField extends StatelessWidget {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.5),
+                color: theme.colorScheme.outline.withValues(alpha: 0.5),
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.5),
+                color: theme.colorScheme.outline.withValues(alpha: 0.5),
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -141,7 +141,7 @@ class CustomTextField extends StatelessWidget {
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.3),
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
               ),
             ),
           ),

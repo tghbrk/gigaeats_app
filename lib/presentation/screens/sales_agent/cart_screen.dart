@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+
 import '../../providers/cart_provider.dart';
 import '../../widgets/custom_button.dart';
 
@@ -383,6 +384,30 @@ class CartScreen extends ConsumerWidget {
               ),
             ),
           ],
+
+          const SizedBox(height: 16),
+
+          // Checkout Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: cartState.items.isNotEmpty ? () {
+                context.push('/sales-agent/create-order');
+              } : null,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Proceed to Checkout',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

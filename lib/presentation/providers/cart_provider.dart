@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../data/models/order.dart';
 import '../../data/models/product.dart';
 import '../../data/models/vendor.dart';
+import '../../data/models/menu_item.dart';
 
 // Cart Item class for managing items in cart
 class CartItem {
@@ -182,6 +183,67 @@ class CartNotifier extends StateNotifier<CartState> {
         notes: notes,
         vendorId: vendor.id,
         vendorName: vendor.businessName,
+      );
+
+      state = state.copyWith(
+        items: [...state.items, newItem],
+      );
+    }
+  }
+
+  void addMenuItem({
+    required MenuItem menuItem,
+    required String vendorName,
+    int quantity = 1,
+    Map<String, dynamic>? customizations,
+    String? notes,
+  }) {
+    // Check if quantity is valid for this menu item
+    if (!menuItem.isValidQuantity(quantity)) {
+      throw Exception('Invalid quantity for ${menuItem.name}. Min: ${menuItem.minimumOrderQuantity}');
+    }
+
+    final effectivePrice = menuItem.getEffectivePrice(quantity);
+
+    final existingItemIndex = state.items.indexWhere(
+      (item) =>
+        item.productId == menuItem.id &&
+        _areCustomizationsEqual(item.customizations, customizations),
+    );
+
+    if (existingItemIndex >= 0) {
+      // Update existing item quantity
+      final existingItem = state.items[existingItemIndex];
+      final newQuantity = existingItem.quantity + quantity;
+
+      // Check if new quantity is valid
+      if (!menuItem.isValidQuantity(newQuantity)) {
+        throw Exception('Cannot add more. Maximum quantity exceeded.');
+      }
+
+      final updatedItem = existingItem.copyWith(
+        quantity: newQuantity,
+        unitPrice: menuItem.getEffectivePrice(newQuantity), // Update price based on new quantity
+      );
+
+      final updatedItems = List<CartItem>.from(state.items);
+      updatedItems[existingItemIndex] = updatedItem;
+
+      state = state.copyWith(items: updatedItems);
+    } else {
+      // Add new item
+      final newItem = CartItem(
+        id: _uuid.v4(),
+        productId: menuItem.id,
+        name: menuItem.name,
+        description: menuItem.description,
+        unitPrice: effectivePrice,
+        quantity: quantity,
+        imageUrl: menuItem.imageUrls.isNotEmpty ? menuItem.imageUrls.first : null,
+        customizations: customizations,
+        notes: notes,
+        vendorId: menuItem.vendorId,
+        vendorName: vendorName,
       );
 
       state = state.copyWith(

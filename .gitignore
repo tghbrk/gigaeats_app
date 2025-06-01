@@ -38,6 +38,34 @@ migrate_working_dir/
 pubspec.lock
 generated_plugin_registrant.dart
 
+# Dart generated files
+**/*.g.dart
+**/*.freezed.dart
+**/*.mocks.dart
+**/*.config.dart
+**/*.chopper.dart
+**/*.gr.dart
+**/*.part.dart
+
+# Flutter build cache and artifacts
+**/*.dill
+**/*.dill.track.dill
+**/*.cache.dill.track.dill
+**/*.stamp
+**/*.d
+**/*.deps
+**/*.incremental
+**/*.incremental.dill
+**/*.track
+**/*.cache
+
+# Flutter localization generated files
+**/gen_l10n_*
+**/l10n_inputs_and_outputs.json
+**/gen_localizations.*
+**/app_localizations*.dart
+**/intl_*.arb
+
 # Symbolication related
 app.*.symbols
 
@@ -54,6 +82,7 @@ app.*.map.json
 **/Pods/
 **/ephemeral/
 **/*Generated*
+**/*generated*
 **/*.lock
 **/*.stamp
 **/DerivedData/
@@ -66,6 +95,24 @@ app.*.map.json
 **/*.iml
 **/*.ipr
 **/*.iws
+
+# Flutter asset manifests and generated files
+**/AssetManifest.json
+**/AssetManifest.bin
+**/AssetManifest.bin.json
+**/FontManifest.json
+**/NOTICES
+**/flutter_assets/
+**/flutter_export_environment.sh
+
+# Code generation and build tools
+**/.generated/
+**/generated/
+**/*_generated.dart
+**/*.generated.dart
+**/generated_plugin_registrant.*
+**/GeneratedPluginRegistrant.*
+**/*.auto_generated.dart
 
 # iOS/macOS specific
 ios/Flutter/Generated.xcconfig
@@ -298,10 +345,23 @@ test/.test_coverage.dart
 coverage/
 test_driver/
 integration_test/reports/
+**/*.test.dart.js
+**/*.test.dart.js.map
+**/test_coverage/
+**/lcov.info
+**/.test_runner.dart
+**/test_results.json
+**/test_reports/
 
-# Documentation
+# Documentation and generated docs
 doc/api/
 docs/_build/
+**/dartdoc_options.yaml
+**/doc/
+**/.dartdoc/
+**/api_docs/
+**/*.md.backup
+**/*.md.orig
 
 # Logs and databases
 *.log
@@ -343,3 +403,52 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# Additional development artifacts
+**/*.hprof
+**/*.prof
+**/*.trace
+**/*.heap
+**/*.memprof
+**/*.cpuprof
+**/*.timeline
+**/*.isolate_snapshot_data
+**/*.vm_isolate_snapshot_data
+**/*.snapshot_blob.bin
+**/*.snapshot_blob.bin.d
+
+# Flutter web specific
+**/web/build/
+**/web/.dart_tool/
+**/web/packages/
+**/web/main.dart.js
+**/web/main.dart.js.map
+**/web/main.dart.js.deps
+**/web/flutter_service_worker.js
+**/web/version.json
+
+# Package manager artifacts
+**/pubspec_overrides.yaml
+**/.packages.generated
+**/dependency_overrides.yaml
+
+# IDE and editor artifacts
+**/*.swp
+**/*.swo
+**/*~
+**/.#*
+**/\#*\#
+**/*.autosave
+**/*.backup
+**/*.bak
+**/*.orig
+**/*.rej
+**/*.tmp
+**/*.temp
+
+# Profiling and debugging
+**/observatory_boilerplate.dart
+**/profile.json
+**/timeline.json
+**/isolate_snapshot_data
+**/vm_isolate_snapshot_data

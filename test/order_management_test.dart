@@ -104,6 +104,59 @@ void main() {
           expect(newStatus.value, isNotEmpty);
         }
       });
+
+      test('should handle order cancellation', () {
+        // Test order cancellation from pending status
+        final pendingOrder = Order(
+          id: 'order-1',
+          orderNumber: 'GE-20241201-0001',
+          status: OrderStatus.pending,
+          items: [],
+          vendorId: 'vendor-1',
+          vendorName: 'Test Vendor',
+          customerId: 'customer-1',
+          customerName: 'Test Customer',
+          deliveryDate: DateTime.now().add(const Duration(hours: 2)),
+          deliveryAddress: const Address(
+            street: 'Test Street',
+            city: 'Test City',
+            state: 'Test State',
+            postalCode: '12345',
+            country: 'Malaysia',
+          ),
+          subtotal: 100.0,
+          deliveryFee: 10.0,
+          sstAmount: 6.0,
+          totalAmount: 116.0,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        // Simulate order cancellation
+        final cancelledOrder = pendingOrder.copyWith(
+          status: OrderStatus.cancelled,
+          updatedAt: DateTime.now(),
+        );
+
+        expect(cancelledOrder.status, OrderStatus.cancelled);
+        expect(cancelledOrder.updatedAt.isAfter(pendingOrder.updatedAt), true);
+      });
+
+      test('should track cancellation in status history', () {
+        final cancellationHistory = OrderStatusHistory(
+          id: 'history-cancel',
+          orderId: 'order-1',
+          oldStatus: OrderStatus.pending,
+          newStatus: OrderStatus.cancelled,
+          changedBy: 'customer-1',
+          createdAt: DateTime.now(),
+          reason: 'Cancelled by customer',
+        );
+
+        expect(cancellationHistory.oldStatus, OrderStatus.pending);
+        expect(cancellationHistory.newStatus, OrderStatus.cancelled);
+        expect(cancellationHistory.reason, 'Cancelled by customer');
+      });
     });
 
     group('Order Notifications', () {

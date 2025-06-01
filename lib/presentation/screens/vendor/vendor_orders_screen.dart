@@ -428,12 +428,13 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
         ),
       );
 
-      // TODO: Implement order status update via repository
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
+      // Update order status via repository
+      final orderRepository = ref.read(orderRepositoryProvider);
+      await orderRepository.updateOrderStatus(order.id, newStatus);
 
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -443,13 +444,17 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
           ),
         );
 
-        // Refresh the orders list
-        ref.invalidate(ordersStreamProvider);
+        // Refresh the orders list for both web and mobile platforms
+        if (kIsWeb) {
+          ref.invalidate(platformOrdersProvider);
+        } else {
+          ref.invalidate(ordersStreamProvider);
+        }
       }
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to update order: $e'),

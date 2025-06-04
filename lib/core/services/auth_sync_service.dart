@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import '../../data/models/user.dart';
 import '../../data/models/user_role.dart';
 import '../../data/repositories/user_repository.dart';
+import '../utils/logger.dart';
 
 /// Service for synchronizing authentication state between Firebase and Supabase
 /// Note: This is a placeholder implementation since we've migrated to pure Supabase auth
@@ -25,7 +26,7 @@ class AuthSyncService {
       // Note: User creation is handled by database triggers on auth.users
     } catch (e) {
       // Log error but don't throw to avoid breaking auth flow
-      print('AuthSyncService: Error syncing user data: $e');
+      AppLogger().error('AuthSyncService: Error syncing user data', e);
     }
   }
 
@@ -35,7 +36,7 @@ class AuthSyncService {
       // Clear any cached user data
       // This is a placeholder for any cleanup needed during sign out
     } catch (e) {
-      print('AuthSyncService: Error during sign out: $e');
+      AppLogger().error('AuthSyncService: Error during sign out', e);
     }
   }
 

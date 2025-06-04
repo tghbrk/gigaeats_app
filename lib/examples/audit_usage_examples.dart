@@ -1,5 +1,6 @@
 /// Examples demonstrating how to use the new audit compliance features
 /// This file shows practical usage of the implemented audit system
+library;
 
 import 'package:dartz/dartz.dart';
 import '../core/errors/failures.dart';
@@ -9,7 +10,6 @@ import '../core/utils/logger.dart';
 import '../core/utils/validators.dart';
 import '../core/services/security_service.dart';
 import '../domain/entities/user_entity.dart';
-import '../domain/usecases/auth/login_usecase.dart';
 import '../domain/usecases/base_usecase.dart';
 
 /// Example class demonstrating audit compliance patterns
@@ -140,15 +140,14 @@ class AuditUsageExamples {
     required String email,
     required String password,
   }) async {
-    // Create use case parameters
-    final params = LoginParams(email: email, password: password);
-    
-    // Note: In real implementation, you would inject the repository
+    // Note: In real implementation, you would create use case parameters
+    // final params = LoginParams(email: email, password: password);
+    // and inject the repository
     // final loginUseCase = LoginUseCase(authRepository);
-    
+
     // Execute use case
     // final result = await loginUseCase(params);
-    
+
     // For demonstration, return a mock result
     return Right(UserEntity(
       id: 'user123',
@@ -243,7 +242,7 @@ class AuditUsageExamples {
   /// Example 8: Using Extension Methods for Easy Logging
   void exampleExtensionLogging() {
     // Using extension methods for easy logging
-    logInfo('This is an info message from ${runtimeType}');
+    logInfo('This is an info message from $runtimeType');
     logDebug('Debug information');
     logWarning('Warning message');
     logError('Error occurred', Exception('Sample error'));
@@ -303,13 +302,14 @@ class AuditUsageExamples {
 /// Example usage in a widget or service
 class ExampleUsage {
   final AuditUsageExamples _examples = AuditUsageExamples();
+  final AppLogger _logger = AppLogger();
 
   Future<void> demonstrateAuditFeatures() async {
     // Example 1: Error handling
     final errorResult = await _examples.exampleErrorHandling();
     errorResult.fold(
-      (failure) => print('Error handled: ${failure.message}'),
-      (data) => print('Success: $data'),
+      (failure) => _logger.error('Error handled: ${failure.message}'),
+      (data) => _logger.info('Success: $data'),
     );
 
     // Example 2: Input validation
@@ -319,8 +319,8 @@ class ExampleUsage {
       userInput: 'normal input',
     );
     validationResult.fold(
-      (failure) => print('Validation failed: ${failure.message}'),
-      (data) => print('Validation passed: $data'),
+      (failure) => _logger.error('Validation failed: ${failure.message}'),
+      (data) => _logger.info('Validation passed: $data'),
     );
 
     // Example 3: Logging
@@ -332,8 +332,8 @@ class ExampleUsage {
       password: 'StrongPass123!',
     );
     flowResult.fold(
-      (failure) => print('Flow failed: ${failure.message}'),
-      (data) => print('Flow completed: $data'),
+      (failure) => _logger.error('Flow failed: ${failure.message}'),
+      (data) => _logger.info('Flow completed: $data'),
     );
   }
 }

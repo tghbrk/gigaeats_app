@@ -64,12 +64,20 @@ class UseCaseResult<T> {
 
   /// Convert to Either
   Either<Failure, T> toEither() {
-    if (isSuccess && data != null) {
-      return Right(data!);
-    } else if (failure != null) {
-      return Left(failure!);
+    if (isSuccess) {
+      final currentData = data;
+      if (currentData != null) {
+        return Right(currentData);
+      } else {
+        return const Left(UnexpectedFailure(message: 'Success result has null data'));
+      }
     } else {
-      return const Left(UnexpectedFailure(message: 'Unknown error occurred'));
+      final currentFailure = failure;
+      if (currentFailure != null) {
+        return Left(currentFailure);
+      } else {
+        return const Left(UnexpectedFailure(message: 'Unknown error occurred'));
+      }
     }
   }
 

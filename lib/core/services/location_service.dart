@@ -44,7 +44,6 @@ class LocationData {
 /// Service for handling GPS location tracking for delivery proof
 class LocationService {
   static const double _requiredAccuracy = 50.0; // meters
-  static const Duration _locationTimeout = Duration(seconds: 30);
 
   /// Check if location permission is granted
   static Future<bool> isLocationPermissionGranted() async {
@@ -99,8 +98,10 @@ class LocationService {
 
       // Get current position with high accuracy
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: _locationTimeout,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 30),
+        ),
       );
 
       // Get address if requested
@@ -239,8 +240,11 @@ class LocationService {
   /// Handle location permission request with user feedback
   static Future<bool> handleLocationPermissionRequest(BuildContext context) async {
     // Check if location services are enabled
-    if (!await isLocationServiceEnabled()) {
-      showLocationServicesDialog(context);
+    final serviceEnabled = await isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (context.mounted) {
+        showLocationServicesDialog(context);
+      }
       return false;
     }
 
@@ -251,9 +255,11 @@ class LocationService {
 
     // Request permissions
     final granted = await requestLocationPermission();
-    
+
     if (!granted) {
-      showLocationPermissionDialog(context);
+      if (context.mounted) {
+        showLocationPermissionDialog(context);
+      }
       return false;
     }
 

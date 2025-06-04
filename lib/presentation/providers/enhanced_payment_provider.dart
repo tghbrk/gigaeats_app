@@ -147,9 +147,8 @@ class PaymentTransaction {
 // Enhanced Payment Notifier with Edge Functions
 class EnhancedPaymentNotifier extends StateNotifier<PaymentState> {
   final SupabaseClient _supabase;
-  final Ref _ref;
 
-  EnhancedPaymentNotifier(this._supabase, this._ref) : super(PaymentState());
+  EnhancedPaymentNotifier(this._supabase, Ref ref) : super(PaymentState());
 
   // Process payment using mock processing (Edge Function not available)
   Future<PaymentResult?> processPayment(PaymentRequest request) async {

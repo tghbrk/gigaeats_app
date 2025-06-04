@@ -192,9 +192,8 @@ class MenuManagementState {
 // Enhanced Menu Management Notifier
 class EnhancedMenuManagementNotifier extends StateNotifier<MenuManagementState> {
   final SupabaseClient _supabase;
-  final Ref _ref;
 
-  EnhancedMenuManagementNotifier(this._supabase, this._ref) : super(MenuManagementState());
+  EnhancedMenuManagementNotifier(this._supabase, Ref ref) : super(MenuManagementState());
 
   // Load menu versions for vendor (using mock data)
   Future<void> loadMenuVersions(String vendorId) async {

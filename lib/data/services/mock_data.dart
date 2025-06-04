@@ -1,7 +1,6 @@
 import '../models/customer.dart';
 import '../models/vendor.dart';
 import '../models/product.dart';
-import '../models/user_role.dart';
 
 /// Mock data service for development and testing
 class MockData {

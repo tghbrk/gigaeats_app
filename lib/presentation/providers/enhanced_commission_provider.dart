@@ -205,9 +205,8 @@ class CommissionState {
 // Enhanced Commission Notifier
 class EnhancedCommissionNotifier extends StateNotifier<CommissionState> {
   final SupabaseClient _supabase;
-  final Ref _ref;
 
-  EnhancedCommissionNotifier(this._supabase, this._ref) : super(CommissionState());
+  EnhancedCommissionNotifier(this._supabase, Ref ref) : super(CommissionState());
 
   // Load commission data for sales agent (using real database)
   Future<void> loadCommissionData(String salesAgentId) async {

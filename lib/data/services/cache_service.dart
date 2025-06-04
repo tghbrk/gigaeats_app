@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../core/utils/logger.dart';
 import '../../core/errors/exceptions.dart';

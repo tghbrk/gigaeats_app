@@ -111,10 +111,9 @@ class EnhancedOrdersState {
 class EnhancedOrdersNotifier extends StateNotifier<EnhancedOrdersState> {
   final OrderRepository _orderRepository;
   final SupabaseClient _supabase;
-  final Ref _ref;
   RealtimeChannel? _realtimeChannel;
 
-  EnhancedOrdersNotifier(this._orderRepository, this._supabase, this._ref) 
+  EnhancedOrdersNotifier(this._orderRepository, this._supabase, Ref ref)
       : super(EnhancedOrdersState()) {
     _setupRealtimeSubscription();
     loadOrders();

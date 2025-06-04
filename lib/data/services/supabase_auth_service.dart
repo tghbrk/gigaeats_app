@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
-import '../../core/config/supabase_config.dart';
 import '../models/auth_result.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';

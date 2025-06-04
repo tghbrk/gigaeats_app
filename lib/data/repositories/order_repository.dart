@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/order.dart';
@@ -11,8 +10,8 @@ import 'base_repository.dart';
 
 class OrderRepository extends BaseRepository {
   OrderRepository({
-    SupabaseClient? client,
-  }) : super(client: client);
+    super.client,
+  });
 
   /// Get orders for the current user based on their role
   Future<List<Order>> getOrders({

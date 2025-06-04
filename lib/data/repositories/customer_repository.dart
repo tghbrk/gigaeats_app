@@ -1,13 +1,12 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/customer.dart';
 import 'base_repository.dart';
 
 class CustomerRepository extends BaseRepository {
   CustomerRepository({
-    SupabaseClient? client,
-  }) : super(client: client);
+    super.client,
+  });
 
   /// Get customers for the current sales agent
   Future<List<Customer>> getCustomers({

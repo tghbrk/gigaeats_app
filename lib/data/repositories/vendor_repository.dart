@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/vendor.dart';
 import '../models/product.dart';
@@ -7,8 +6,8 @@ import 'base_repository.dart';
 
 class VendorRepository extends BaseRepository {
   VendorRepository({
-    SupabaseClient? client,
-  }) : super(client: client);
+    super.client,
+  });
 
   /// Get vendors with optional filters
   Future<List<Vendor>> getVendors({

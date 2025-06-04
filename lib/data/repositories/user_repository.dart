@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../models/user.dart' as app_models;
 import '../models/user_role.dart';
 import '../../core/config/supabase_config.dart';
@@ -9,8 +7,8 @@ import 'base_repository.dart';
 
 class UserRepository extends BaseRepository {
   UserRepository({
-    SupabaseClient? client,
-  }) : super(client: client);
+    super.client,
+  });
 
   /// Get user profile by Supabase UID
   Future<app_models.User?> getUserProfile(String supabaseUid) async {

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../data/models/user.dart';
 import '../../data/models/user_role.dart';
 import '../../data/services/supabase_auth_service.dart';
+import '../../core/utils/logger.dart';
 
 // Shared Preferences Provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -60,6 +61,7 @@ class AuthState {
 // Auth State Notifier
 class AuthStateNotifier extends StateNotifier<AuthState> {
   final SupabaseAuthService _authService;
+  final AppLogger _logger = AppLogger();
 
   AuthStateNotifier(this._authService) : super(const AuthState(status: AuthStatus.initial)) {
     _checkAuthStatus();

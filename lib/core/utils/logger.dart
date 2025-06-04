@@ -179,10 +179,10 @@ class _AppLogOutput extends LogOutput {
 
 /// Extension for easy logging
 extension LoggerExtension on Object {
-  void logDebug(String message) => AppLogger().debug('${runtimeType}: $message');
-  void logInfo(String message) => AppLogger().info('${runtimeType}: $message');
-  void logWarning(String message) => AppLogger().warning('${runtimeType}: $message');
+  void logDebug(String message) => AppLogger().debug('$runtimeType: $message');
+  void logInfo(String message) => AppLogger().info('$runtimeType: $message');
+  void logWarning(String message) => AppLogger().warning('$runtimeType: $message');
   void logError(String message, [dynamic error, StackTrace? stackTrace]) {
-    AppLogger().error('${runtimeType}: $message', error, stackTrace);
+    AppLogger().error('$runtimeType: $message', error, stackTrace);
   }
 }

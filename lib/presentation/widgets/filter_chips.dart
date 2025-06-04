@@ -293,7 +293,7 @@ class QuickFilterChips extends StatelessWidget {
         onSelected: (_) => filter.onTap?.call(),
         selectedColor: theme.colorScheme.primaryContainer,
         checkmarkColor: theme.colorScheme.primary,
-        backgroundColor: filter.backgroundColor ?? theme.colorScheme.surfaceVariant,
+        backgroundColor: filter.backgroundColor ?? theme.colorScheme.surfaceContainerHighest,
       );
     }).toList();
 

@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/product.dart';
 import '../../core/config/supabase_config.dart';
@@ -8,8 +7,8 @@ import 'base_repository.dart';
 
 class MenuItemRepository extends BaseRepository {
   MenuItemRepository({
-    SupabaseClient? client,
-  }) : super(client: client);
+    super.client,
+  });
 
   /// Get menu items for a vendor
   Future<List<Product>> getMenuItems(

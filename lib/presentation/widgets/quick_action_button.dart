@@ -20,7 +20,7 @@ class QuickActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final buttonColor = color ?? theme.colorScheme.primary;
-    final bgColor = backgroundColor ?? buttonColor.withOpacity(0.1);
+    final bgColor = backgroundColor ?? buttonColor.withValues(alpha: 0.1);
 
     return Material(
       color: Colors.transparent,
@@ -33,7 +33,7 @@ class QuickActionButton extends StatelessWidget {
             color: bgColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: buttonColor.withOpacity(0.2),
+              color: buttonColor.withValues(alpha: 0.2),
             ),
           ),
           child: Column(
@@ -96,13 +96,13 @@ class ActionButton extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isEnabled
-                ? buttonColor.withOpacity(0.1)
-                : theme.colorScheme.onSurface.withOpacity(0.05),
+                ? buttonColor.withValues(alpha: 0.1)
+                : theme.colorScheme.onSurface.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isEnabled
-                  ? buttonColor.withOpacity(0.2)
-                  : theme.colorScheme.onSurface.withOpacity(0.1),
+                  ? buttonColor.withValues(alpha: 0.2)
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.1),
             ),
           ),
           child: Row(
@@ -111,8 +111,8 @@ class ActionButton extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isEnabled
-                      ? buttonColor.withOpacity(0.2)
-                      : theme.colorScheme.onSurface.withOpacity(0.1),
+                      ? buttonColor.withValues(alpha: 0.2)
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -120,7 +120,7 @@ class ActionButton extends StatelessWidget {
                   size: 24,
                   color: isEnabled
                       ? buttonColor
-                      : theme.colorScheme.onSurface.withOpacity(0.4),
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
               ),
               const SizedBox(width: 16),
@@ -133,7 +133,7 @@ class ActionButton extends StatelessWidget {
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: isEnabled
                             ? theme.colorScheme.onSurface
-                            : theme.colorScheme.onSurface.withOpacity(0.4),
+                            : theme.colorScheme.onSurface.withValues(alpha: 0.4),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -143,8 +143,8 @@ class ActionButton extends StatelessWidget {
                         subtitle!,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: isEnabled
-                              ? theme.colorScheme.onSurface.withOpacity(0.7)
-                              : theme.colorScheme.onSurface.withOpacity(0.4),
+                              ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.4),
                         ),
                       ),
                     ],
@@ -155,8 +155,8 @@ class ActionButton extends StatelessWidget {
                 Icons.arrow_forward_ios,
                 size: 16,
                 color: isEnabled
-                    ? theme.colorScheme.onSurface.withOpacity(0.4)
-                    : theme.colorScheme.onSurface.withOpacity(0.2),
+                    ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.2),
               ),
             ],
           ),

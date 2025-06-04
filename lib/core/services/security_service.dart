@@ -19,7 +19,6 @@ class SecurityService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userIdKey = 'user_id';
-  static const String _encryptionKeyKey = 'encryption_key';
 
   // Secure storage configuration
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(

@@ -7,8 +7,8 @@ import 'base_repository.dart';
 
 class SalesAgentRepository extends BaseRepository {
   SalesAgentRepository({
-    SupabaseClient? client,
-  }) : super(client: client);
+    super.client,
+  });
 
   /// Get sales agent profile by Supabase UID
   Future<SalesAgentProfile?> getSalesAgentProfile(String supabaseUid) async {

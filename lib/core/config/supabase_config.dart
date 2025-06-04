@@ -1,5 +1,4 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+
 
 class SupabaseConfig {
   // Production environment
@@ -22,18 +21,7 @@ class SupabaseConfig {
   // static const String devAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFia25vYWxoZmx0bGhoZGJjbHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDIxOTEsImV4cCI6MjA2MzkxODE5MX0.NAThyz5_xSTkWX7pynS7APPFZUnOc8DyjMN2K-cTt-g';
   // static const String devServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFia25vYWxoZmx0bGhoZGJjbHB2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM0MjE5MSwiZXhwIjoyMDYzOTE4MTkxfQ.c9U38XFDf8f4ngCNDp2XlSOLSlIaPI-Utg1GgaHwmSY';
 
-  // Get platform-specific development URL
-  static String get _devUrl {
-    if (kIsWeb) {
-      return devUrlWeb;
-    } else if (Platform.isAndroid) {
-      return devUrlAndroid;
-    } else if (Platform.isIOS) {
-      return devUrlIOS;
-    } else {
-      return devUrlDesktop; // Windows, macOS, Linux
-    }
-  }
+
 
   // Current environment settings - switch between local and remote
   static String get url => prodUrl; // Use cloud Supabase for testing

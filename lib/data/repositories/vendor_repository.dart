@@ -420,4 +420,387 @@ class VendorRepository extends BaseRepository {
       });
     });
   }
+
+  /// Get vendor dashboard metrics
+  Future<Map<String, dynamic>> getVendorDashboardMetrics(String vendorId) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .rpc('get_vendor_dashboard_metrics', params: {'p_vendor_id': vendorId});
+
+      if (response.isNotEmpty) {
+        return response.first as Map<String, dynamic>;
+      }
+
+      return {
+        'today_orders': 0,
+        'today_revenue': 0.0,
+        'pending_orders': 0,
+        'avg_preparation_time': 0,
+        'rating': 0.0,
+        'total_reviews': 0,
+      };
+    });
+  }
+
+  /// Get vendor analytics for a date range
+  Future<List<Map<String, dynamic>>> getVendorAnalytics(
+    String vendorId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      var query = authenticatedClient
+          .from('vendor_analytics')
+          .select('*')
+          .eq('vendor_id', vendorId);
+
+      if (startDate != null) {
+        query = query.gte('date', startDate.toIso8601String().split('T')[0]);
+      }
+      if (endDate != null) {
+        query = query.lte('date', endDate.toIso8601String().split('T')[0]);
+      }
+
+      final response = await query.order('date', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    });
+  }
+
+  /// Get vendor notifications
+  Future<List<Map<String, dynamic>>> getVendorNotifications(
+    String vendorId, {
+    bool? unreadOnly,
+    int limit = 20,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      var query = authenticatedClient
+          .from('vendor_notifications')
+          .select('*')
+          .eq('vendor_id', vendorId);
+
+      if (unreadOnly == true) {
+        query = query.eq('is_read', false);
+      }
+
+      final response = await query
+          .order('created_at', ascending: false)
+          .limit(limit);
+      return List<Map<String, dynamic>>.from(response);
+    });
+  }
+
+  /// Mark notification as read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      await authenticatedClient
+          .from('vendor_notifications')
+          .update({'is_read': true})
+          .eq('id', notificationId);
+    });
+  }
+
+  /// Get vendor settings
+  Future<Map<String, dynamic>?> getVendorSettings(String vendorId) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .from('vendor_settings')
+          .select('*')
+          .eq('vendor_id', vendorId)
+          .maybeSingle();
+
+      return response;
+    });
+  }
+
+  /// Update vendor settings
+  Future<void> updateVendorSettings(
+    String vendorId,
+    Map<String, dynamic> settings,
+  ) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+
+      try {
+        // Try to update first
+        await authenticatedClient
+            .from('vendor_settings')
+            .update({
+              ...settings,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('vendor_id', vendorId);
+      } catch (e) {
+        // If update fails (likely because no record exists), try to insert
+        try {
+          await authenticatedClient
+              .from('vendor_settings')
+              .insert({
+                'vendor_id': vendorId,
+                ...settings,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              });
+        } catch (insertError) {
+          // If insert also fails, it might be a duplicate key error
+          // Try update one more time
+          await authenticatedClient
+              .from('vendor_settings')
+              .update({
+                ...settings,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('vendor_id', vendorId);
+        }
+      }
+    });
+  }
+
+  /// Update vendor profile
+  Future<void> updateVendorProfile(
+    String vendorId,
+    Map<String, dynamic> profileData,
+  ) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      await authenticatedClient
+          .from('vendors')
+          .update({
+            ...profileData,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', vendorId);
+    });
+  }
+
+  /// Create menu item
+  Future<Map<String, dynamic>> createMenuItem(
+    String vendorId,
+    Map<String, dynamic> menuItemData,
+  ) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .from('menu_items')
+          .insert({
+            'vendor_id': vendorId,
+            ...menuItemData,
+            'created_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .select()
+          .single();
+
+      return response;
+    });
+  }
+
+  /// Update menu item
+  Future<void> updateMenuItem(
+    String menuItemId,
+    Map<String, dynamic> menuItemData,
+  ) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      await authenticatedClient
+          .from('menu_items')
+          .update({
+            ...menuItemData,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', menuItemId);
+    });
+  }
+
+  /// Delete menu item
+  Future<void> deleteMenuItem(String menuItemId) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      await authenticatedClient
+          .from('menu_items')
+          .delete()
+          .eq('id', menuItemId);
+    });
+  }
+
+  /// Update order status
+  Future<void> updateOrderStatus(
+    String orderId,
+    String newStatus, {
+    Map<String, dynamic>? metadata,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final updateData = <String, dynamic>{
+        'status': newStatus,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      // Add status-specific timestamps
+      switch (newStatus) {
+        case 'confirmed':
+          // Order confirmed, no specific timestamp needed
+          break;
+        case 'preparing':
+          updateData['preparation_started_at'] = DateTime.now().toIso8601String();
+          break;
+        case 'ready':
+          updateData['ready_at'] = DateTime.now().toIso8601String();
+          break;
+        case 'out_for_delivery':
+          updateData['out_for_delivery_at'] = DateTime.now().toIso8601String();
+          break;
+        case 'delivered':
+          updateData['actual_delivery_time'] = DateTime.now().toIso8601String();
+          break;
+      }
+
+      if (metadata != null) {
+        updateData.addAll(metadata);
+      }
+
+      await authenticatedClient
+          .from('orders')
+          .update(updateData)
+          .eq('id', orderId);
+    });
+  }
+
+  /// Get vendor orders with filters
+  Future<List<Map<String, dynamic>>> getVendorOrders(
+    String vendorId, {
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      var query = authenticatedClient
+          .from('orders')
+          .select('''
+            *,
+            customer:customers!orders_customer_id_fkey(
+              id,
+              organization_name,
+              contact_person_name,
+              email,
+              phone_number
+            ),
+            order_items:order_items(
+              id,
+              name,
+              description,
+              unit_price,
+              quantity,
+              total_price,
+              notes
+            )
+          ''')
+          .eq('vendor_id', vendorId);
+
+      if (status != null) {
+        query = query.eq('status', status);
+      }
+
+      if (startDate != null) {
+        query = query.gte('created_at', startDate.toIso8601String());
+      }
+
+      if (endDate != null) {
+        query = query.lte('created_at', endDate.toIso8601String());
+      }
+
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      return List<Map<String, dynamic>>.from(response);
+    });
+  }
+
+  /// Get vendor sales breakdown by category for analytics
+  Future<List<Map<String, dynamic>>> getVendorSalesBreakdown(
+    String vendorId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .rpc('get_vendor_sales_breakdown', params: {
+        'p_vendor_id': vendorId,
+        'p_start_date': startDate?.toIso8601String().split('T')[0],
+        'p_end_date': endDate?.toIso8601String().split('T')[0],
+      });
+
+      return List<Map<String, dynamic>>.from(response);
+    });
+  }
+
+  /// Get vendor top performing products
+  Future<List<Map<String, dynamic>>> getVendorTopProducts(
+    String vendorId, {
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 10,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .rpc('get_vendor_top_products', params: {
+        'p_vendor_id': vendorId,
+        'p_start_date': startDate?.toIso8601String().split('T')[0],
+        'p_end_date': endDate?.toIso8601String().split('T')[0],
+        'p_limit': limit,
+      });
+
+      return List<Map<String, dynamic>>.from(response);
+    });
+  }
+
+  /// Get vendor category performance analytics
+  Future<List<Map<String, dynamic>>> getVendorCategoryPerformance(
+    String vendorId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .rpc('get_vendor_category_performance', params: {
+        'p_vendor_id': vendorId,
+        'p_start_date': startDate?.toIso8601String().split('T')[0],
+        'p_end_date': endDate?.toIso8601String().split('T')[0],
+      });
+
+      return List<Map<String, dynamic>>.from(response);
+    });
+  }
+
+  /// Get vendor revenue trends for analytics
+  Future<List<Map<String, dynamic>>> getVendorRevenueTrends(
+    String vendorId, {
+    DateTime? startDate,
+    DateTime? endDate,
+    String period = 'daily', // daily, weekly, monthly
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .rpc('get_vendor_revenue_trends', params: {
+        'p_vendor_id': vendorId,
+        'p_start_date': startDate?.toIso8601String().split('T')[0],
+        'p_end_date': endDate?.toIso8601String().split('T')[0],
+        'p_period': period,
+      });
+
+      return List<Map<String, dynamic>>.from(response);
+    });
+  }
 }

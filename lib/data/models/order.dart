@@ -122,6 +122,10 @@ class Address extends Equatable {
   String get fullAddress => '$street, $city, $state $postalCode, $country';
 }
 
+// Helper functions for OrderStatus JSON serialization
+OrderStatus _orderStatusFromJson(String value) => OrderStatus.fromString(value);
+String _orderStatusToJson(OrderStatus status) => status.value;
+
 @JsonSerializable()
 class OrderItem extends Equatable {
   final String id;
@@ -220,6 +224,7 @@ class Order extends Equatable {
   final String id;
   @JsonKey(name: 'order_number')
   final String orderNumber;
+  @JsonKey(fromJson: _orderStatusFromJson, toJson: _orderStatusToJson)
   final OrderStatus status;
   @JsonKey(name: 'order_items', defaultValue: <OrderItem>[])
   final List<OrderItem> items;
@@ -239,7 +244,14 @@ class Order extends Equatable {
   final DateTime deliveryDate;
   @JsonKey(name: 'delivery_address')
   final Address deliveryAddress;
-  final PaymentInfo? payment;
+
+  // Individual payment fields (replaces nested PaymentInfo object)
+  @JsonKey(name: 'payment_method')
+  final String? paymentMethod;
+  @JsonKey(name: 'payment_status')
+  final String? paymentStatus;
+  @JsonKey(name: 'payment_reference')
+  final String? paymentReference;
   final double subtotal;
   @JsonKey(name: 'delivery_fee')
   final double deliveryFee;
@@ -289,7 +301,9 @@ class Order extends Equatable {
     this.salesAgentName,
     required this.deliveryDate,
     required this.deliveryAddress,
-    this.payment,
+    this.paymentMethod,
+    this.paymentStatus,
+    this.paymentReference,
     required this.subtotal,
     required this.deliveryFee,
     required this.sstAmount,
@@ -328,7 +342,9 @@ class Order extends Equatable {
     String? salesAgentName,
     DateTime? deliveryDate,
     Address? deliveryAddress,
-    PaymentInfo? payment,
+    String? paymentMethod,
+    String? paymentStatus,
+    String? paymentReference,
     double? subtotal,
     double? deliveryFee,
     double? sstAmount,
@@ -362,7 +378,9 @@ class Order extends Equatable {
       salesAgentName: salesAgentName ?? this.salesAgentName,
       deliveryDate: deliveryDate ?? this.deliveryDate,
       deliveryAddress: deliveryAddress ?? this.deliveryAddress,
-      payment: payment ?? this.payment,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      paymentReference: paymentReference ?? this.paymentReference,
       subtotal: subtotal ?? this.subtotal,
       deliveryFee: deliveryFee ?? this.deliveryFee,
       sstAmount: sstAmount ?? this.sstAmount,
@@ -399,7 +417,9 @@ class Order extends Equatable {
         salesAgentName,
         deliveryDate,
         deliveryAddress,
-        payment,
+        paymentMethod,
+        paymentStatus,
+        paymentReference,
         subtotal,
         deliveryFee,
         sstAmount,

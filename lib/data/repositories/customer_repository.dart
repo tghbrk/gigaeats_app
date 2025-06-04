@@ -142,16 +142,22 @@ class CustomerRepository extends BaseRepository {
   /// Update customer
   Future<Customer> updateCustomer(Customer customer) async {
     return executeQuery(() async {
+      debugPrint('🔧 CustomerRepository: updateCustomer called for ${customer.organizationName} (${customer.id})');
+
       final customerData = customer.toJson();
       customerData['updated_at'] = DateTime.now().toIso8601String();
 
-      final response = await client
+      debugPrint('🔧 CustomerRepository: Update data: $customerData');
+
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
           .from('customers')
           .update(customerData)
           .eq('id', customer.id)
           .select()
           .single();
 
+      debugPrint('🔧 CustomerRepository: Update operation response: $response');
       return Customer.fromJson(response);
     });
   }
@@ -159,13 +165,22 @@ class CustomerRepository extends BaseRepository {
   /// Delete customer (soft delete by setting inactive)
   Future<void> deleteCustomer(String customerId) async {
     return executeQuery(() async {
-      await client
+      debugPrint('🔧 CustomerRepository: deleteCustomer called for ID: $customerId');
+
+      final updateData = {
+        'is_active': false,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      debugPrint('🔧 CustomerRepository: Update data: $updateData');
+
+      final response = await client
           .from('customers')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', customerId);
+          .update(updateData)
+          .eq('id', customerId)
+          .select(); // Add select to get the updated record
+
+      debugPrint('🔧 CustomerRepository: Delete operation response: $response');
     });
   }
 

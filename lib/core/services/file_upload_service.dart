@@ -109,6 +109,35 @@ class FileUploadService {
     }
   }
 
+  /// Generic file upload method
+  Future<String> uploadFile(
+    XFile file, {
+    required String bucketName,
+    required String fileName,
+    String? folderPath,
+  }) async {
+    try {
+      final filePath = folderPath != null ? '$folderPath/$fileName' : fileName;
+
+      Uint8List fileBytes;
+      if (kIsWeb) {
+        fileBytes = await file.readAsBytes();
+      } else {
+        fileBytes = await File(file.path).readAsBytes();
+      }
+
+      await _supabase.storage
+          .from(bucketName)
+          .uploadBinary(filePath, fileBytes);
+
+      return _supabase.storage
+          .from(bucketName)
+          .getPublicUrl(filePath);
+    } catch (e) {
+      throw Exception('Failed to upload file: $e');
+    }
+  }
+
   /// Pick image from gallery or camera
   Future<XFile?> pickImage({ImageSource source = ImageSource.gallery}) async {
     try {

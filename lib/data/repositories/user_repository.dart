@@ -54,7 +54,7 @@ class UserRepository extends BaseRepository {
           .from('users')
           .select('''
             *,
-            profile:user_profiles!user_profiles_supabase_user_id_fkey(*)
+            profile:user_profiles!user_profiles_user_id_fkey(*)
           ''')
           .eq('supabase_user_id', user.id)
           .single();
@@ -92,7 +92,7 @@ class UserRepository extends BaseRepository {
       await client
           .from('user_profiles')
           .update(updateData)
-          .eq('supabase_user_id', firebaseUid);
+          .eq('user_id', firebaseUid);
     });
   }
 
@@ -141,7 +141,7 @@ class UserRepository extends BaseRepository {
       final currentProfile = await client
           .from('user_profiles')
           .select('kyc_documents')
-          .eq('supabase_user_id', firebaseUid)
+          .eq('user_id', firebaseUid)
           .single();
 
       final kycDocuments = Map<String, dynamic>.from(
@@ -159,7 +159,7 @@ class UserRepository extends BaseRepository {
             'kyc_documents': kycDocuments,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('supabase_user_id', firebaseUid);
+          .eq('user_id', firebaseUid);
 
       return publicUrl;
     });
@@ -188,7 +188,7 @@ class UserRepository extends BaseRepository {
           .from('users')
           .select('''
             *,
-            profile:user_profiles!user_profiles_supabase_user_id_fkey(*)
+            profile:user_profiles!user_profiles_user_id_fkey(*)
           ''')
           .eq('role', role.value)
           .order('created_at', ascending: false)
@@ -208,7 +208,7 @@ class UserRepository extends BaseRepository {
           .from('users')
           .select('''
             *,
-            profile:user_profiles!user_profiles_supabase_user_id_fkey(*)
+            profile:user_profiles!user_profiles_user_id_fkey(*)
           ''')
           .or('full_name.ilike.%$query%,email.ilike.%$query%');
 
@@ -261,26 +261,18 @@ class UserRepository extends BaseRepository {
   /// Store FCM token for push notifications
   Future<void> storeFcmToken(String firebaseUid, String fcmToken, String deviceType) async {
     return executeQuery(() async {
-      await client
-          .from('user_fcm_tokens')
-          .upsert({
-            'supabase_user_id': firebaseUid,
-            'fcm_token': fcmToken,
-            'device_type': deviceType,
-            'is_active': true,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
+      // Note: user_fcm_tokens table doesn't exist in current schema
+      // This method is disabled until the table is created
+      throw UnimplementedError('FCM tokens table not implemented yet');
     });
   }
 
   /// Remove FCM token
   Future<void> removeFcmToken(String firebaseUid, String fcmToken) async {
     return executeQuery(() async {
-      await client
-          .from('user_fcm_tokens')
-          .delete()
-          .eq('supabase_user_id', firebaseUid)
-          .eq('fcm_token', fcmToken);
+      // Note: user_fcm_tokens table doesn't exist in current schema
+      // This method is disabled until the table is created
+      throw UnimplementedError('FCM tokens table not implemented yet');
     });
   }
 }

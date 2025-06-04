@@ -182,18 +182,48 @@ class Vendor extends Equatable {
     deliveryRadius: 10.0, // Default
     paymentMethods: ['Cash', 'Online Banking'], // Default
     operatingHours: VendorOperatingHours(
-      schedule: businessHours != null ?
-        {
-          'monday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
-          'tuesday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
-          'wednesday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
-          'thursday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
-          'friday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
-          'saturday': DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
-          'sunday': DaySchedule(isOpen: false),
-        } : {},
+      schedule: _parseBusinessHours(),
     ),
   );
+
+  // Parse business hours from database JSON
+  Map<String, DaySchedule> _parseBusinessHours() {
+    if (businessHours == null || businessHours!.isEmpty) {
+      // Return default hours if no data
+      return {
+        'monday': const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+        'tuesday': const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+        'wednesday': const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+        'thursday': const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+        'friday': const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+        'saturday': const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
+        'sunday': const DaySchedule(isOpen: false),
+      };
+    }
+
+    // Parse actual business hours from database
+    final Map<String, DaySchedule> schedule = {};
+    for (final entry in businessHours!.entries) {
+      try {
+        if (entry.value is Map<String, dynamic>) {
+          schedule[entry.key] = DaySchedule.fromJson(entry.value as Map<String, dynamic>);
+        }
+      } catch (e) {
+        // If parsing fails, use default for this day
+        schedule[entry.key] = const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00');
+      }
+    }
+
+    // Ensure all days are present
+    final allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    for (final day in allDays) {
+      if (!schedule.containsKey(day)) {
+        schedule[day] = const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00');
+      }
+    }
+
+    return schedule;
+  }
 
   // Create default settings for compatibility
   VendorSettings get settings => VendorSettings();

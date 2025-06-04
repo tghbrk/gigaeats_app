@@ -8,6 +8,7 @@ import '../../data/repositories/vendor_repository.dart';
 import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/customer_repository.dart';
 import '../../data/repositories/menu_item_repository.dart';
+import '../../data/repositories/sales_agent_repository.dart';
 import '../../core/services/file_upload_service.dart';
 import '../../data/models/order.dart';
 import '../../data/models/order_summary.dart';
@@ -16,11 +17,16 @@ import '../../data/models/product.dart';
 import '../../data/models/vendor.dart';
 import '../providers/order_provider.dart';
 import '../providers/vendor_provider.dart';
+import '../providers/auth_provider.dart';
+import 'delivery_proof_realtime_provider.dart';
 
 // Supabase client provider
 final supabaseClientProvider = Provider<SupabaseClient>((ref) {
   return Supabase.instance.client;
 });
+
+// Supabase provider alias for compatibility
+final supabaseProvider = supabaseClientProvider;
 
 // User repository provider
 final userRepositoryProvider = Provider<UserRepository>((ref) {
@@ -58,6 +64,14 @@ final customerRepositoryProvider = Provider<CustomerRepository>((ref) {
 final menuItemRepositoryProvider = Provider<MenuItemRepository>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
   return MenuItemRepository(
+    client: supabase,
+  );
+});
+
+// Sales agent repository provider
+final salesAgentRepositoryProvider = Provider<SalesAgentRepository>((ref) {
+  final supabase = ref.watch(supabaseClientProvider);
+  return SalesAgentRepository(
     client: supabase,
   );
 });
@@ -136,9 +150,13 @@ final vendorProductsProvider = FutureProvider.family<List<Product>, Map<String, 
   );
 });
 
-// Orders stream provider
+// Orders stream provider with delivery proof real-time integration
 final ordersStreamProvider = StreamProvider.family<List<Order>, OrderStatus?>((ref, status) {
   final orderRepository = ref.watch(orderRepositoryProvider);
+
+  // Watch delivery proof real-time updates to trigger order list refresh
+  ref.watch(deliveryProofRealtimeProvider);
+
   return orderRepository.getOrdersStream(status: status);
 });
 
@@ -272,6 +290,272 @@ final orderDetailsStreamProvider = StreamProvider.family<Order?, String>((ref, o
   return orderRepository.getOrderStream(orderId);
 });
 
+// Current Vendor Provider - gets vendor data for the logged-in user
+final currentVendorProvider = FutureProvider<Vendor?>((ref) async {
+  final authState = ref.watch(authStateProvider);
+  final userId = authState.user?.id;
+
+  if (userId == null) {
+    return null;
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return await vendorRepository.getVendorByUserId(userId);
+});
+
+// Vendor Dashboard Metrics Provider
+final vendorDashboardMetricsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    return {
+      'today_orders': 0,
+      'today_revenue': 0.0,
+      'pending_orders': 0,
+      'avg_preparation_time': 0,
+      'rating': 0.0,
+      'total_reviews': 0,
+    };
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return await vendorRepository.getVendorDashboardMetrics(vendor.id);
+});
+
+// Vendor Analytics Provider
+final vendorAnalyticsProvider = FutureProvider.family<List<Map<String, dynamic>>, Map<String, DateTime?>>((ref, dateRange) async {
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    return [];
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return await vendorRepository.getVendorAnalytics(
+    vendor.id,
+    startDate: dateRange['startDate'],
+    endDate: dateRange['endDate'],
+  );
+});
+
+// Vendor Sales Breakdown Provider
+final vendorSalesBreakdownProvider = FutureProvider.family<List<Map<String, dynamic>>, Map<String, DateTime?>>((ref, dateRange) async {
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    return [];
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return await vendorRepository.getVendorSalesBreakdown(
+    vendor.id,
+    startDate: dateRange['startDate'],
+    endDate: dateRange['endDate'],
+  );
+});
+
+// Stable parameter classes for analytics providers
+class VendorAnalyticsParams {
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final int limit;
+
+  const VendorAnalyticsParams({
+    this.startDate,
+    this.endDate,
+    this.limit = 10,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VendorAnalyticsParams &&
+          runtimeType == other.runtimeType &&
+          startDate == other.startDate &&
+          endDate == other.endDate &&
+          limit == other.limit;
+
+  @override
+  int get hashCode => startDate.hashCode ^ endDate.hashCode ^ limit.hashCode;
+
+  @override
+  String toString() => 'VendorAnalyticsParams(startDate: $startDate, endDate: $endDate, limit: $limit)';
+}
+
+class VendorRevenueTrendsParams {
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String period;
+
+  const VendorRevenueTrendsParams({
+    this.startDate,
+    this.endDate,
+    this.period = 'daily',
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VendorRevenueTrendsParams &&
+          runtimeType == other.runtimeType &&
+          startDate == other.startDate &&
+          endDate == other.endDate &&
+          period == other.period;
+
+  @override
+  int get hashCode => startDate.hashCode ^ endDate.hashCode ^ period.hashCode;
+
+  @override
+  String toString() => 'VendorRevenueTrendsParams(startDate: $startDate, endDate: $endDate, period: $period)';
+}
+
+// Vendor Top Products Provider with stable parameters
+final vendorTopProductsProvider = FutureProvider.family<List<Map<String, dynamic>>, VendorAnalyticsParams>((ref, params) async {
+  debugPrint('🔍 [ANALYTICS-DEBUG] vendorTopProductsProvider called with params: $params');
+
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    debugPrint('🔍 [ANALYTICS-DEBUG] vendorTopProductsProvider: No vendor found, returning empty list');
+    return [];
+  }
+
+  debugPrint('🔍 [ANALYTICS-DEBUG] vendorTopProductsProvider: Vendor found: ${vendor.id}');
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  final result = await vendorRepository.getVendorTopProducts(
+    vendor.id,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    limit: params.limit,
+  );
+
+  debugPrint('🔍 [ANALYTICS-DEBUG] vendorTopProductsProvider: Returning ${result.length} products');
+  return result;
+});
+
+// Vendor Category Performance Provider
+final vendorCategoryPerformanceProvider = FutureProvider.family<List<Map<String, dynamic>>, Map<String, DateTime?>>((ref, dateRange) async {
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    return [];
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return await vendorRepository.getVendorCategoryPerformance(
+    vendor.id,
+    startDate: dateRange['startDate'],
+    endDate: dateRange['endDate'],
+  );
+});
+
+// Vendor Revenue Trends Provider with stable parameters
+final vendorRevenueTrendsProvider = FutureProvider.family<List<Map<String, dynamic>>, VendorRevenueTrendsParams>((ref, params) async {
+  debugPrint('🔍 [ANALYTICS-DEBUG] vendorRevenueTrendsProvider called with params: $params');
+
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    debugPrint('🔍 [ANALYTICS-DEBUG] vendorRevenueTrendsProvider: No vendor found, returning empty list');
+    return [];
+  }
+
+  debugPrint('🔍 [ANALYTICS-DEBUG] vendorRevenueTrendsProvider: Vendor found: ${vendor.id}');
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  final result = await vendorRepository.getVendorRevenueTrends(
+    vendor.id,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    period: params.period,
+  );
+
+  debugPrint('🔍 [ANALYTICS-DEBUG] vendorRevenueTrendsProvider: Returning ${result.length} trends');
+  return result;
+});
+
+// Vendor Sales Summary Provider
+final vendorSalesSummaryProvider = FutureProvider.family<Map<String, dynamic>, Map<String, DateTime?>>((ref, dateRange) async {
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    return {
+      'total_sales': 0.0,
+      'growth_percentage': 0.0,
+      'previous_period_sales': 0.0,
+      'order_count': 0,
+    };
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+
+  // Get current period sales breakdown to calculate total
+  final currentSales = await vendorRepository.getVendorSalesBreakdown(
+    vendor.id,
+    startDate: dateRange['startDate'],
+    endDate: dateRange['endDate'],
+  );
+
+  final totalSales = currentSales.fold<double>(0.0, (sum, item) => sum + (item['total_sales'] ?? 0.0));
+  final totalOrders = currentSales.fold<int>(0, (sum, item) => sum + ((item['total_orders'] ?? 0) as int));
+
+  // Calculate previous period for growth comparison
+  final currentStart = dateRange['startDate'];
+  final currentEnd = dateRange['endDate'];
+
+  if (currentStart != null && currentEnd != null) {
+    final periodDuration = currentEnd.difference(currentStart);
+    final previousStart = currentStart.subtract(periodDuration);
+    final previousEnd = currentStart;
+
+    final previousSales = await vendorRepository.getVendorSalesBreakdown(
+      vendor.id,
+      startDate: previousStart,
+      endDate: previousEnd,
+    );
+
+    final previousTotalSales = previousSales.fold<double>(0.0, (sum, item) => sum + (item['total_sales'] ?? 0.0));
+    final growthPercentage = previousTotalSales > 0
+        ? ((totalSales - previousTotalSales) / previousTotalSales * 100)
+        : (totalSales > 0 ? 100.0 : 0.0);
+
+    return {
+      'total_sales': totalSales,
+      'growth_percentage': growthPercentage,
+      'previous_period_sales': previousTotalSales,
+      'order_count': totalOrders,
+    };
+  }
+
+  return {
+    'total_sales': totalSales,
+    'growth_percentage': 0.0,
+    'previous_period_sales': 0.0,
+    'order_count': totalOrders,
+  };
+});
+
+// Vendor Notifications Provider
+final vendorNotificationsProvider = FutureProvider.family<List<Map<String, dynamic>>, bool?>((ref, unreadOnly) async {
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    return [];
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return await vendorRepository.getVendorNotifications(
+    vendor.id,
+    unreadOnly: unreadOnly,
+  );
+});
+
+// Vendor Orders Provider - gets orders for the current vendor
+final vendorOrdersProvider = FutureProvider<List<Order>>((ref) async {
+  final orderRepository = ref.watch(orderRepositoryProvider);
+  // The getOrders method already handles vendor filtering based on current user
+  return await orderRepository.getOrders();
+});
+
 // Enhanced Orders Stream Provider with more filters
 final enhancedOrdersStreamProvider = StreamProvider.family<List<Order>, Map<String, dynamic>>((ref, params) {
   final orderRepository = ref.watch(orderRepositoryProvider);
@@ -300,17 +584,41 @@ final webOrdersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async
     debugPrint('WebOrdersProvider: Current user: ${authenticatedClient.auth.currentUser?.email}');
     debugPrint('WebOrdersProvider: Current user ID: ${authenticatedClient.auth.currentUser?.id}');
 
-    // Use the same query structure as the repository method to get complete data
-    final response = await authenticatedClient
+    // Get current user's vendor ID if they are a vendor
+    final userRepository = ref.watch(userRepositoryProvider);
+    final currentUser = await userRepository.getCurrentUserProfile();
+    String? vendorId;
+
+    if (currentUser?.role.name == 'vendor') {
+      // Get vendor ID for the current user
+      final vendorResponse = await authenticatedClient
+          .from('vendors')
+          .select('id')
+          .eq('user_id', currentUser!.id)
+          .single();
+      vendorId = vendorResponse['id'] as String;
+      debugPrint('WebOrdersProvider: Current user is vendor with ID: $vendorId');
+    }
+
+    // Build query with vendor filtering if user is a vendor
+    var query = authenticatedClient
         .from('orders')
         .select('''
           *,
           vendor:vendors!orders_vendor_id_fkey(business_name),
           customer:customers!orders_customer_id_fkey(organization_name),
           order_items:order_items(*)
-        ''')
+        ''');
+
+    // Filter by vendor if user is a vendor
+    if (vendorId != null) {
+      query = query.eq('vendor_id', vendorId);
+      debugPrint('WebOrdersProvider: Filtering orders by vendor_id: $vendorId');
+    }
+
+    final response = await query
         .order('created_at', ascending: false)
-        .limit(10);
+        .limit(50);
 
     debugPrint('WebOrdersProvider: Query executed, response type: ${response.runtimeType}');
     debugPrint('WebOrdersProvider: Response length: ${response.length}');
@@ -337,9 +645,32 @@ final webOrdersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async
         orderData['customer_name'] = 'Unknown Customer';
       }
 
-      // Ensure order_items is not null
+      // Ensure order_items is not null and properly formatted
       if (orderData['order_items'] == null) {
         orderData['order_items'] = [];
+      }
+
+      // Transform delivery_address from JSONB to proper format
+      if (orderData['delivery_address'] != null) {
+        final addressData = orderData['delivery_address'];
+        if (addressData is Map) {
+          orderData['delivery_address'] = {
+            'street': addressData['street'] ?? '',
+            'city': addressData['city'] ?? '',
+            'state': addressData['state'] ?? '',
+            'postal_code': addressData['postcode'] ?? '',
+            'country': addressData['country'] ?? 'Malaysia',
+          };
+        }
+      } else {
+        // Provide default address if missing
+        orderData['delivery_address'] = {
+          'street': 'Unknown Address',
+          'city': 'Unknown City',
+          'state': 'Unknown State',
+          'postal_code': '00000',
+          'country': 'Malaysia',
+        };
       }
 
       // Remove the nested objects to avoid conflicts
@@ -409,6 +740,30 @@ final platformOrdersProvider = FutureProvider<List<Order>>((ref) async {
     final ordersState = ref.watch(ordersProvider);
     return ordersState.orders;
   }
+});
+
+// Add new providers for custom filtered orders
+final upcomingOrdersProvider = Provider<List<Order>>((ref) {
+  final allOrders = ref.watch(platformOrdersProvider).value ?? [];
+  final now = DateTime.now();
+
+  // Orders that are pending or have future delivery dates
+  return allOrders.where((order) =>
+    order.status == OrderStatus.pending ||
+    (order.deliveryDate.isAfter(now) &&
+     !order.status.isDelivered &&
+     !order.status.isCancelled)
+  ).toList();
+});
+
+final vendorHistoryOrdersProvider = Provider<List<Order>>((ref) {
+  final allOrders = ref.watch(platformOrdersProvider).value ?? [];
+
+  // Orders that are delivered or cancelled
+  return allOrders.where((order) =>
+    order.status == OrderStatus.delivered ||
+    order.status == OrderStatus.cancelled
+  ).toList();
 });
 
 // Platform-aware vendors provider that automatically selects web or mobile implementation
@@ -529,7 +884,28 @@ final platformMenuItemsProvider = FutureProvider.family<List<Product>, Map<Strin
 
       final products = webMenuItems.map((data) {
         try {
-          final product = Product.fromJson(data);
+          // Handle potential null values and type conversions like in repositories
+          final processedJson = Map<String, dynamic>.from(data);
+
+          // Ensure required fields have default values
+          processedJson['description'] = processedJson['description'] ?? '';
+          processedJson['tags'] = processedJson['tags'] ?? [];
+          processedJson['allergens'] = processedJson['allergens'] ?? [];
+          processedJson['gallery_images'] = processedJson['gallery_images'] ?? [];
+          processedJson['currency'] = processedJson['currency'] ?? 'MYR';
+
+          // Ensure numeric fields are properly typed - this is the key fix
+          if (processedJson['base_price'] != null) {
+            processedJson['base_price'] = double.tryParse(processedJson['base_price'].toString()) ?? 0.0;
+          }
+          if (processedJson['bulk_price'] != null) {
+            processedJson['bulk_price'] = double.tryParse(processedJson['bulk_price'].toString());
+          }
+          if (processedJson['rating'] != null) {
+            processedJson['rating'] = double.tryParse(processedJson['rating'].toString()) ?? 0.0;
+          }
+
+          final product = Product.fromJson(processedJson);
           print('PlatformMenuItemsProvider: Successfully converted item: ${product.name}');
           return product;
         } catch (e) {
@@ -632,7 +1008,28 @@ final stableMenuItemsProvider = FutureProvider.family<List<Product>, MenuItemsPa
 
       final products = webMenuItems.map((data) {
         try {
-          final product = Product.fromJson(data);
+          // Handle potential null values and type conversions like in repositories
+          final processedJson = Map<String, dynamic>.from(data);
+
+          // Ensure required fields have default values
+          processedJson['description'] = processedJson['description'] ?? '';
+          processedJson['tags'] = processedJson['tags'] ?? [];
+          processedJson['allergens'] = processedJson['allergens'] ?? [];
+          processedJson['gallery_images'] = processedJson['gallery_images'] ?? [];
+          processedJson['currency'] = processedJson['currency'] ?? 'MYR';
+
+          // Ensure numeric fields are properly typed - this is the key fix
+          if (processedJson['base_price'] != null) {
+            processedJson['base_price'] = double.tryParse(processedJson['base_price'].toString()) ?? 0.0;
+          }
+          if (processedJson['bulk_price'] != null) {
+            processedJson['bulk_price'] = double.tryParse(processedJson['bulk_price'].toString());
+          }
+          if (processedJson['rating'] != null) {
+            processedJson['rating'] = double.tryParse(processedJson['rating'].toString()) ?? 0.0;
+          }
+
+          final product = Product.fromJson(processedJson);
           debugPrint('[StableMenuItemsProvider] Successfully converted item: ${product.name}');
           return product;
         } catch (e) {

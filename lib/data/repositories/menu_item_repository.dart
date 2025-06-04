@@ -127,8 +127,39 @@ class MenuItemRepository extends BaseRepository {
       final vendorId = await _getCurrentVendorId();
       if (vendorId == null) throw Exception('Vendor not found');
 
-      final menuItemData = menuItem.toJson();
-      menuItemData['vendor_id'] = vendorId;
+      // Create JSON data manually without the id field
+      final menuItemData = <String, dynamic>{
+        'vendor_id': vendorId,
+        'name': menuItem.name,
+        'description': menuItem.description,
+        'category': menuItem.category,
+        'tags': menuItem.tags,
+        'base_price': menuItem.basePrice,
+        'bulk_price': menuItem.bulkPrice,
+        'bulk_min_quantity': menuItem.bulkMinQuantity,
+        'currency': menuItem.currency,
+        'includes_sst': menuItem.includesSst,
+        'is_available': menuItem.isAvailable,
+        'min_order_quantity': menuItem.minOrderQuantity,
+        'max_order_quantity': menuItem.maxOrderQuantity,
+        'preparation_time_minutes': menuItem.preparationTimeMinutes,
+        'allergens': menuItem.allergens,
+        'is_halal': menuItem.isHalal,
+        'is_vegetarian': menuItem.isVegetarian,
+        'is_vegan': menuItem.isVegan,
+        'is_spicy': menuItem.isSpicy,
+        'spicy_level': menuItem.spicyLevel,
+        'image_url': menuItem.imageUrl,
+        'gallery_images': menuItem.galleryImages,
+        'nutrition_info': menuItem.nutritionInfo,
+        'rating': menuItem.rating,
+        'total_reviews': menuItem.totalReviews,
+        'is_featured': menuItem.isFeatured,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      debugPrint('MenuItemRepository: Creating menu item with data: $menuItemData');
 
       final response = await client
           .from('menu_items')
@@ -410,7 +441,7 @@ class MenuItemRepository extends BaseRepository {
     final response = await client
         .from('vendors')
         .select('id')
-        .eq('supabase_user_id', currentUserUid!)
+        .eq('user_id', currentUserUid!)
         .maybeSingle();
 
     return response?['id'];

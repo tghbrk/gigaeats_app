@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
 
@@ -339,15 +340,41 @@ class ProductNutrition {
 
   factory ProductNutrition.fromMap(Map<String, dynamic> map) {
     return ProductNutrition(
-      calories: map['calories']?.toDouble(),
-      protein: map['protein']?.toDouble(),
-      carbohydrates: map['carbohydrates']?.toDouble(),
-      fat: map['fat']?.toDouble(),
-      fiber: map['fiber']?.toDouble(),
-      sugar: map['sugar']?.toDouble(),
-      sodium: map['sodium']?.toDouble(),
+      calories: _safeParseNutritionValue(map['calories']),
+      protein: _safeParseNutritionValue(map['protein']),
+      carbohydrates: _safeParseNutritionValue(map['carbohydrates']) ?? _safeParseNutritionValue(map['carbs']),
+      fat: _safeParseNutritionValue(map['fat']),
+      fiber: _safeParseNutritionValue(map['fiber']),
+      sugar: _safeParseNutritionValue(map['sugar']),
+      sodium: _safeParseNutritionValue(map['sodium']),
       servingSize: map['servingSize'] ?? '1 serving',
     );
+  }
+
+  /// Safely parse nutrition values that might be strings with units (e.g., "38g") or numbers
+  static double? _safeParseNutritionValue(dynamic value) {
+    if (value == null) return null;
+
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+
+    if (value is String) {
+      // Remove common units and parse the numeric part
+      final cleanValue = value.toLowerCase()
+          .replaceAll(RegExp(r'[a-z%]+'), '') // Remove letters and %
+          .trim();
+
+      if (cleanValue.isEmpty) return null;
+
+      try {
+        return double.parse(cleanValue);
+      } catch (e) {
+        debugPrint('ProductNutrition: Failed to parse nutrition value "$value": $e');
+        return null;
+      }
+    }
+
+    return null;
   }
 }
 

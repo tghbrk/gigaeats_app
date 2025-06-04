@@ -50,4 +50,5 @@ class SupabaseConfig {
   static const String menuImagesBucket = 'menu-images';
   static const String kycDocumentsBucket = 'kyc-documents';
   static const String orderDocumentsBucket = 'order-documents';
+  static const String deliveryProofsBucket = 'delivery-proofs';
 }

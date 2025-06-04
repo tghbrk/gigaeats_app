@@ -82,7 +82,7 @@ Map<String, dynamic> _$PaymentInfoToJson(PaymentInfo instance) =>
 Order _$OrderFromJson(Map<String, dynamic> json) => Order(
   id: json['id'] as String,
   orderNumber: json['order_number'] as String,
-  status: $enumDecode(_$OrderStatusEnumMap, json['status']),
+  status: _orderStatusFromJson(json['status'] as String),
   items:
       (json['order_items'] as List<dynamic>?)
           ?.map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
@@ -98,9 +98,9 @@ Order _$OrderFromJson(Map<String, dynamic> json) => Order(
   deliveryAddress: Address.fromJson(
     json['delivery_address'] as Map<String, dynamic>,
   ),
-  payment: json['payment'] == null
-      ? null
-      : PaymentInfo.fromJson(json['payment'] as Map<String, dynamic>),
+  paymentMethod: json['payment_method'] as String?,
+  paymentStatus: json['payment_status'] as String?,
+  paymentReference: json['payment_reference'] as String?,
   subtotal: (json['subtotal'] as num).toDouble(),
   deliveryFee: (json['delivery_fee'] as num).toDouble(),
   sstAmount: (json['sst_amount'] as num).toDouble(),
@@ -133,7 +133,7 @@ Order _$OrderFromJson(Map<String, dynamic> json) => Order(
 Map<String, dynamic> _$OrderToJson(Order instance) => <String, dynamic>{
   'id': instance.id,
   'order_number': instance.orderNumber,
-  'status': _$OrderStatusEnumMap[instance.status]!,
+  'status': _orderStatusToJson(instance.status),
   'order_items': instance.items,
   'vendor_id': instance.vendorId,
   'vendor_name': instance.vendorName,
@@ -143,7 +143,9 @@ Map<String, dynamic> _$OrderToJson(Order instance) => <String, dynamic>{
   'sales_agent_name': instance.salesAgentName,
   'delivery_date': instance.deliveryDate.toIso8601String(),
   'delivery_address': instance.deliveryAddress,
-  'payment': instance.payment,
+  'payment_method': instance.paymentMethod,
+  'payment_status': instance.paymentStatus,
+  'payment_reference': instance.paymentReference,
   'subtotal': instance.subtotal,
   'delivery_fee': instance.deliveryFee,
   'sst_amount': instance.sstAmount,
@@ -161,14 +163,4 @@ Map<String, dynamic> _$OrderToJson(Order instance) => <String, dynamic>{
   'delivery_zone': instance.deliveryZone,
   'special_instructions': instance.specialInstructions,
   'contact_phone': instance.contactPhone,
-};
-
-const _$OrderStatusEnumMap = {
-  OrderStatus.pending: 'pending',
-  OrderStatus.confirmed: 'confirmed',
-  OrderStatus.preparing: 'preparing',
-  OrderStatus.ready: 'ready',
-  OrderStatus.outForDelivery: 'outForDelivery',
-  OrderStatus.delivered: 'delivered',
-  OrderStatus.cancelled: 'cancelled',
 };

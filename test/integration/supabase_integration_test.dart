@@ -1,11 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../lib/core/config/supabase_config.dart';
-import '../../lib/core/services/auth_sync_service.dart';
-import '../../lib/data/repositories/user_repository.dart';
-import '../../lib/data/repositories/vendor_repository.dart';
+import 'package:gigaeats_app/core/config/supabase_config.dart';
+import 'package:gigaeats_app/core/services/auth_sync_service.dart';
+import 'package:gigaeats_app/data/repositories/user_repository.dart';
+import 'package:gigaeats_app/data/repositories/vendor_repository.dart';
 
 void main() {
   group('Supabase Integration Tests', () {

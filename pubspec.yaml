@@ -30,9 +30,7 @@ dependencies:
   # Supabase (Primary Backend & Auth)
   supabase_flutter: ^2.8.0
 
-  # Firebase (Messaging only - keeping for push notifications)
-  firebase_core: ^3.13.1
-  firebase_messaging: ^15.2.6
+  # Push notifications can be handled via Supabase Edge Functions if needed
 
   # UI & Media
   image_picker: ^1.0.0

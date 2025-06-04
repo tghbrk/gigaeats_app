@@ -170,8 +170,26 @@ CREATE POLICY "Sales agents can view assigned customers" ON customers
     has_role('sales_agent')
   );
 
+CREATE POLICY "Sales agents can update assigned customers" ON customers
+  FOR UPDATE USING (
+    sales_agent_id = auth.uid() OR
+    sales_agent_id IN (SELECT id FROM users WHERE supabase_user_id = auth.uid())
+  );
+
+CREATE POLICY "Sales agents can delete assigned customers" ON customers
+  FOR DELETE USING (
+    sales_agent_id = auth.uid() OR
+    sales_agent_id IN (SELECT id FROM users WHERE supabase_user_id = auth.uid())
+  );
+
 CREATE POLICY "Admins can view all customers" ON customers
   FOR SELECT USING (is_admin());
+
+CREATE POLICY "Admins can update all customers" ON customers
+  FOR UPDATE USING (is_admin());
+
+CREATE POLICY "Admins can delete all customers" ON customers
+  FOR DELETE USING (is_admin());
 
 -- Create new RLS policies for orders table
 CREATE POLICY "Users can manage accessible orders" ON orders

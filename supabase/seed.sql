@@ -112,5 +112,82 @@ INSERT INTO user_fcm_tokens (id, firebase_uid, fcm_token, device_type, is_active
 ('cc0e8400-e29b-41d4-a716-446655440004', 'firebase_vendor_001', 'sample-fcm-token-vendor-1', 'android', true, NOW(), NOW()),
 ('cc0e8400-e29b-41d4-a716-446655440005', 'firebase_vendor_002', 'sample-fcm-token-vendor-2', 'ios', true, NOW(), NOW());
 
+-- Insert vendor settings for test vendors
+INSERT INTO vendor_settings (id, vendor_id, auto_accept_orders, notification_preferences, order_capacity_limit, preparation_buffer_minutes, created_at, updated_at) VALUES
+('dd0e8400-e29b-41d4-a716-446655440001', '770e8400-e29b-41d4-a716-446655440001', true, '{"email": true, "push": true, "sms": true}', 30, 10, NOW(), NOW()),
+('dd0e8400-e29b-41d4-a716-446655440002', '770e8400-e29b-41d4-a716-446655440002', false, '{"email": true, "push": true, "sms": false}', 50, 15, NOW(), NOW()),
+('dd0e8400-e29b-41d4-a716-446655440003', '770e8400-e29b-41d4-a716-446655440003', true, '{"email": false, "push": true, "sms": false}', 25, 20, NOW(), NOW());
+
+-- Insert vendor analytics for the past week
+INSERT INTO vendor_analytics (id, vendor_id, date, total_orders, total_revenue, average_order_value, new_customers, repeat_customers, preparation_time_avg, rating_average, rating_count, created_at, updated_at) VALUES
+-- Lim's Kitchen analytics
+('ee0e8400-e29b-41d4-a716-446655440001', '770e8400-e29b-41d4-a716-446655440001', CURRENT_DATE - INTERVAL '6 days', 8, 320.00, 40.00, 3, 5, 22, 4.5, 8, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440002', '770e8400-e29b-41d4-a716-446655440001', CURRENT_DATE - INTERVAL '5 days', 12, 480.00, 40.00, 4, 8, 20, 4.6, 12, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440003', '770e8400-e29b-41d4-a716-446655440001', CURRENT_DATE - INTERVAL '4 days', 15, 600.00, 40.00, 5, 10, 18, 4.7, 15, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440004', '770e8400-e29b-41d4-a716-446655440001', CURRENT_DATE - INTERVAL '3 days', 10, 400.00, 40.00, 2, 8, 25, 4.4, 10, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440005', '770e8400-e29b-41d4-a716-446655440001', CURRENT_DATE - INTERVAL '2 days', 18, 720.00, 40.00, 6, 12, 19, 4.8, 18, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440006', '770e8400-e29b-41d4-a716-446655440001', CURRENT_DATE - INTERVAL '1 day', 14, 560.00, 40.00, 4, 10, 21, 4.6, 14, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440007', '770e8400-e29b-41d4-a716-446655440001', CURRENT_DATE, 6, 240.00, 40.00, 2, 4, 23, 4.5, 6, NOW(), NOW()),
+
+-- Fatimah's Catering analytics
+('ee0e8400-e29b-41d4-a716-446655440008', '770e8400-e29b-41d4-a716-446655440002', CURRENT_DATE - INTERVAL '6 days', 5, 450.00, 90.00, 2, 3, 35, 4.7, 5, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440009', '770e8400-e29b-41d4-a716-446655440002', CURRENT_DATE - INTERVAL '5 days', 7, 630.00, 90.00, 3, 4, 32, 4.8, 7, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440010', '770e8400-e29b-41d4-a716-446655440002', CURRENT_DATE - INTERVAL '4 days', 9, 810.00, 90.00, 4, 5, 30, 4.9, 9, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440011', '770e8400-e29b-41d4-a716-446655440002', CURRENT_DATE - INTERVAL '3 days', 6, 540.00, 90.00, 2, 4, 38, 4.6, 6, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440012', '770e8400-e29b-41d4-a716-446655440002', CURRENT_DATE - INTERVAL '2 days', 8, 720.00, 90.00, 3, 5, 33, 4.7, 8, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440013', '770e8400-e29b-41d4-a716-446655440002', CURRENT_DATE - INTERVAL '1 day', 4, 360.00, 90.00, 1, 3, 36, 4.5, 4, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440014', '770e8400-e29b-41d4-a716-446655440002', CURRENT_DATE, 3, 270.00, 90.00, 1, 2, 34, 4.8, 3, NOW(), NOW()),
+
+-- Chen's Dim Sum House analytics
+('ee0e8400-e29b-41d4-a716-446655440015', '770e8400-e29b-41d4-a716-446655440003', CURRENT_DATE - INTERVAL '6 days', 12, 180.00, 15.00, 5, 7, 15, 4.2, 12, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440016', '770e8400-e29b-41d4-a716-446655440003', CURRENT_DATE - INTERVAL '5 days', 15, 225.00, 15.00, 6, 9, 12, 4.3, 15, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440017', '770e8400-e29b-41d4-a716-446655440003', CURRENT_DATE - INTERVAL '4 days', 18, 270.00, 15.00, 7, 11, 14, 4.4, 18, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440018', '770e8400-e29b-41d4-a716-446655440003', CURRENT_DATE - INTERVAL '3 days', 10, 150.00, 15.00, 3, 7, 16, 4.1, 10, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440019', '770e8400-e29b-41d4-a716-446655440003', CURRENT_DATE - INTERVAL '2 days', 20, 300.00, 15.00, 8, 12, 13, 4.5, 20, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440020', '770e8400-e29b-41d4-a716-446655440003', CURRENT_DATE - INTERVAL '1 day', 16, 240.00, 15.00, 6, 10, 15, 4.3, 16, NOW(), NOW()),
+('ee0e8400-e29b-41d4-a716-446655440021', '770e8400-e29b-41d4-a716-446655440003', CURRENT_DATE, 8, 120.00, 15.00, 3, 5, 14, 4.2, 8, NOW(), NOW());
+
+-- Insert vendor notifications
+INSERT INTO vendor_notifications (id, vendor_id, title, message, type, is_read, action_url, metadata, created_at) VALUES
+-- Lim's Kitchen notifications
+('ff0e8400-e29b-41d4-a716-446655440001', '770e8400-e29b-41d4-a716-446655440001', 'New Order Received', 'You have received a new order #GE20241201000004 for RM 125.50', 'info', false, '/orders/aa0e8400-e29b-41d4-a716-446655440004', '{"order_id": "aa0e8400-e29b-41d4-a716-446655440004", "amount": 125.50}', NOW() - INTERVAL '2 hours'),
+('ff0e8400-e29b-41d4-a716-446655440002', '770e8400-e29b-41d4-a716-446655440001', 'Menu Item Low Stock', 'Char Kway Teow is running low on stock (5 remaining)', 'warning', true, '/menu', '{"menu_item": "Char Kway Teow", "stock": 5}', NOW() - INTERVAL '1 day'),
+('ff0e8400-e29b-41d4-a716-446655440003', '770e8400-e29b-41d4-a716-446655440001', 'Great Rating!', 'You received a 5-star rating from a customer', 'success', true, '/reviews', '{"rating": 5, "customer": "Ahmad Rahman"}', NOW() - INTERVAL '3 days'),
+
+-- Fatimah's Catering notifications
+('ff0e8400-e29b-41d4-a716-446655440004', '770e8400-e29b-41d4-a716-446655440002', 'Large Order Alert', 'You have received a large catering order for 50 people', 'info', false, '/orders/aa0e8400-e29b-41d4-a716-446655440005', '{"order_size": 50, "event_type": "corporate"}', NOW() - INTERVAL '1 hour'),
+('ff0e8400-e29b-41d4-a716-446655440005', '770e8400-e29b-41d4-a716-446655440002', 'Payment Received', 'Payment of RM 850.00 has been confirmed for order #GE20241202000005', 'success', true, '/orders/aa0e8400-e29b-41d4-a716-446655440005', '{"payment_amount": 850.00}', NOW() - INTERVAL '2 days'),
+
+-- Chen's Dim Sum House notifications
+('ff0e8400-e29b-41d4-a716-446655440006', '770e8400-e29b-41d4-a716-446655440003', 'Order Cancelled', 'Order #GE20241203000006 has been cancelled by customer', 'error', false, '/orders/aa0e8400-e29b-41d4-a716-446655440006', '{"reason": "customer_request"}', NOW() - INTERVAL '30 minutes'),
+('ff0e8400-e29b-41d4-a716-446655440007', '770e8400-e29b-41d4-a716-446655440003', 'Business Hours Updated', 'Your business hours have been successfully updated', 'success', true, '/settings', '{}', NOW() - INTERVAL '1 week');
+
+-- Insert additional test orders with various statuses for vendor testing
+INSERT INTO orders (id, order_number, status, vendor_id, customer_id, sales_agent_id, delivery_date, delivery_address, subtotal, delivery_fee, sst_amount, total_amount, commission_amount, payment_status, payment_method, notes, created_at, updated_at) VALUES
+-- Recent orders for testing vendor dashboard
+('aa0e8400-e29b-41d4-a716-446655440004', 'GE20241204000004', 'confirmed', '770e8400-e29b-41d4-a716-446655440001', '990e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440002', CURRENT_DATE, '{"street": "789 Jalan Tech", "city": "Kuala Lumpur", "state": "Kuala Lumpur", "postal_code": "50000", "country": "Malaysia"}', 110.00, 15.00, 7.50, 132.50, 9.28, 'paid', 'fpx', 'Rush order for meeting', NOW() - INTERVAL '2 hours', NOW()),
+
+('aa0e8400-e29b-41d4-a716-446655440005', 'GE20241204000005', 'preparing', '770e8400-e29b-41d4-a716-446655440002', '990e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440002', CURRENT_DATE, '{"street": "321 Jalan Pendidikan", "city": "Petaling Jaya", "state": "Selangor", "postal_code": "47000", "country": "Malaysia"}', 750.00, 20.00, 46.20, 816.20, 57.13, 'paid', 'grabpay', 'Corporate event catering for 50 people', NOW() - INTERVAL '1 hour', NOW()),
+
+('aa0e8400-e29b-41d4-a716-446655440006', 'GE20241204000006', 'cancelled', '770e8400-e29b-41d4-a716-446655440003', '990e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440003', CURRENT_DATE, '{"street": "456 Jalan Rumah", "city": "Subang Jaya", "state": "Selangor", "postal_code": "47500", "country": "Malaysia"}', 35.00, 15.00, 3.00, 53.00, 3.71, 'refunded', 'fpx', 'Customer requested cancellation', NOW() - INTERVAL '30 minutes', NOW()),
+
+('aa0e8400-e29b-41d4-a716-446655440007', 'GE20241204000007', 'ready', '770e8400-e29b-41d4-a716-446655440001', '990e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440002', CURRENT_DATE, '{"street": "789 Jalan Tech", "city": "Kuala Lumpur", "state": "Kuala Lumpur", "postal_code": "50000", "country": "Malaysia"}', 75.00, 15.00, 5.40, 95.40, 6.68, 'paid', 'touchngo', 'Lunch delivery', NOW() - INTERVAL '45 minutes', NOW());
+
+-- Insert corresponding order items for the new orders
+INSERT INTO order_items (id, order_id, menu_item_id, name, description, unit_price, quantity, total_price, notes, created_at) VALUES
+-- Order 4 items (Lim's Kitchen - confirmed)
+('bb0e8400-e29b-41d4-a716-446655440010', 'aa0e8400-e29b-41d4-a716-446655440004', '880e8400-e29b-41d4-a716-446655440002', 'Hainanese Chicken Rice', 'Tender poached chicken with fragrant rice and ginger sauce', 15.00, 5, 75.00, 'Extra ginger sauce', NOW()),
+('bb0e8400-e29b-41d4-a716-446655440011', 'aa0e8400-e29b-41d4-a716-446655440004', '880e8400-e29b-41d4-a716-446655440003', 'Wonton Noodle Soup', 'Fresh egg noodles with pork and prawn wontons in clear broth', 10.00, 3, 30.00, null, NOW()),
+
+-- Order 5 items (Fatimah's Catering - preparing)
+('bb0e8400-e29b-41d4-a716-446655440012', 'aa0e8400-e29b-41d4-a716-446655440005', '880e8400-e29b-41d4-a716-446655440004', 'Nasi Lemak Set', 'Coconut rice with sambal, anchovies, peanuts, egg, and chicken rendang', 18.00, 30, 540.00, 'Corporate event - 50 people', NOW()),
+('bb0e8400-e29b-41d4-a716-446655440013', 'aa0e8400-e29b-41d4-a716-446655440005', '880e8400-e29b-41d4-a716-446655440005', 'Biryani Rice', 'Fragrant basmati rice with spiced chicken and raita', 22.00, 10, 220.00, 'Extra raita', NOW()),
+
+-- Order 6 items (Chen's Dim Sum House - cancelled)
+('bb0e8400-e29b-41d4-a716-446655440014', 'aa0e8400-e29b-41d4-a716-446655440006', '880e8400-e29b-41d4-a716-446655440007', 'Har Gow (Prawn Dumplings)', 'Steamed crystal dumplings filled with fresh prawns', 8.50, 4, 34.00, null, NOW()),
+
+-- Order 7 items (Lim's Kitchen - ready)
+('bb0e8400-e29b-41d4-a716-446655440015', 'aa0e8400-e29b-41d4-a716-446655440007', '880e8400-e29b-41d4-a716-446655440001', 'Char Kway Teow', 'Stir-fried flat rice noodles with prawns, Chinese sausage, and bean sprouts', 12.50, 6, 75.00, 'Medium spicy', NOW());
+
 -- Re-enable RLS after seeding
 SET session_replication_role = DEFAULT;

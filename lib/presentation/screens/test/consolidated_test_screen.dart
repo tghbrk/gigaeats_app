@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/customer.dart';
 import '../../providers/cart_provider.dart';
 import 'test_cart_helper.dart';
+import 'delivery_proof_test_screen.dart';
 
 class ConsolidatedTestScreen extends ConsumerStatefulWidget {
   const ConsolidatedTestScreen({super.key});
@@ -251,6 +252,29 @@ class _ConsolidatedTestScreenState extends ConsumerState<ConsolidatedTestScreen>
 
             const SizedBox(height: 24),
 
+            // Delivery Testing Section
+            _buildTestSection(
+              title: '🚚 Delivery Testing',
+              children: [
+                _buildTestCard(
+                  title: 'Delivery Proof Test',
+                  description: 'Test complete delivery proof workflow with camera, GPS, and backend storage',
+                  buttonText: 'Open Delivery Test',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const DeliveryProofTestScreen(),
+                      ),
+                    );
+                  },
+                  icon: Icons.camera_alt,
+                  color: Colors.green,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
             // Data & Integration Testing Section
             _buildTestSection(
               title: '🔧 Data & Integration Testing',
@@ -274,6 +298,16 @@ class _ConsolidatedTestScreenState extends ConsumerState<ConsolidatedTestScreen>
                   },
                   icon: Icons.menu,
                   color: Colors.brown,
+                ),
+                _buildTestCard(
+                  title: 'Enhanced Features Test',
+                  description: 'Test enhanced order management, payments, commission tracking, and menu versioning',
+                  buttonText: 'Open Enhanced Test',
+                  onPressed: () {
+                    context.push('/test-enhanced-features');
+                  },
+                  icon: Icons.auto_awesome,
+                  color: Colors.indigo,
                 ),
               ],
             ),

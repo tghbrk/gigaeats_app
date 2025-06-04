@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/menu_item.dart';
+import '../../../data/models/product.dart';
 import '../../../data/services/menu_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/loading_widget.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/repository_providers.dart';
+import 'package:uuid/uuid.dart';
 
 class MenuItemFormScreen extends ConsumerStatefulWidget {
   final String? menuItemId; // null for create, non-null for edit
@@ -839,7 +842,9 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   }
 
   Future<void> _saveMenuItem() async {
+    print('🍽️ [MENU-FORM-DEBUG] Starting menu item save...');
     if (!_formKey.currentState!.validate()) {
+      print('🍽️ [MENU-FORM-DEBUG] Form validation failed');
       return;
     }
 
@@ -847,8 +852,24 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
     try {
       final authState = ref.read(authStateProvider);
-      final vendorId = authState.user?.id ?? 'vendor_001';
-      final menuService = MenuService();
+      final userId = authState.user?.id;
+      print('🍽️ [MENU-FORM-DEBUG] Current user ID: $userId');
+
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get vendor ID from user ID
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(userId);
+
+      if (vendor == null) {
+        throw Exception('Vendor not found for user');
+      }
+
+      print('🍽️ [MENU-FORM-DEBUG] Vendor found: ${vendor.id}');
+
+      final menuItemRepository = ref.read(menuItemRepositoryProvider);
 
       final tags = _tagsController.text
           .split(',')
@@ -857,55 +878,32 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
           .toList();
 
       if (widget.menuItemId != null) {
-        // Update existing item
-        final updatedItem = _existingItem!.copyWith(
+        print('🍽️ [MENU-FORM-DEBUG] Updating existing menu item: ${widget.menuItemId}');
+        // TODO: Implement update functionality with Product model
+        throw Exception('Update functionality not yet implemented');
+      } else {
+        print('🍽️ [MENU-FORM-DEBUG] Creating new menu item...');
+        // Create new item using Product model
+        const uuid = Uuid();
+        final newProduct = Product(
+          id: uuid.v4(), // Temporary ID, will be replaced by database
+          vendorId: vendor.id,
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
           category: _selectedCategory!,
           basePrice: double.parse(_basePriceController.text),
-          bulkPricingTiers: _bulkPricingTiers,
-          minimumOrderQuantity: int.parse(_minQuantityController.text),
-          maximumOrderQuantity: _maxQuantityController.text.isNotEmpty
-              ? int.parse(_maxQuantityController.text)
-              : null,
-          status: _status,
-          imageUrls: _imageUrls,
-          dietaryTypes: _selectedDietaryTypes,
-          allergens: _allergens,
-          preparationTimeMinutes: int.parse(_prepTimeController.text),
-          availableQuantity: _availableQuantityController.text.isNotEmpty
-              ? int.parse(_availableQuantityController.text)
-              : null,
-          unit: _selectedUnit,
-          isHalalCertified: _isHalalCertified,
+          imageUrl: _imageUrls.isNotEmpty ? _imageUrls.first : null,
+          isAvailable: _status == MenuItemStatus.available,
+          isVegetarian: _selectedDietaryTypes.contains(DietaryType.vegetarian),
+          isHalal: _isHalalCertified,
           tags: tags,
+          rating: 0.0,
+          totalReviews: 0,
         );
 
-        await menuService.updateMenuItem(widget.menuItemId!, updatedItem);
-      } else {
-        // Create new item
-        await menuService.createMenuItem(
-          vendorId: vendorId,
-          name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
-          category: _selectedCategory!,
-          basePrice: double.parse(_basePriceController.text),
-          bulkPricingTiers: _bulkPricingTiers,
-          minimumOrderQuantity: int.parse(_minQuantityController.text),
-          maximumOrderQuantity: _maxQuantityController.text.isNotEmpty
-              ? int.parse(_maxQuantityController.text)
-              : null,
-          imageUrls: _imageUrls,
-          dietaryTypes: _selectedDietaryTypes,
-          allergens: _allergens,
-          preparationTimeMinutes: int.parse(_prepTimeController.text),
-          availableQuantity: _availableQuantityController.text.isNotEmpty
-              ? int.parse(_availableQuantityController.text)
-              : null,
-          unit: _selectedUnit,
-          isHalalCertified: _isHalalCertified,
-          tags: tags,
-        );
+        print('🍽️ [MENU-FORM-DEBUG] Product data: ${newProduct.toJson()}');
+        final createdProduct = await menuItemRepository.createMenuItem(newProduct);
+        print('🍽️ [MENU-FORM-DEBUG] Menu item created successfully: ${createdProduct.id}');
       }
 
       if (mounted) {

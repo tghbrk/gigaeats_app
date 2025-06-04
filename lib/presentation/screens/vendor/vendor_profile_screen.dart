@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/vendor.dart';
-import '../../../data/services/mock_data.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
+import 'vendor_edit_profile_screen.dart';
+import 'vendor_notification_settings_screen.dart';
 
 class VendorProfileScreen extends ConsumerStatefulWidget {
   const VendorProfileScreen({super.key});
@@ -31,26 +33,39 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
     });
 
     try {
-      // Simulate API delay
-      await Future.delayed(const Duration(milliseconds: 500));
-      
       final authState = ref.read(authStateProvider);
-      final vendorId = authState.user?.id ?? 'vendor_001'; // Default for demo
-      
-      // Get vendor profile
-      final vendor = MockData.sampleVendors.firstWhere(
-        (v) => v.id == vendorId,
-        orElse: () => MockData.sampleVendors.first,
-      );
+      final userId = authState.user?.id;
+
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get vendor profile from Supabase
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(userId);
+
+      if (vendor == null) {
+        throw Exception('Vendor profile not found');
+      }
 
       setState(() {
         _vendor = vendor;
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Error loading vendor profile: $e');
       setState(() {
         _isLoading = false;
       });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -262,6 +277,11 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                     title: 'Operating Hours',
                     icon: Icons.schedule,
                     child: _buildOperatingHours(),
+                    action: IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      onPressed: () => _navigateToEditProfile(),
+                      tooltip: 'Edit Operating Hours',
+                    ),
                   ),
 
                   const SizedBox(height: 16),
@@ -296,6 +316,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
     required String title,
     required IconData icon,
     required Widget child,
+    Widget? action,
   }) {
     return Card(
       child: Padding(
@@ -314,6 +335,8 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Spacer(),
+                if (action != null) action,
               ],
             ),
             const SizedBox(height: 16),
@@ -329,9 +352,10 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
       children: [
         _buildInfoRow('Business Name', _vendor!.businessName),
         _buildInfoRow('Description', _vendor!.description ?? 'No description available'),
+        _buildInfoRow('Business Type', _vendor!.businessType),
         _buildInfoRow('Rating', '${_vendor!.rating.toStringAsFixed(1)} stars'),
         _buildInfoRow('Total Reviews', '${_vendor!.totalReviews} reviews'),
-        _buildInfoRow('SSM Number', _vendor!.businessInfo.ssmNumber),
+        _buildInfoRow('SSM Number', _vendor!.businessRegistrationNumber),
       ],
     );
   }
@@ -339,8 +363,8 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   Widget _buildContactInfo() {
     return Column(
       children: [
-        _buildInfoRow('Phone', _vendor!.phoneNumber),
         _buildInfoRow('Email', _vendor!.email),
+        _buildInfoRow('Phone', _vendor!.phoneNumber),
         // Note: Website field not available in current Vendor model
       ],
     );
@@ -349,20 +373,28 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   Widget _buildAddressInfo() {
     return Column(
       children: [
-        _buildInfoRow('Street', _vendor!.address.street),
-        _buildInfoRow('City', _vendor!.address.city),
-        _buildInfoRow('State', _vendor!.address.state),
-        _buildInfoRow('Postcode', _vendor!.address.postcode),
-        // Note: Delivery instructions not available in current VendorAddress model
+        _buildInfoRow('Business Address', _vendor!.businessAddress),
+        // Note: Detailed address breakdown not available in current Vendor model
       ],
     );
   }
 
   Widget _buildOperatingHours() {
+    final dayNames = {
+      'monday': 'Monday',
+      'tuesday': 'Tuesday',
+      'wednesday': 'Wednesday',
+      'thursday': 'Thursday',
+      'friday': 'Friday',
+      'saturday': 'Saturday',
+      'sunday': 'Sunday',
+    };
+
     return Column(
       children: _vendor!.businessInfo.operatingHours.schedule.entries.map((entry) {
+        final dayName = dayNames[entry.key] ?? entry.key;
         return _buildInfoRow(
-          entry.key,
+          dayName,
           entry.value.safeIsOpen
               ? '${entry.value.openTime ?? 'N/A'} - ${entry.value.closeTime ?? 'N/A'}'
               : 'Closed',
@@ -400,7 +432,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
           title: const Text('Notification Settings'),
           subtitle: const Text('Manage notification preferences'),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () => _showComingSoon('Notification settings'),
+          onTap: () => _navigateToNotificationSettings(),
         ),
         const Divider(),
         ListTile(
@@ -454,7 +486,26 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   }
 
   void _navigateToEditProfile() {
-    _showComingSoon('Edit profile functionality');
+    if (_vendor == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => VendorEditProfileScreen(vendor: _vendor!),
+      ),
+    ).then((result) {
+      // If the profile was updated successfully, reload the profile
+      if (result == true) {
+        _loadVendorProfile();
+      }
+    });
+  }
+
+  void _navigateToNotificationSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const VendorNotificationSettingsScreen(),
+      ),
+    );
   }
 
   void _showSignOutDialog() {

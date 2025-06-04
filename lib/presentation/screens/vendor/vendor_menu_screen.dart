@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/product.dart';
 import '../../../data/services/mock_data.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../widgets/loading_widget.dart';
 import 'menu_item_form_screen.dart';
 
@@ -38,19 +39,57 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
   }
 
   void _loadProducts() async {
+    print('🍽️ [VENDOR-MENU-DEBUG] Loading products...');
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Simulate API delay
-      await Future.delayed(const Duration(milliseconds: 500));
-      
       final authState = ref.read(authStateProvider);
-      final vendorId = authState.user?.id ?? 'vendor_001'; // Default for demo
-      
-      // Get products for this vendor
-      final products = MockData.getProductsForVendor(vendorId);
+      final userId = authState.user?.id;
+      print('🍽️ [VENDOR-MENU-DEBUG] Current user ID: $userId');
+
+      if (userId == null) {
+        print('🍽️ [VENDOR-MENU-DEBUG] No user ID found, using mock data');
+        // Fallback to mock data if no user
+        final products = MockData.getProductsForVendor('vendor_001');
+        final categories = products.map((p) => p.category).toSet().toList();
+        categories.sort();
+
+        setState(() {
+          _products = products;
+          _categories = categories;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Get vendor ID from user ID
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(userId);
+
+      if (vendor == null) {
+        print('🍽️ [VENDOR-MENU-DEBUG] No vendor found for user, using mock data');
+        // Fallback to mock data if no vendor found
+        final products = MockData.getProductsForVendor('vendor_001');
+        final categories = products.map((p) => p.category).toSet().toList();
+        categories.sort();
+
+        setState(() {
+          _products = products;
+          _categories = categories;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('🍽️ [VENDOR-MENU-DEBUG] Vendor found: ${vendor.id}');
+
+      // Get products for this vendor from Supabase
+      final menuItemRepository = ref.read(menuItemRepositoryProvider);
+      final products = await menuItemRepository.getMenuItems(vendor.id);
+      print('🍽️ [VENDOR-MENU-DEBUG] Loaded ${products.length} products from Supabase');
+
       final categories = products.map((p) => p.category).toSet().toList();
       categories.sort();
 
@@ -60,9 +99,20 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      print('🍽️ [VENDOR-MENU-DEBUG] Error loading products: $e');
       setState(() {
         _isLoading = false;
       });
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load menu items: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -558,12 +608,14 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
   }
 
   void _navigateToAddProduct() {
+    print('🍽️ [VENDOR-MENU-DEBUG] Navigating to add product screen');
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const MenuItemFormScreen(),
       ),
     ).then((_) {
       // Refresh the products after adding
+      print('🍽️ [VENDOR-MENU-DEBUG] Returned from add product screen, refreshing...');
       _loadProducts();
     });
   }

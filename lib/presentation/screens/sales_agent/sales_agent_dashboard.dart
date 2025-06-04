@@ -9,9 +9,12 @@ import '../../widgets/quick_action_button.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/repository_providers.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/enhanced_commission_provider.dart';
+import '../../providers/auth_provider.dart';
 import 'vendors_screen.dart';
 import 'orders_screen.dart';
 import 'customers_screen.dart';
+import 'sales_agent_profile_screen.dart';
 
 class SalesAgentDashboard extends ConsumerStatefulWidget {
   const SalesAgentDashboard({super.key});
@@ -73,7 +76,7 @@ class _SalesAgentDashboardState extends ConsumerState<SalesAgentDashboard> {
               return const CustomersScreen();
             },
           ),
-          const _ProfileTab(),
+          const SalesAgentProfileScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -107,6 +110,7 @@ class _DashboardTab extends ConsumerWidget {
     // Real data from repositories
     final recentOrdersAsync = ref.watch(recentOrdersProvider);
     final customerStatsAsync = ref.watch(customerStatisticsProvider);
+    final commissionRateAsync = ref.watch(currentCommissionRateProvider);
 
 
 
@@ -238,12 +242,28 @@ class _DashboardTab extends ConsumerWidget {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: DashboardCard(
-                      title: 'Commission Rate',
-                      value: '7%',
-                      subtitle: 'Standard rate',
-                      icon: Icons.percent,
-                      color: Colors.orange,
+                    child: commissionRateAsync.when(
+                      data: (rate) => DashboardCard(
+                        title: 'Commission Rate',
+                        value: '${(rate * 100).toStringAsFixed(1)}%',
+                        subtitle: 'Current rate',
+                        icon: Icons.percent,
+                        color: Colors.orange,
+                      ),
+                      loading: () => const DashboardCard(
+                        title: 'Commission Rate',
+                        value: '...',
+                        subtitle: 'Loading...',
+                        icon: Icons.percent,
+                        color: Colors.orange,
+                      ),
+                      error: (_, __) => const DashboardCard(
+                        title: 'Commission Rate',
+                        value: '7.0%',
+                        subtitle: 'Default rate',
+                        icon: Icons.percent,
+                        color: Colors.orange,
+                      ),
                     ),
                   ),
                 ],
@@ -413,16 +433,4 @@ class _DashboardTab extends ConsumerWidget {
 
 
 
-class _ProfileTab extends StatelessWidget {
-  const _ProfileTab();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: const Center(
-        child: Text('Profile Tab - Coming Soon'),
-      ),
-    );
-  }
-}

@@ -29,15 +29,8 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
   late TabController _tabController;
   String _selectedCategory = 'All';
 
-  // ULTIMATE FIX: Create static parameters to prevent provider recreation
-  late final Map<String, dynamic> _staticWebParams;
-
-  // DEBUGGING: Track rebuild causes
-  int _buildCount = 0;
-  DateTime? _lastBuildTime;
-  String? _lastVendorAsyncState;
-  String? _lastCartState;
-  String? _lastWebDataAsyncState;
+  // Create stable parameters to prevent provider recreation - following TestMenuScreen pattern
+  late final Map<String, dynamic> _stableProviderParams;
 
   @override
   void initState() {
@@ -45,27 +38,13 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
     debugPrint('🔧 VendorDetailsScreen: initState() called for vendor ${widget.vendorId}');
     _tabController = TabController(length: 2, vsync: this);
 
-    // Create static parameters once and never change them
-    _staticWebParams = {
+    // Create stable parameters once and never change them - no category filtering in provider
+    _stableProviderParams = {
       'vendorId': widget.vendorId,
       'isAvailable': true,
-      'useStream': false,
+      'useStream': !kIsWeb, // Use stream for mobile, future for web
     };
-    debugPrint('🔧 VendorDetailsScreen: initState() completed, static params: $_staticWebParams');
-  }
-
-  @override
-  void didUpdateWidget(VendorDetailsScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    debugPrint('🔧 VendorDetailsScreen: didUpdateWidget() called');
-    debugPrint('🔧 Old vendor ID: ${oldWidget.vendorId}');
-    debugPrint('🔧 New vendor ID: ${widget.vendorId}');
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    debugPrint('🔧 VendorDetailsScreen: didChangeDependencies() called');
+    debugPrint('🔧 VendorDetailsScreen: initState() completed, stable params: $_stableProviderParams');
   }
 
   @override
@@ -77,120 +56,35 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    _buildCount++;
-    final now = DateTime.now();
-    final timeSinceLastBuild = _lastBuildTime != null ? now.difference(_lastBuildTime!).inMilliseconds : 0;
-    _lastBuildTime = now;
-
-    debugPrint('🔥 VendorDetailsScreen: build() #$_buildCount called for vendor ${widget.vendorId}');
-    debugPrint('🔥 Time since last build: ${timeSinceLastBuild}ms');
-    debugPrint('🔥 Current _selectedCategory = $_selectedCategory');
+    debugPrint('🔧 VendorDetailsScreen: build() called for vendor ${widget.vendorId}');
 
     final vendorAsync = ref.watch(vendorDetailsProvider(widget.vendorId));
     final cartState = ref.watch(cartProvider);
 
-    final currentVendorAsyncState = vendorAsync.runtimeType.toString();
-    final currentCartState = '${cartState.totalItems} items';
+    // Use stable provider parameters - following TestMenuScreen pattern
+    final productsAsync = ref.watch(platformMenuItemsProvider(_stableProviderParams));
 
-    // Check what changed to trigger this rebuild
-    if (_lastVendorAsyncState != null) {
-      if (_lastVendorAsyncState != currentVendorAsyncState) {
-        debugPrint('🔥 REBUILD CAUSE: vendorAsync state changed from $_lastVendorAsyncState to $currentVendorAsyncState');
-      }
-      if (_lastCartState != currentCartState) {
-        debugPrint('🔥 REBUILD CAUSE: cartState changed from $_lastCartState to $currentCartState');
-      }
-      if (_lastVendorAsyncState == currentVendorAsyncState && _lastCartState == currentCartState) {
-        debugPrint('🔥 REBUILD CAUSE: UNKNOWN - neither vendorAsync nor cartState changed!');
-        debugPrint('🔥 This suggests the rebuild is caused by something else in the widget tree');
-      }
-    }
-
-    _lastVendorAsyncState = currentVendorAsyncState;
-    _lastCartState = currentCartState;
-
-    debugPrint('🔥 VendorDetailsScreen: vendorAsync state: $currentVendorAsyncState');
-    debugPrint('🔥 VendorDetailsScreen: cartState: $currentCartState');
-
-    // ULTIMATE FIX: Use static parameters created in initState to prevent provider recreation
-    AsyncValue<List<Product>> productsAsync;
-    if (kIsWeb) {
-      // Use the static parameters to prevent provider invalidation loops
-      final webDataAsync = ref.watch(webMenuItemsProvider(_staticWebParams));
-      final currentWebDataAsyncState = webDataAsync.runtimeType.toString();
-
-      debugPrint('🔥 VendorDetailsScreen: webDataAsync state: $currentWebDataAsyncState');
-
-      // Check if webDataAsync state changed
-      if (_lastWebDataAsyncState != null && _lastWebDataAsyncState != currentWebDataAsyncState) {
-        debugPrint('🔥 REBUILD CAUSE: webDataAsync state changed from $_lastWebDataAsyncState to $currentWebDataAsyncState');
-      }
-      _lastWebDataAsyncState = currentWebDataAsyncState;
-
-      // Only process data when it's actually loaded to prevent rebuild loops
-      if (webDataAsync is AsyncData<List<Map<String, dynamic>>>) {
-        final webData = webDataAsync.value;
-        debugPrint('🔥 VendorDetailsScreen: Got web data with ${webData.length} items');
-
-        try {
-          // Filter by category in the UI instead of in the provider to prevent loops
-          var filteredData = webData;
-          if (_selectedCategory != 'All') {
-            filteredData = webData.where((item) {
-              final category = item['category'] as String?;
-              return category == _selectedCategory;
-            }).toList();
-          }
-
-          final products = filteredData.map((data) => Product.fromJson(data)).toList();
-          debugPrint('🔥 VendorDetailsScreen: Successfully converted ${products.length} products (filtered from ${webData.length})');
-          productsAsync = AsyncData(products);
-
-          // CRITICAL: Check if this data processing is triggering a rebuild
-          debugPrint('🔥 VendorDetailsScreen: Data processing completed, about to return productsAsync');
-        } catch (e) {
-          debugPrint('🔥 VendorDetailsScreen: Error converting web data to products: $e');
-          productsAsync = AsyncError(e, StackTrace.current);
-        }
-      } else if (webDataAsync is AsyncError) {
-        debugPrint('🔥 VendorDetailsScreen: Web provider error: ${webDataAsync.error}');
-        productsAsync = AsyncError(webDataAsync.error as Object, webDataAsync.stackTrace ?? StackTrace.current);
-      } else {
-        debugPrint('🔥 VendorDetailsScreen: Web provider is loading...');
-        productsAsync = const AsyncLoading();
-      }
-    } else {
-      // For mobile, use the mobile provider directly
-      final mobileParams = {
-        'vendorId': widget.vendorId,
-        'category': _selectedCategory == 'All' ? null : _selectedCategory,
-        'isAvailable': true,
-        'useStream': true,
-      };
-      productsAsync = ref.watch(vendorProductsProvider(mobileParams));
-    }
-
-    debugPrint('🔥 VendorDetailsScreen: About to build Scaffold');
+    debugPrint('🔧 VendorDetailsScreen: About to build Scaffold');
 
     return Scaffold(
       body: vendorAsync.when(
         data: (vendor) {
-          debugPrint('🔥 VendorDetailsScreen: vendorAsync.when.data() called');
+          debugPrint('🔧 VendorDetailsScreen: vendorAsync.when.data() called');
           if (vendor == null) {
-            debugPrint('🔥 VendorDetailsScreen: Vendor is null, showing not found');
+            debugPrint('🔧 VendorDetailsScreen: Vendor is null, showing not found');
             return const Center(child: Text('Vendor not found'));
           }
-          debugPrint('🔥 VendorDetailsScreen: About to call _buildVendorDetails');
+          debugPrint('🔧 VendorDetailsScreen: About to call _buildVendorDetails');
           final result = _buildVendorDetails(vendor, productsAsync, cartState);
-          debugPrint('🔥 VendorDetailsScreen: _buildVendorDetails completed');
+          debugPrint('🔧 VendorDetailsScreen: _buildVendorDetails completed');
           return result;
         },
         loading: () {
-          debugPrint('🔥 VendorDetailsScreen: vendorAsync.when.loading() called');
+          debugPrint('🔧 VendorDetailsScreen: vendorAsync.when.loading() called');
           return const Center(child: CircularProgressIndicator());
         },
         error: (error, stack) {
-          debugPrint('🔥 VendorDetailsScreen: vendorAsync.when.error() called: $error');
+          debugPrint('🔧 VendorDetailsScreen: vendorAsync.when.error() called: $error');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -219,12 +113,10 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
     );
   }
 
-
-
   Widget _buildVendorDetails(Vendor vendor, AsyncValue<List<Product>> productsAsync, CartState cartState) {
-    debugPrint('🔥 _buildVendorDetails: Called with vendor ${vendor.businessName}');
-    debugPrint('🔥 _buildVendorDetails: productsAsync state: ${productsAsync.runtimeType}');
-    debugPrint('🔥 _buildVendorDetails: cartState: ${cartState.totalItems} items');
+    debugPrint('🔧 _buildVendorDetails: Called with vendor ${vendor.businessName}');
+    debugPrint('🔧 _buildVendorDetails: productsAsync state: ${productsAsync.runtimeType}');
+    debugPrint('🔧 _buildVendorDetails: cartState: ${cartState.totalItems} items');
 
     final theme = Theme.of(context);
 
@@ -451,7 +343,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
   }
 
   Widget _buildMenuTab(AsyncValue<List<Product>> productsAsync) {
-    debugPrint('🔥 _buildMenuTab: Called with productsAsync state: ${productsAsync.runtimeType}');
+    debugPrint('🔧 _buildMenuTab: Called with productsAsync state: ${productsAsync.runtimeType}');
 
     return productsAsync.when(
       data: (products) {
@@ -477,7 +369,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
         // Get unique categories
         final categories = ['All', ...products.map((p) => p.category).toSet()];
 
-        // Filter products by selected category
+        // Filter products by selected category - CLIENT-SIDE FILTERING to prevent infinite loops
         final filteredProducts = _selectedCategory == 'All'
             ? products
             : products.where((p) => p.category == _selectedCategory).toList();
@@ -519,7 +411,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  childAspectRatio: 0.75,
+                  childAspectRatio: 0.525, // Perfect adjustment to eliminate the last 0.143 pixels
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                 ),
@@ -555,23 +447,8 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
               ElevatedButton(
                 onPressed: () {
                   debugPrint('VendorDetailsScreen: Retrying menu items load...');
-                  if (kIsWeb) {
-                    final webParams = {
-                      'vendorId': widget.vendorId,
-                      'category': _selectedCategory == 'All' ? null : _selectedCategory,
-                      'isAvailable': true,
-                      'useStream': false,
-                    };
-                    ref.invalidate(webMenuItemsProvider(webParams));
-                  } else {
-                    final mobileParams = {
-                      'vendorId': widget.vendorId,
-                      'category': _selectedCategory == 'All' ? null : _selectedCategory,
-                      'isAvailable': true,
-                      'useStream': true,
-                    };
-                    ref.invalidate(vendorProductsProvider(mobileParams));
-                  }
+                  // Use stable provider parameters for retry - no dynamic parameters
+                  ref.invalidate(platformMenuItemsProvider(_stableProviderParams));
                 },
                 child: const Text('Retry'),
               ),

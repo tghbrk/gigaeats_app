@@ -441,14 +441,18 @@ class CustomerCard extends StatelessWidget {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert),
       onSelected: (value) {
+        debugPrint('🔧 CustomerCard: Action selected: $value for customer: ${customer.organizationName}');
         switch (value) {
           case 'view':
+            debugPrint('🔧 CustomerCard: Navigating to customer details');
             _navigateToCustomerDetails(context);
             break;
           case 'edit':
+            debugPrint('🔧 CustomerCard: Calling onEdit callback');
             onEdit?.call();
             break;
           case 'delete':
+            debugPrint('🔧 CustomerCard: Calling onDelete callback');
             onDelete?.call();
             break;
         }

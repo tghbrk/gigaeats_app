@@ -5,6 +5,7 @@ import '../../data/models/order.dart';
 import '../../data/models/order_status_history.dart';
 import '../../data/models/order_notification.dart';
 import '../../data/models/customer.dart';
+// Address is defined in order.dart, no separate import needed
 import '../../data/services/order_service.dart';
 import '../../data/repositories/order_repository.dart';
 import '../../core/utils/debug_logger.dart';
@@ -107,15 +108,6 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
         throw Exception('User not authenticated. Please log in and try again.');
       }
 
-      final testUserId = currentUser.id;
-      final testUserName = currentUser.fullName;
-
-      if (cartState.isEmpty) {
-        DebugLogger.error('Cart is empty', tag: 'OrderProvider');
-        throw Exception('Cart is empty. Please add items to your cart first.');
-      }
-
-      DebugLogger.auth('Using authenticated user for order creation', userId: testUserId, email: currentUser.email);
       DebugLogger.info('Cart has ${cartState.totalItems} items', tag: 'OrderProvider');
 
       // For now, we'll handle single vendor orders
@@ -123,33 +115,30 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
       final vendorItems = cartState.itemsByVendor;
       if (vendorItems.length > 1) {
         DebugLogger.error('Multi-vendor orders not supported', tag: 'OrderProvider');
-        throw Exception('Multi-vendor orders not yet supported. Please order from one vendor at a time.');
+        throw Exception('Multi-vendor orders are not currently supported. Please order from one vendor at a time.');
       }
 
-      final vendorId = vendorItems.keys.first;
-      final items = vendorItems[vendorId]!;
-      final vendorName = items.first.vendorName;
+      if (vendorItems.isEmpty) {
+        DebugLogger.error('No items in cart', tag: 'OrderProvider');
+        throw Exception('Cart is empty. Please add items before creating an order.');
+      }
 
-      DebugLogger.info('Creating order for vendor: $vendorName (ID: $vendorId)', tag: 'OrderProvider');
+      // Get the single vendor's items
+      final vendorEntry = vendorItems.entries.first;
+      final vendorId = vendorEntry.key;
+      final cartItems = vendorEntry.value;
 
-      final orderItems = items.map((cartItem) {
-        DebugLogger.info('Converting cart item: ${cartItem.name} (${cartItem.runtimeType})', tag: 'OrderProvider');
-        final orderItem = cartItem.toOrderItem();
-        DebugLogger.info('Created order item: ${orderItem.name} (${orderItem.runtimeType})', tag: 'OrderProvider');
-        return orderItem;
-      }).toList();
+      DebugLogger.info('Creating order for vendor: $vendorId with ${cartItems.length} items', tag: 'OrderProvider');
 
-      DebugLogger.info('Total order items created: ${orderItems.length}', tag: 'OrderProvider');
+      // Get vendor name from the first cart item
+      final vendorName = cartItems.first.vendorName;
 
-      // Use existing customer ID or create a new customer
+      // Generate customer ID if not provided
       String finalCustomerId;
-      if (customerId != null) {
-        finalCustomerId = customerId;
-        DebugLogger.info('Using provided customer ID: $finalCustomerId', tag: 'OrderProvider');
-      } else {
-        // Use test customer assigned to our test user
-        finalCustomerId = '11111111-2222-3333-4444-555555555555'; // Test Customer Corp
-        DebugLogger.info('Using test customer ID: $finalCustomerId', tag: 'OrderProvider');
+      if (customerId == null) {
+        // Generate a test customer ID for development
+        finalCustomerId = 'cust_${DateTime.now().millisecondsSinceEpoch}';
+        DebugLogger.info('Generated customer ID: $finalCustomerId', tag: 'OrderProvider');
 
         // Verify customer exists, create if not
         try {
@@ -157,67 +146,65 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
           final existingCustomer = await customerRepo.getCustomerById(finalCustomerId);
           if (existingCustomer == null) {
             DebugLogger.warning('Test customer not found, creating new customer', tag: 'OrderProvider');
-            // Create a new customer with the provided information
+            
+            // Create a new customer using correct constructor parameters
             final newCustomer = Customer(
-              id: '',
-              salesAgentId: '',
-              type: CustomerType.corporate,
-              organizationName: customerName,
+              id: finalCustomerId,
+              salesAgentId: currentUser.id,
+              type: CustomerType.corporate, // Use corporate instead of business
+              organizationName: customerName, // Use organizationName instead of businessName
               contactPersonName: customerName,
-              email: 'customer@example.com',
+              email: 'test@example.com',
               phoneNumber: contactPhone ?? '+60123456789',
               address: CustomerAddress(
                 street: deliveryAddress.street,
                 city: deliveryAddress.city,
                 state: deliveryAddress.state,
                 postcode: deliveryAddress.postalCode,
+                country: deliveryAddress.country,
+                deliveryInstructions: deliveryAddress.notes,
               ),
-              preferences: const CustomerPreferences(),
-              lastOrderDate: DateTime.now(),
+              preferences: const CustomerPreferences(), // Use default preferences
+              isActive: true,
+              totalSpent: 0.0,
+              totalOrders: 0,
+              averageOrderValue: 0.0,
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
             );
-            final createdCustomer = await customerRepo.createCustomer(newCustomer);
-            finalCustomerId = createdCustomer.id;
-            DebugLogger.success('Created new customer with ID: $finalCustomerId', tag: 'OrderProvider');
+            
+            await customerRepo.createCustomer(newCustomer);
+            DebugLogger.success('Created new test customer: $finalCustomerId', tag: 'OrderProvider');
           }
         } catch (e) {
-          DebugLogger.error('Error checking/creating customer: $e', tag: 'OrderProvider');
-          // Continue with the fallback ID - the database will handle the error
+          DebugLogger.warning('Could not verify/create customer: $e', tag: 'OrderProvider');
+          // Continue with order creation anyway for testing
         }
+      } else {
+        finalCustomerId = customerId;
       }
 
-      // Validate that we have a valid vendor ID from the cart items
-      if (vendorId.isEmpty) {
-        DebugLogger.error('No vendor ID found in cart items', tag: 'OrderProvider');
-        throw Exception('Invalid vendor information. Please refresh the menu and try again.');
-      }
+      // Convert cart items to order items using correct field names
+      final orderItems = cartItems.map((cartItem) {
+        return OrderItem(
+          id: '', // Will be generated by database
+          menuItemId: cartItem.productId, // Use productId instead of menuItemId
+          name: cartItem.name,
+          description: cartItem.description,
+          unitPrice: cartItem.unitPrice, // Use unitPrice instead of price
+          quantity: cartItem.quantity,
+          totalPrice: cartItem.totalPrice,
+          imageUrl: cartItem.imageUrl,
+          customizations: cartItem.customizations,
+          notes: cartItem.notes,
+        );
+      }).toList();
 
-      // Validate UUIDs before creating order
-      DebugLogger.info('🔍 Validating UUIDs before order creation:', tag: 'OrderProvider');
-      DebugLogger.info('  - Vendor ID: $vendorId (length: ${vendorId.length})', tag: 'OrderProvider');
-      DebugLogger.info('  - Customer ID: $finalCustomerId (length: ${finalCustomerId.length})', tag: 'OrderProvider');
-      DebugLogger.info('  - Sales Agent ID: $testUserId (length: ${testUserId.length})', tag: 'OrderProvider');
+      DebugLogger.info('Converted ${orderItems.length} cart items to order items', tag: 'OrderProvider');
 
-      // Validate UUID format using regex
-      final uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false);
-
-      if (!uuidRegex.hasMatch(vendorId)) {
-        DebugLogger.error('Invalid vendor ID format: $vendorId', tag: 'OrderProvider');
-        throw Exception('Invalid vendor ID format. Please refresh the menu and try again.');
-      }
-
-      if (!uuidRegex.hasMatch(finalCustomerId)) {
-        DebugLogger.error('Invalid customer ID format: $finalCustomerId', tag: 'OrderProvider');
-        throw Exception('Invalid customer ID format. Please contact support.');
-      }
-
-      if (!uuidRegex.hasMatch(testUserId)) {
-        DebugLogger.error('Invalid sales agent ID format: $testUserId', tag: 'OrderProvider');
-        throw Exception('Invalid sales agent ID format. Please contact support.');
-      }
-
-      DebugLogger.success('✅ All UUIDs validated successfully', tag: 'OrderProvider');
+      // Use current authenticated user as sales agent
+      final salesAgentId = currentUser.id;
+      final salesAgentName = currentUser.fullName;
 
       // Create order object for repository
       final newOrder = Order(
@@ -229,8 +216,8 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
         vendorName: vendorName,
         customerId: finalCustomerId, // This is a valid hardcoded UUID
         customerName: customerName,
-        salesAgentId: testUserId, // This is a valid hardcoded UUID
-        salesAgentName: testUserName,
+        salesAgentId: salesAgentId, // Use current authenticated user's ID
+        salesAgentName: salesAgentName,
         deliveryDate: deliveryDate,
         deliveryAddress: deliveryAddress,
         subtotal: orderItems.fold(0.0, (sum, item) => sum + item.totalPrice),
@@ -238,15 +225,18 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
         sstAmount: 0.0, // Will be calculated by repository
         totalAmount: 0.0, // Will be calculated by repository
         commissionAmount: 0.0, // Will be calculated by repository
+        // Individual payment fields (replaces PaymentInfo object)
+        paymentMethod: PaymentMethod.fpx.value, // Use fpx as default
+        paymentStatus: PaymentStatus.pending.value,
+        paymentReference: null, // Will be set when payment is processed
         notes: notes,
-        contactPhone: contactPhone, // Add contact phone to order
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      DebugLogger.info('📤 Calling repository to create order', tag: 'OrderProvider');
+      DebugLogger.info('Created order object with vendor: $vendorId, customer: $finalCustomerId', tag: 'OrderProvider');
 
-      // Log the complete order object being sent
+      // Log the order object being sent to repository
       final orderJson = newOrder.toJson();
       DebugLogger.logObject('Order object being sent to repository', orderJson, tag: 'OrderProvider');
 
@@ -263,49 +253,14 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
 
       return order;
     } catch (e, stackTrace) {
-      DebugLogger.error('Error creating order', tag: 'OrderProvider', error: e, stackTrace: stackTrace);
-
-      // Log additional error details for debugging
-      if (e is Exception) {
-        DebugLogger.error('Exception details: ${e.toString()}', tag: 'OrderProvider-Exception');
-      }
-
-      // Provide detailed error handling with specific messages
-      String errorMessage = 'Failed to create order';
-
-      final errorString = e.toString().toLowerCase();
-
-      if (errorString.contains('user not authenticated') || errorString.contains('jwt')) {
-        errorMessage = 'Authentication error. Please log in again and try again.';
-      } else if (errorString.contains('permission') || errorString.contains('42501') || errorString.contains('rls')) {
-        errorMessage = 'Permission denied. Please check your account permissions.';
-      } else if (errorString.contains('foreign key') || errorString.contains('violates')) {
-        errorMessage = 'Invalid data reference. Please check vendor and customer information.';
-      } else if (errorString.contains('not null') || errorString.contains('required')) {
-        errorMessage = 'Missing required information. Please fill in all required fields.';
-      } else if (errorString.contains('network') || errorString.contains('connection')) {
-        errorMessage = 'Network error. Please check your internet connection and try again.';
-      } else if (errorString.contains('cors') || errorString.contains('access-control')) {
-        errorMessage = 'Connection error. Please refresh the page and try again.';
-      } else if (errorString.contains('timeout')) {
-        errorMessage = 'Request timeout. Please try again.';
-      } else if (errorString.contains('duplicate') || errorString.contains('unique')) {
-        errorMessage = 'Duplicate order detected. Please check if the order was already created.';
-      } else if (errorString.contains('400') || errorString.contains('bad request')) {
-        errorMessage = 'Invalid order data. Please check all fields and try again.';
-      } else {
-        // Include the actual error for debugging
-        errorMessage = 'Failed to create order: ${e.toString()}';
-      }
-
-      DebugLogger.error('Final error message: $errorMessage', tag: 'OrderProvider-Final');
-
+      DebugLogger.error('Failed to create order: $e', tag: 'OrderProvider');
+      DebugLogger.error('Stack trace: $stackTrace', tag: 'OrderProvider');
+      
       state = state.copyWith(
-        errorMessage: errorMessage,
+        errorMessage: 'Failed to create order: ${e.toString()}',
       );
-
-      // Throw the exception so the UI can handle it properly
-      throw Exception(errorMessage);
+      
+      rethrow;
     }
   }
 
@@ -326,10 +281,11 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
       }).toList();
 
       state = state.copyWith(orders: updatedOrders);
+      debugPrint('OrderProvider: Order status updated successfully');
     } catch (e) {
-      debugPrint('Error updating order status: $e');
+      debugPrint('OrderProvider: Error updating order status: $e');
       state = state.copyWith(
-        errorMessage: 'Failed to update order: ${e.toString()}',
+        errorMessage: 'Failed to update order status: ${e.toString()}',
       );
     }
   }
@@ -351,8 +307,9 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
       }).toList();
 
       state = state.copyWith(orders: updatedOrders);
+      debugPrint('OrderProvider: Order cancelled successfully');
     } catch (e) {
-      debugPrint('Error cancelling order: $e');
+      debugPrint('OrderProvider: Error cancelling order: $e');
       state = state.copyWith(
         errorMessage: 'Failed to cancel order: ${e.toString()}',
       );
@@ -365,12 +322,12 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
 
       if (order != null) {
         // Update the order in the local state if it exists
-        final updatedOrders = state.orders.map((o) {
-          return o.id == orderId ? order : o;
+        final updatedOrders = state.orders.map((existingOrder) {
+          return existingOrder.id == orderId ? order : existingOrder;
         }).toList();
 
         // If order doesn't exist in local state, add it
-        if (!state.orders.any((o) => o.id == orderId)) {
+        if (!state.orders.any((existingOrder) => existingOrder.id == orderId)) {
           updatedOrders.add(order);
         }
 
@@ -379,7 +336,7 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
 
       return order;
     } catch (e) {
-      debugPrint('Error loading order by ID: $e');
+      debugPrint('OrderProvider: Error loading order by ID: $e');
       state = state.copyWith(
         errorMessage: 'Failed to load order: ${e.toString()}',
       );
@@ -417,7 +374,24 @@ final activeOrdersProvider = Provider<List<Order>>((ref) {
   return ordersState.orders
       .where((order) =>
           order.status != OrderStatus.delivered &&
-          order.status != OrderStatus.cancelled)
+          order.status != OrderStatus.cancelled &&
+          order.status != OrderStatus.ready)
+      .toList();
+});
+
+final readyOrdersProvider = Provider<List<Order>>((ref) {
+  final ordersState = ref.watch(ordersProvider);
+  return ordersState.orders
+      .where((order) => order.status == OrderStatus.ready)
+      .toList();
+});
+
+final historyOrdersProvider = Provider<List<Order>>((ref) {
+  final ordersState = ref.watch(ordersProvider);
+  return ordersState.orders
+      .where((order) =>
+          order.status == OrderStatus.delivered ||
+          order.status == OrderStatus.cancelled)
       .toList();
 });
 
@@ -510,7 +484,6 @@ class OrderTrackingNotifier extends StateNotifier<AsyncValue<Order?>> {
     DateTime? preparationStartedAt,
     DateTime? readyAt,
     DateTime? outForDeliveryAt,
-    String? deliveryZone,
     String? specialInstructions,
     String? contactPhone,
   }) async {
@@ -523,7 +496,6 @@ class OrderTrackingNotifier extends StateNotifier<AsyncValue<Order?>> {
         preparationStartedAt: preparationStartedAt,
         readyAt: readyAt,
         outForDeliveryAt: outForDeliveryAt,
-        deliveryZone: deliveryZone,
         specialInstructions: specialInstructions,
         contactPhone: contactPhone,
       );

@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/models/order.dart';
 import '../../../data/models/customer.dart';
+import '../../../data/models/delivery_method.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/customer_selector.dart';
+import '../../widgets/delivery_method_selector.dart';
+import '../../widgets/delivery_information_section.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   const CreateOrderScreen({super.key});
@@ -28,6 +31,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _stateController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _notesController = TextEditingController();
+  final _deliveryInstructionsController = TextEditingController();
 
   DateTime? _selectedDeliveryDate;
   TimeOfDay? _selectedDeliveryTime;
@@ -44,6 +48,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     _stateController.dispose();
     _postalCodeController.dispose();
     _notesController.dispose();
+    _deliveryInstructionsController.dispose();
     super.dispose();
   }
 
@@ -139,10 +144,30 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
                     const SizedBox(height: 24),
 
+                    // Delivery Method Selection
+                    DeliveryMethodSelector(
+                      selectedMethod: cartState.selectedDeliveryMethod ?? DeliveryMethod.ownFleet,
+                      onMethodSelected: (method) {
+                        ref.read(cartProvider.notifier).updateDeliveryMethod(method);
+                      },
+                      subtotal: cartState.subtotal,
+                    ),
+
+                    const SizedBox(height: 24),
+
                     // Delivery Information
-                    _buildSectionHeader('Delivery Information'),
-                    const SizedBox(height: 16),
-                    _buildDeliveryForm(),
+                    DeliveryInformationSection(
+                      selectedDeliveryMethod: cartState.selectedDeliveryMethod ?? DeliveryMethod.ownFleet,
+                      selectedDeliveryDate: _selectedDeliveryDate,
+                      selectedDeliveryTime: _selectedDeliveryTime,
+                      streetController: _streetController,
+                      cityController: _cityController,
+                      stateController: _stateController,
+                      postalCodeController: _postalCodeController,
+                      deliveryInstructionsController: _deliveryInstructionsController,
+                      onSelectDate: _selectDeliveryDate,
+                      onSelectTime: _selectDeliveryTime,
+                    ),
 
                     const SizedBox(height: 24),
 
@@ -252,7 +277,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           const SizedBox(height: 24),
           CustomButton(
             text: 'Browse Vendors',
-            onPressed: () => context.pop(),
+            onPressed: () {
+              // Navigate directly to the vendors screen
+              context.push('/sales-agent/vendors');
+            },
           ),
         ],
       ),
@@ -338,113 +366,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       style: Theme.of(context).textTheme.titleLarge?.copyWith(
         fontWeight: FontWeight.bold,
       ),
-    );
-  }
-
-
-
-  Widget _buildDeliveryForm() {
-    return Column(
-      children: [
-        // Delivery Date & Time
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: _selectDeliveryDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Delivery Date *',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(
-                    _selectedDeliveryDate != null
-                        ? '${_selectedDeliveryDate!.day}/${_selectedDeliveryDate!.month}/${_selectedDeliveryDate!.year}'
-                        : 'Select date',
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: InkWell(
-                onTap: _selectDeliveryTime,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Delivery Time',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(
-                    _selectedDeliveryTime != null
-                        ? _selectedDeliveryTime!.format(context)
-                        : 'Select time',
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Delivery Address
-        CustomTextField(
-          controller: _streetController,
-          label: 'Street Address *',
-          hintText: 'Enter street address',
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Street address is required';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: CustomTextField(
-                controller: _cityController,
-                label: 'City *',
-                hintText: 'Kuala Lumpur',
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'City is required';
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: CustomTextField(
-                controller: _postalCodeController,
-                label: 'Postal Code *',
-                hintText: '50000',
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Postal code is required';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        CustomTextField(
-          controller: _stateController,
-          label: 'State *',
-          hintText: 'Selangor',
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'State is required';
-            }
-            return null;
-          },
-        ),
-      ],
     );
   }
 
@@ -539,26 +460,48 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         );
       }
 
-      final deliveryAddress = Address(
-        street: _streetController.text.trim(),
-        city: _cityController.text.trim(),
-        state: _stateController.text.trim(),
-        postalCode: _postalCodeController.text.trim(),
-        country: 'Malaysia',
-      );
+      // Get delivery method with fallback
+      final deliveryMethod = cartState.selectedDeliveryMethod ?? DeliveryMethod.ownFleet;
+
+      // Create delivery address (use placeholder for pickup methods)
+      final deliveryAddress = deliveryMethod.isPickup
+          ? const Address(
+              street: 'Pickup Location',
+              city: 'N/A',
+              state: 'N/A',
+              postalCode: '00000',
+              country: 'Malaysia',
+            )
+          : Address(
+              street: _streetController.text.trim(),
+              city: _cityController.text.trim(),
+              state: _stateController.text.trim(),
+              postalCode: _postalCodeController.text.trim(),
+              country: 'Malaysia',
+            );
+
+      // Combine order notes and delivery instructions
+      final combinedNotes = <String>[];
+      if (_notesController.text.trim().isNotEmpty) {
+        combinedNotes.add('Order Notes: ${_notesController.text.trim()}');
+      }
+      if (_deliveryInstructionsController.text.trim().isNotEmpty) {
+        final instructionType = deliveryMethod.isPickup ? 'Pickup' : 'Delivery';
+        combinedNotes.add('$instructionType Instructions: ${_deliveryInstructionsController.text.trim()}');
+      }
+      combinedNotes.add('Delivery Method: ${deliveryMethod.displayName}');
 
       debugPrint('CreateOrderScreen: Creating order with delivery date: $deliveryDateTime');
       debugPrint('CreateOrderScreen: Customer: ${_customerNameController.text.trim()}');
       debugPrint('CreateOrderScreen: Phone: ${_customerPhoneController.text.trim()}');
+      debugPrint('CreateOrderScreen: Delivery Method: ${deliveryMethod.displayName}');
 
       final order = await ref.read(ordersProvider.notifier).createOrder(
         customerId: _selectedCustomer?.id, // Use selected customer ID if available
         customerName: _customerNameController.text.trim(),
         deliveryDate: deliveryDateTime,
         deliveryAddress: deliveryAddress,
-        notes: _notesController.text.trim().isNotEmpty
-            ? _notesController.text.trim()
-            : null,
+        notes: combinedNotes.isNotEmpty ? combinedNotes.join('\n\n') : null,
         contactPhone: _customerPhoneController.text.trim().isNotEmpty
             ? _customerPhoneController.text.trim()
             : null,

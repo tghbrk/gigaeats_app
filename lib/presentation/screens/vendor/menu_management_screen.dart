@@ -3,19 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/menu_item.dart';
+import '../../../data/models/product.dart';
 import '../../../data/services/menu_service.dart';
+import '../../providers/repository_providers.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/custom_error_widget.dart';
 import 'menu_item_form_screen.dart';
 
-// Provider for menu service
+// Provider for menu service (keeping for categories)
 final menuServiceProvider = Provider<MenuService>((ref) => MenuService());
 
-// Provider for vendor menu items
-final vendorMenuItemsProvider = FutureProvider.family<List<MenuItem>, String>((ref, vendorId) async {
-  final menuService = ref.read(menuServiceProvider);
-  return await menuService.getVendorMenuItems(vendorId);
+// Provider for vendor menu items using real Supabase repository
+final vendorMenuItemsProvider = FutureProvider.family<List<Product>, String>((ref, vendorId) async {
+  print('🍽️ [MENU-DEBUG] Loading menu items for vendor: $vendorId');
+  final menuItemRepository = ref.read(menuItemRepositoryProvider);
+  try {
+    final items = await menuItemRepository.getMenuItems(vendorId);
+    print('🍽️ [MENU-DEBUG] Successfully loaded ${items.length} menu items');
+    return items;
+  } catch (e) {
+    print('🍽️ [MENU-DEBUG] Error loading menu items: $e');
+    rethrow;
+  }
 });
 
 // Provider for vendor menu categories
@@ -242,15 +252,15 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
     );
   }
 
-  Widget _buildMenuItemCard(MenuItem item) {
+  Widget _buildMenuItemCard(Product item) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: item.imageUrls.isNotEmpty
+        leading: item.imageUrl != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  item.imageUrls.first,
+                  item.imageUrl!,
                   width: 60,
                   height: 60,
                   fit: BoxFit.cover,
@@ -262,17 +272,17 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
         title: Row(
           children: [
             Expanded(child: Text(item.name)),
-            if (item.isHalalCertified)
+            if (item.isHalal == true)
               const Icon(Icons.verified, color: Colors.green, size: 16),
             const SizedBox(width: 4),
-            _buildStatusChip(item.status),
+            _buildAvailabilityChip(item.isAvailable ?? false),
           ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item.description,
+              item.description ?? 'No description',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -283,13 +293,11 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
                   'RM ${item.basePrice.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                if (item.bulkPricingTiers.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.layers, size: 16, color: Colors.orange),
-                  const Text(' Bulk pricing', style: TextStyle(fontSize: 12)),
-                ],
                 const Spacer(),
-                Text('MOQ: ${item.minimumOrderQuantity}'),
+                if ((item.rating ?? 0) > 0) ...[
+                  Icon(Icons.star, size: 16, color: Colors.amber),
+                  Text(' ${(item.rating ?? 0).toStringAsFixed(1)}'),
+                ],
               ],
             ),
           ],
@@ -307,33 +315,16 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
     );
   }
 
-  Widget _buildStatusChip(MenuItemStatus status) {
-    Color color;
-    String label;
-    
-    switch (status) {
-      case MenuItemStatus.available:
-        color = Colors.green;
-        label = 'Available';
-        break;
-      case MenuItemStatus.unavailable:
-        color = Colors.orange;
-        label = 'Unavailable';
-        break;
-      case MenuItemStatus.outOfStock:
-        color = Colors.red;
-        label = 'Out of Stock';
-        break;
-      case MenuItemStatus.discontinued:
-        color = Colors.grey;
-        label = 'Discontinued';
-        break;
-    }
-
+  Widget _buildAvailabilityChip(bool isAvailable) {
     return Chip(
-      label: Text(label, style: const TextStyle(fontSize: 10)),
-      backgroundColor: color.withOpacity(0.1),
-      side: BorderSide(color: color),
+      label: Text(
+        isAvailable ? 'Available' : 'Unavailable',
+        style: const TextStyle(fontSize: 10),
+      ),
+      backgroundColor: isAvailable
+          ? Colors.green.withValues(alpha: 0.1)
+          : Colors.red.withValues(alpha: 0.1),
+      side: BorderSide(color: isAvailable ? Colors.green : Colors.red),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
     );
@@ -446,12 +437,12 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
       ),
     ).then((_) {
       // Refresh the menu items after adding/editing
-      ref.refresh(vendorMenuItemsProvider(widget.vendorId));
-      ref.refresh(vendorMenuStatsProvider(widget.vendorId));
+      ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
+      ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
     });
   }
 
-  void _handleMenuAction(String action, MenuItem item) {
+  void _handleMenuAction(String action, Product item) {
     switch (action) {
       case 'edit':
         Navigator.of(context).push(
@@ -460,8 +451,8 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
           ),
         ).then((_) {
           // Refresh the menu items after editing
-          ref.refresh(vendorMenuItemsProvider(widget.vendorId));
-          ref.refresh(vendorMenuStatsProvider(widget.vendorId));
+          ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
+          ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
         });
         break;
       case 'duplicate':
@@ -487,7 +478,7 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
     }
   }
 
-  void _showAvailabilityDialog(MenuItem item) {
+  void _showAvailabilityDialog(Product item) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -507,7 +498,7 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
     );
   }
 
-  void _showDeleteConfirmation(MenuItem item) {
+  void _showDeleteConfirmation(Product item) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -531,27 +522,26 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
     );
   }
 
-  void _duplicateMenuItem(MenuItem item) async {
+  void _duplicateMenuItem(Product item) async {
     try {
-      final menuService = ref.read(menuServiceProvider);
-      await menuService.createMenuItem(
+      final menuItemRepository = ref.read(menuItemRepositoryProvider);
+      final duplicatedItem = Product(
+        id: '', // Will be generated by the database
         vendorId: item.vendorId,
         name: '${item.name} (Copy)',
-        description: item.description,
+        description: item.description ?? '',
         category: item.category,
         basePrice: item.basePrice,
-        bulkPricingTiers: item.bulkPricingTiers,
-        minimumOrderQuantity: item.minimumOrderQuantity,
-        maximumOrderQuantity: item.maximumOrderQuantity,
-        imageUrls: item.imageUrls,
-        dietaryTypes: item.dietaryTypes,
-        allergens: item.allergens,
-        preparationTimeMinutes: item.preparationTimeMinutes,
-        availableQuantity: item.availableQuantity,
-        unit: item.unit,
-        isHalalCertified: item.isHalalCertified,
+        imageUrl: item.imageUrl,
+        isAvailable: item.isAvailable ?? true,
+        isVegetarian: item.isVegetarian ?? false,
+        isHalal: item.isHalal ?? false,
         tags: item.tags,
+        rating: 0.0, // Reset rating for duplicated item
+        totalReviews: 0, // Reset reviews for duplicated item
       );
+
+      await menuItemRepository.createMenuItem(duplicatedItem);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -560,8 +550,8 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
             backgroundColor: Colors.green,
           ),
         );
-        ref.refresh(vendorMenuItemsProvider(widget.vendorId));
-        ref.refresh(vendorMenuStatsProvider(widget.vendorId));
+        ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
+        ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
       }
     } catch (e) {
       if (mounted) {

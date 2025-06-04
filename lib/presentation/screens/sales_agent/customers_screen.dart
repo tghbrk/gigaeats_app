@@ -137,6 +137,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
         error: (error, _) => _buildErrorState(error.toString()),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "customers_add_customer_fab",
         onPressed: () {
           context.push('/sales-agent/customers/add');
         },
@@ -171,6 +172,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
               ? _buildErrorState(customersState.errorMessage!)
               : _buildCustomersList(customersState.customers),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "customers_add_customer_fab_mobile",
         onPressed: () {
           context.push('/sales-agent/customers/add');
         },
@@ -503,10 +505,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   }
 
   void _editCustomer(Customer customer) {
+    debugPrint('🔧 CustomersScreen: _editCustomer called for ${customer.organizationName} (${customer.id})');
     context.push('/sales-agent/customers/${customer.id}/edit');
   }
 
   void _deleteCustomer(Customer customer) {
+    debugPrint('🔧 CustomersScreen: _deleteCustomer called for ${customer.organizationName} (${customer.id})');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -514,18 +518,30 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
         content: Text('Are you sure you want to delete ${customer.organizationName}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              debugPrint('🔧 CustomersScreen: Delete cancelled');
+              Navigator.of(context).pop();
+            },
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
+              debugPrint('🔧 CustomersScreen: Delete confirmed, calling repository...');
               final navigator = Navigator.of(context);
               final messenger = ScaffoldMessenger.of(context);
               navigator.pop();
               final success = await ref.read(customerProvider.notifier).deleteCustomer(customer.id);
+              debugPrint('🔧 CustomersScreen: Delete result: $success');
               if (success && mounted) {
                 messenger.showSnackBar(
                   const SnackBar(content: Text('Customer deleted successfully')),
+                );
+              } else if (mounted) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to delete customer. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
                 );
               }
             },

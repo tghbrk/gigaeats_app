@@ -39,6 +39,11 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
   Customer? _originalCustomer;
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   void dispose() {
     _organizationNameController.dispose();
     _contactPersonController.dispose();
@@ -54,6 +59,7 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
   }
 
   void _populateFields(Customer customer) {
+    debugPrint('🔧 EditCustomerScreen: _populateFields() called for ${customer.organizationName}');
     _originalCustomer = customer;
     _organizationNameController.text = customer.organizationName;
     _contactPersonController.text = customer.contactPersonName;
@@ -67,11 +73,21 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
     _notesController.text = customer.notes ?? '';
     _selectedType = customer.type;
     _isActive = customer.isActive;
+    debugPrint('🔧 EditCustomerScreen: Fields populated, _originalCustomer set');
   }
 
   @override
   Widget build(BuildContext context) {
+    // Ensure we get fresh customer data when opening the edit screen (only once)
+    if (_originalCustomer == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint('🔧 EditCustomerScreen: Invalidating cache to ensure fresh data');
+        ref.invalidate(customerByIdProvider(widget.customerId));
+      });
+    }
+
     final customerAsync = ref.watch(customerByIdProvider(widget.customerId));
+    debugPrint('🔧 EditCustomerScreen: build() called, _isLoading: $_isLoading');
 
     return Scaffold(
       appBar: AppBar(
@@ -88,8 +104,17 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
             )
           else
             TextButton(
-              onPressed: _saveCustomer,
-              child: const Text('Save'),
+              onPressed: () {
+                debugPrint('🔧 EditCustomerScreen: Save button pressed');
+                _saveCustomer();
+              },
+              child: const Text(
+                'Save',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
         ],
       ),
@@ -251,7 +276,19 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Phone number is required';
                           }
-                          if (!RegExp(r'^\+60\d{9,10}$').hasMatch(value.replaceAll(' ', ''))) {
+                          final cleanValue = value.replaceAll(' ', '').replaceAll('-', '');
+                          debugPrint('🔧 Phone validation: Input="$value", Clean="$cleanValue"');
+
+                          // Allow multiple formats:
+                          // +60123456789 (12-13 digits with +60)
+                          // 0123456789 (10-11 digits starting with 0)
+                          // 123456789 (9-10 digits without prefix)
+                          bool isValid = RegExp(r'^\+60\d{9,10}$').hasMatch(cleanValue) ||
+                                        RegExp(r'^0\d{9,10}$').hasMatch(cleanValue) ||
+                                        RegExp(r'^\d{8,11}$').hasMatch(cleanValue);
+
+                          debugPrint('🔧 Phone validation: isValid=$isValid');
+                          if (!isValid) {
                             return 'Please enter a valid Malaysian phone number';
                           }
                           return null;
@@ -265,7 +302,16 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
                         keyboardType: TextInputType.phone,
                         validator: (value) {
                           if (value != null && value.trim().isNotEmpty) {
-                            if (!RegExp(r'^\+60\d{9,10}$').hasMatch(value.replaceAll(' ', ''))) {
+                            final cleanValue = value.replaceAll(' ', '').replaceAll('-', '');
+                            debugPrint('🔧 Alt Phone validation: Input="$value", Clean="$cleanValue"');
+
+                            // Allow multiple formats (same as main phone)
+                            bool isValid = RegExp(r'^\+60\d{9,10}$').hasMatch(cleanValue) ||
+                                          RegExp(r'^0\d{9,10}$').hasMatch(cleanValue) ||
+                                          RegExp(r'^\d{8,11}$').hasMatch(cleanValue);
+
+                            debugPrint('🔧 Alt Phone validation: isValid=$isValid');
+                            if (!isValid) {
                               return 'Please enter a valid Malaysian phone number';
                             }
                           }
@@ -471,15 +517,30 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
   }
 
   Future<void> _saveCustomer() async {
-    if (!_formKey.currentState!.validate() || _originalCustomer == null) {
+    debugPrint('🔧 EditCustomerScreen: _saveCustomer() called');
+
+    if (_formKey.currentState == null) {
+      debugPrint('🔧 EditCustomerScreen: Form key is null');
       return;
     }
 
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('🔧 EditCustomerScreen: Form validation failed');
+      return;
+    }
+
+    if (_originalCustomer == null) {
+      debugPrint('🔧 EditCustomerScreen: Original customer is null');
+      return;
+    }
+
+    debugPrint('🔧 EditCustomerScreen: Starting save process...');
     setState(() {
       _isLoading = true;
     });
 
     try {
+      debugPrint('🔧 EditCustomerScreen: Creating updated customer object...');
       final updatedCustomer = _originalCustomer!.copyWith(
         type: _selectedType,
         organizationName: _organizationNameController.text.trim(),
@@ -509,10 +570,21 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
         updatedAt: DateTime.now(),
       );
 
+      debugPrint('🔧 EditCustomerScreen: Updated customer: ${updatedCustomer.organizationName}');
+      debugPrint('🔧 EditCustomerScreen: Calling provider updateCustomer...');
+
       final result = await ref.read(customerProvider.notifier).updateCustomer(updatedCustomer);
+
+      debugPrint('🔧 EditCustomerScreen: Provider returned result: $result');
 
       if (mounted) {
         if (result != null) {
+          debugPrint('🔧 EditCustomerScreen: Update successful, showing success message');
+
+          // Additional cache invalidation to ensure all screens get fresh data
+          debugPrint('🔧 EditCustomerScreen: Invalidating customerByIdProvider cache');
+          ref.invalidate(customerByIdProvider(widget.customerId));
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Customer updated successfully'),
@@ -521,6 +593,7 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
           );
           context.pop(); // Go back to customer details
         } else {
+          debugPrint('🔧 EditCustomerScreen: Update failed, showing error message');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Failed to update customer. Please try again.'),
@@ -530,6 +603,8 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
         }
       }
     } catch (e) {
+      debugPrint('🔧 EditCustomerScreen: Exception caught: $e');
+      debugPrint('🔧 EditCustomerScreen: Exception type: ${e.runtimeType}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -539,6 +614,7 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
         );
       }
     } finally {
+      debugPrint('🔧 EditCustomerScreen: Save process completed, setting loading to false');
       if (mounted) {
         setState(() {
           _isLoading = false;

@@ -25,8 +25,13 @@ class CustomerDetailsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
-            onPressed: () {
-              context.push('/sales-agent/customers/$customerId/edit');
+            onPressed: () async {
+              // Navigate to edit screen and wait for result
+              await context.push('/sales-agent/customers/$customerId/edit');
+
+              // Refresh customer data when returning from edit screen
+              debugPrint('🔧 CustomerDetailsScreen: Returned from edit, refreshing data');
+              ref.invalidate(customerByIdProvider(customerId));
             },
           ),
           PopupMenuButton<String>(
@@ -75,7 +80,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
             ? _buildCustomerDetails(context, customer, ref)
             : _buildNotFound(context),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _buildErrorState(context, error.toString()),
+        error: (error, _) => _buildErrorState(context, error.toString(), ref),
       ),
     );
   }
@@ -458,7 +463,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, String error) {
+  Widget _buildErrorState(BuildContext context, String error, WidgetRef ref) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -489,8 +494,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
             ElevatedButton.icon(
               onPressed: () {
                 // Trigger a refresh by invalidating the provider
-                // Note: We need to use a ref here, but since this is a ConsumerWidget,
-                // we'll need to pass the ref from the build method
+                ref.invalidate(customerByIdProvider(customerId));
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),

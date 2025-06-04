@@ -17,8 +17,12 @@ import '../../presentation/screens/sales_agent/customers_screen.dart';
 import '../../presentation/screens/sales_agent/add_customer_screen.dart';
 import '../../presentation/screens/sales_agent/customer_details_screen.dart';
 import '../../presentation/screens/sales_agent/edit_customer_screen.dart';
+import '../../presentation/screens/sales_agent/sales_agent_profile_screen.dart';
+import '../../presentation/screens/sales_agent/sales_agent_edit_profile_screen.dart';
+import '../../data/models/sales_agent_profile.dart';
 import '../../presentation/screens/vendor/vendor_dashboard.dart';
 import '../../presentation/screens/vendor/vendor_orders_screen.dart';
+import '../../presentation/screens/vendor/vendor_order_details_screen.dart';
 import '../../presentation/screens/vendor/vendor_management_screen.dart';
 import '../../presentation/screens/admin/admin_dashboard.dart';
 import '../../core/constants/app_constants.dart';
@@ -28,8 +32,10 @@ import '../../presentation/screens/test/order_creation_test_screen.dart';
 import '../../presentation/screens/test/customer_selector_test_screen.dart';
 import '../../presentation/screens/test/customer_infinite_loop_test.dart';
 import '../../presentation/screens/test/consolidated_test_screen.dart';
+import '../../presentation/screens/test/enhanced_features_test_screen.dart';
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/screens/common/order_tracking_screen.dart';
+import '../../presentation/screens/settings_screen.dart';
 
 // Authentication state notifier for router refresh
 class _AuthStateNotifier extends ChangeNotifier {
@@ -221,7 +227,17 @@ List<RouteBase> _buildRoutes() {
         GoRoute(
           path: 'profile',
           name: 'sales-agent-profile',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const SalesAgentProfileScreen(),
+          routes: [
+            GoRoute(
+              path: 'edit',
+              name: 'sales-agent-profile-edit',
+              builder: (context, state) {
+                final profile = state.extra as SalesAgentProfile;
+                return SalesAgentEditProfileScreen(profile: profile);
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: 'commissions',
@@ -256,6 +272,14 @@ List<RouteBase> _buildRoutes() {
           path: 'analytics',
           name: 'vendor-analytics',
           builder: (context, state) => const Placeholder(), // TODO: Implement
+        ),
+        GoRoute(
+          path: 'order-details/:orderId',
+          name: 'vendor-order-details',
+          builder: (context, state) {
+            final orderId = state.pathParameters['orderId']!;
+            return VendorOrderDetailsScreen(orderId: orderId);
+          },
         ),
       ],
     ),
@@ -310,7 +334,7 @@ List<RouteBase> _buildRoutes() {
     GoRoute(
       path: AppRoutes.settings,
       name: 'settings',
-      builder: (context, state) => const Placeholder(), // TODO: Implement
+      builder: (context, state) => const SettingsScreen(),
     ),
 
     // Test Routes (only in debug mode)
@@ -343,6 +367,11 @@ List<RouteBase> _buildRoutes() {
       path: '/test-consolidated',
       name: 'test-consolidated',
       builder: (context, state) => const ConsolidatedTestScreen(),
+    ),
+    GoRoute(
+      path: '/test-enhanced-features',
+      name: 'test-enhanced-features',
+      builder: (context, state) => const EnhancedFeaturesTestScreen(),
     ),
   ];
 }

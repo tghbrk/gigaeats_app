@@ -125,17 +125,19 @@ class OrderTrackingScreen extends ConsumerWidget {
           // Order Header
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Order #${order.orderNumber}',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          'Order #${order.orderNumber}',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       Container(
@@ -154,23 +156,241 @@ class OrderTrackingScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
+                  _buildDetailRow('Order Date', _formatDateTime(order.createdAt)),
+                  _buildDetailRow('Delivery Date', _formatDateTime(order.deliveryDate)),
+                  if (order.notes != null && order.notes!.isNotEmpty)
+                    _buildDetailRow('Notes', order.notes!),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Customer Information
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Customer: ${order.customerName}',
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                  Text(
-                    'Total: RM ${order.totalAmount.toStringAsFixed(2)}',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    'Customer Information',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _buildDetailRow('Customer Name', order.customerName),
+                  if (order.contactPhone != null)
+                    _buildDetailRow('Contact Phone', order.contactPhone!),
+                  _buildDetailRow('Customer ID', order.customerId),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Vendor Information
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Delivery Date: ${order.deliveryDate.toString().split(' ')[0]}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    'Vendor Information',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _buildDetailRow('Vendor Name', order.vendorName),
+                  _buildDetailRow('Vendor ID', order.vendorId),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Sales Agent Information (if available)
+          if (order.salesAgentId != null) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sales Agent Information',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDetailRow('Sales Agent', order.salesAgentName ?? 'Unknown'),
+                    _buildDetailRow('Agent ID', order.salesAgentId!),
+                    if (order.commissionAmount != null)
+                      _buildDetailRow(
+                        'Commission',
+                        'RM ${order.commissionAmount!.toStringAsFixed(2)}',
+                        valueColor: Colors.green,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Order Items
+          if (order.items.isNotEmpty) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order Items (${order.items.length})',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...order.items.map((item) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.name,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                'RM ${item.totalPrice.toStringAsFixed(2)}',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                'Quantity: ${item.quantity}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                'Unit Price: RM ${item.unitPrice.toStringAsFixed(2)}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (item.notes != null && item.notes!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Notes: ${item.notes}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Order Summary
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Order Summary',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSummaryRow('Subtotal', 'RM ${order.subtotal.toStringAsFixed(2)}'),
+                  _buildSummaryRow('Delivery Fee', 'RM ${order.deliveryFee.toStringAsFixed(2)}'),
+                  _buildSummaryRow('SST (6%)', 'RM ${order.sstAmount.toStringAsFixed(2)}'),
+                  const Divider(height: 24),
+                  _buildSummaryRow(
+                    'Total Amount',
+                    'RM ${order.totalAmount.toStringAsFixed(2)}',
+                    isTotal: true,
+                  ),
+                  if (order.paymentMethod != null) ...[
+                    const SizedBox(height: 8),
+                    _buildDetailRow('Payment Method', order.paymentMethod!),
+                  ],
+                  if (order.paymentStatus != null) ...[
+                    _buildDetailRow('Payment Status', order.paymentStatus!),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Delivery Information
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Delivery Information',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailRow('Street', order.deliveryAddress.street),
+                  _buildDetailRow('City', order.deliveryAddress.city),
+                  _buildDetailRow('State', order.deliveryAddress.state),
+                  _buildDetailRow('Postal Code', order.deliveryAddress.postalCode),
+                  _buildDetailRow('Country', order.deliveryAddress.country),
+                  if (order.deliveryAddress.notes != null && order.deliveryAddress.notes!.isNotEmpty)
+                    _buildDetailRow('Address Notes', order.deliveryAddress.notes!),
+                  if (order.specialInstructions != null && order.specialInstructions!.isNotEmpty)
+                    _buildDetailRow('Special Instructions', order.specialInstructions!),
                 ],
               ),
             ),
@@ -181,12 +401,12 @@ class OrderTrackingScreen extends ConsumerWidget {
           // Order Status Timeline
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Order Status',
+                    'Order Progress',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -236,47 +456,6 @@ class OrderTrackingScreen extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
-          // Order Items
-          if (order.items.isNotEmpty) ...[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Order Items',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...order.items.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${item.quantity}x ${item.name}',
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ),
-                          Text(
-                            'RM ${item.totalPrice.toStringAsFixed(2)}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
           // Action Buttons
           if (order.status == OrderStatus.pending) ...[
             SizedBox(
@@ -286,11 +465,14 @@ class OrderTrackingScreen extends ConsumerWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text('Cancel Order'),
               ),
             ),
           ],
+
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -398,6 +580,77 @@ class OrderTrackingScreen extends ConsumerWidget {
       case OrderStatus.cancelled:
         return Colors.red;
     }
+  }
+
+  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 120,
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: valueColor ?? theme.colorScheme.onSurface,
+                    fontWeight: valueColor != null ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                  fontSize: isTotal ? 16 : null,
+                ),
+              ),
+              Text(
+                value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isTotal ? theme.colorScheme.primary : null,
+                  fontSize: isTotal ? 16 : null,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   void _cancelOrder(BuildContext context, WidgetRef ref, String orderId) {

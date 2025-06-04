@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../core/services/camera_permission_service.dart';
 import '../providers/repository_providers.dart';
 
 class ProfileImagePicker extends ConsumerStatefulWidget {
@@ -179,6 +180,15 @@ class _ProfileImagePickerState extends ConsumerState<ProfileImagePicker> {
       setState(() {
         _isUploading = true;
       });
+
+      // Check and request permissions before picking image
+      final hasPermissions = await CameraPermissionService.handlePhotoPermissionRequest(context);
+      if (!hasPermissions) {
+        setState(() {
+          _isUploading = false;
+        });
+        return;
+      }
 
       final fileUploadService = ref.read(fileUploadServiceProvider);
       final imageFile = await fileUploadService.pickImage(source: source);

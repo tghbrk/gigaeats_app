@@ -5,6 +5,7 @@ import '../../data/models/order.dart';
 import '../../data/models/product.dart';
 import '../../data/models/vendor.dart';
 import '../../data/models/menu_item.dart';
+import '../../data/models/delivery_method.dart';
 
 // Cart Item class for managing items in cart
 class CartItem {
@@ -86,22 +87,26 @@ class CartState {
   final List<CartItem> items;
   final bool isLoading;
   final String? errorMessage;
+  final DeliveryMethod? selectedDeliveryMethod;
 
   CartState({
     this.items = const [],
     this.isLoading = false,
     this.errorMessage,
+    this.selectedDeliveryMethod = DeliveryMethod.ownFleet,
   });
 
   CartState copyWith({
     List<CartItem>? items,
     bool? isLoading,
     String? errorMessage,
+    DeliveryMethod? selectedDeliveryMethod,
   }) {
     return CartState(
       items: items ?? this.items,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
+      selectedDeliveryMethod: selectedDeliveryMethod ?? this.selectedDeliveryMethod,
     );
   }
 
@@ -113,9 +118,29 @@ class CartState {
   double get sstAmount => subtotal * 0.06; // 6% SST in Malaysia
 
   double get deliveryFee {
-    if (subtotal >= 200) return 0.0; // Free delivery for orders above RM 200
-    if (subtotal >= 100) return 5.0; // RM 5 for orders above RM 100
-    return 10.0; // RM 10 for smaller orders
+    // Handle null case with default delivery method
+    final deliveryMethod = selectedDeliveryMethod ?? DeliveryMethod.ownFleet;
+
+    // Pickup methods have no delivery fee
+    if (deliveryMethod.isPickup) return 0.0;
+
+    switch (deliveryMethod) {
+      case DeliveryMethod.lalamove:
+        // Premium pricing for Lalamove
+        if (subtotal >= 200) return 0.0; // Free delivery for large orders
+        if (subtotal >= 100) return 15.0; // RM 15 for medium orders
+        return 20.0; // RM 20 for smaller orders
+
+      case DeliveryMethod.ownFleet:
+        // Standard pricing for own fleet
+        if (subtotal >= 200) return 0.0; // Free delivery for orders above RM 200
+        if (subtotal >= 100) return 5.0; // RM 5 for orders above RM 100
+        return 10.0; // RM 10 for smaller orders
+
+      case DeliveryMethod.customerPickup:
+      case DeliveryMethod.salesAgentPickup:
+        return 0.0; // No delivery fee for pickup
+    }
   }
 
   double get totalAmount => subtotal + sstAmount + deliveryFee;
@@ -143,7 +168,7 @@ class CartState {
 class CartNotifier extends StateNotifier<CartState> {
   static const _uuid = Uuid();
 
-  CartNotifier() : super(CartState());
+  CartNotifier() : super(CartState(selectedDeliveryMethod: DeliveryMethod.ownFleet));
 
   void addItem({
     required Product product,
@@ -290,6 +315,10 @@ class CartNotifier extends StateNotifier<CartState> {
   void clearVendorItems(String vendorId) {
     final updatedItems = state.items.where((item) => item.vendorId != vendorId).toList();
     state = state.copyWith(items: updatedItems);
+  }
+
+  void updateDeliveryMethod(DeliveryMethod deliveryMethod) {
+    state = state.copyWith(selectedDeliveryMethod: deliveryMethod);
   }
 
   // Helper method to compare customizations

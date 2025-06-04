@@ -52,10 +52,14 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           ],
           bottom: TabBar(
             controller: _tabController,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
             tabs: const [
               Tab(text: 'Active', icon: Icon(Icons.pending_actions)),
-              Tab(text: 'Completed', icon: Icon(Icons.check_circle)),
-              Tab(text: 'All', icon: Icon(Icons.list)),
+              Tab(text: 'Ready', icon: Icon(Icons.delivery_dining)),
+              Tab(text: 'History', icon: Icon(Icons.history)),
             ],
           ),
         ),
@@ -65,18 +69,24 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
             final activeOrders = allOrders
                 .where((order) =>
                     order.status != OrderStatus.delivered &&
-                    order.status != OrderStatus.cancelled)
+                    order.status != OrderStatus.cancelled &&
+                    order.status != OrderStatus.ready)
                 .toList();
-            final completedOrders = allOrders
-                .where((order) => order.status == OrderStatus.delivered)
+            final readyOrders = allOrders
+                .where((order) => order.status == OrderStatus.ready)
+                .toList();
+            final historyOrders = allOrders
+                .where((order) =>
+                    order.status == OrderStatus.delivered ||
+                    order.status == OrderStatus.cancelled)
                 .toList();
 
             return TabBarView(
               controller: _tabController,
               children: [
                 _buildOrdersList(activeOrders),
-                _buildOrdersList(completedOrders),
-                _buildOrdersList(allOrders),
+                _buildOrdersList(readyOrders),
+                _buildOrdersList(historyOrders),
               ],
             );
           },
@@ -84,6 +94,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           error: (error, stack) => _buildErrorState(error.toString()),
         ),
         floatingActionButton: FloatingActionButton.extended(
+          heroTag: "orders_new_order_fab",
           onPressed: () {
             // Navigate to create order screen
             context.push('/sales-agent/create-order');
@@ -109,10 +120,14 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           ],
           bottom: TabBar(
             controller: _tabController,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
             tabs: const [
               Tab(text: 'Active', icon: Icon(Icons.pending_actions)),
-              Tab(text: 'Completed', icon: Icon(Icons.check_circle)),
-              Tab(text: 'All', icon: Icon(Icons.list)),
+              Tab(text: 'Ready', icon: Icon(Icons.delivery_dining)),
+              Tab(text: 'History', icon: Icon(Icons.history)),
             ],
           ),
         ),
@@ -124,11 +139,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                     controller: _tabController,
                     children: [
                       _buildOrdersList(ref.watch(activeOrdersProvider)),
-                      _buildOrdersList(ref.watch(completedOrdersProvider)),
-                      _buildOrdersList(ordersState.orders),
+                      _buildOrdersList(ref.watch(readyOrdersProvider)),
+                      _buildOrdersList(ref.watch(historyOrdersProvider)),
                     ],
                   ),
         floatingActionButton: FloatingActionButton.extended(
+          heroTag: "orders_new_order_fab_mobile",
           onPressed: () {
             // Navigate to create order screen
             context.push('/sales-agent/create-order');
@@ -279,20 +295,22 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row
+              // Order Header with status
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Order #${order.orderNumber}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      'Order #${order.orderNumber}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -300,149 +318,205 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                       style: TextStyle(
                         color: statusColor,
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 8),
 
-              // Customer and Vendor Info
+              // Customer Info with contact
               Row(
                 children: [
                   Icon(
-                    Icons.business,
+                    Icons.person,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       order.customerName,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.8),
-                      ),
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ),
+                  if (order.contactPhone != null) ...[
+                    Icon(
+                      Icons.phone,
+                      size: 14,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      order.contactPhone!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-
               const SizedBox(height: 4),
 
+              // Vendor and Total Amount
               Row(
                 children: [
                   Icon(
                     Icons.store,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       order.vendorName,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.8),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
+                    ),
+                  ),
+                  Text(
+                    'RM ${order.totalAmount.toStringAsFixed(2)}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 8),
 
-              // Order Details
+              // Order Items and Commission
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Total Amount',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                      Text(
-                        'RM ${order.totalAmount.toStringAsFixed(2)}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '${order.items.length} item(s)',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Commission',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                      Text(
-                        'RM ${(order.commissionAmount ?? 0.0).toStringAsFixed(2)}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
+                  const Spacer(),
+                  Text(
+                    'Commission: ',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  Text(
+                    'RM ${(order.commissionAmount ?? 0.0).toStringAsFixed(2)}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 8),
 
-              // Delivery Date
+              // Delivery Info and Actions
               Row(
                 children: [
                   Icon(
                     Icons.schedule,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    'Delivery: ${_formatDate(order.deliveryDate)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                  Expanded(
+                    child: Text(
+                      'Delivery: ${_formatDate(order.deliveryDate)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
                     ),
                   ),
+                  // Quick actions for specific statuses
+                  if (order.status == OrderStatus.pending ||
+                      order.status == OrderStatus.ready)
+                    _buildQuickActions(order),
                 ],
               ),
 
-              // Action Buttons for pending orders
-              if (order.status == OrderStatus.pending) ...[
+              // Main action buttons (only if no quick actions shown)
+              if (order.status != OrderStatus.pending &&
+                  order.status != OrderStatus.ready) ...[
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: CustomButton(
-                        text: 'Cancel',
-                        type: ButtonType.outline,
-                        height: 36,
-                        onPressed: () => _showCancelDialog(order),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: CustomButton(
-                        text: 'View Details',
-                        height: 36,
-                        onPressed: () {
-                          context.push('/order-details/${order.id}');
-                        },
-                      ),
-                    ),
-                  ],
+                SizedBox(
+                  width: double.infinity,
+                  child: CustomButton(
+                    text: 'View Details',
+                    height: 44,
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    onPressed: () {
+                      context.push('/order-details/${order.id}');
+                    },
+                  ),
                 ),
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(Order order) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (order.status == OrderStatus.pending) ...[
+          _buildActionButton(
+            'Cancel',
+            Icons.close,
+            Colors.red,
+            () => _showCancelDialog(order),
+          ),
+          const SizedBox(width: 8),
+          _buildActionButton(
+            'Details',
+            Icons.visibility,
+            Theme.of(context).colorScheme.primary,
+            () => context.push('/order-details/${order.id}'),
+          ),
+        ] else if (order.status == OrderStatus.ready) ...[
+          _buildActionButton(
+            'Delivered',
+            Icons.check_circle,
+            Colors.green,
+            () => _markAsDelivered(order),
+          ),
+          const SizedBox(width: 8),
+          _buildActionButton(
+            'Details',
+            Icons.visibility,
+            Theme.of(context).colorScheme.primary,
+            () => context.push('/order-details/${order.id}'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return SizedBox(
+      height: 32,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 16),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          textStyle: const TextStyle(fontSize: 12),
+          minimumSize: const Size(0, 32),
         ),
       ),
     );
@@ -536,5 +610,48 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _markAsDelivered(Order order) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Update order status
+      final orderRepository = ref.read(orderRepositoryProvider);
+      await orderRepository.updateOrderStatus(order.id, OrderStatus.delivered);
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order #${order.orderNumber} marked as delivered'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Refresh orders
+        if (kIsWeb) {
+          ref.invalidate(platformOrdersProvider);
+        } else {
+          ref.read(ordersProvider.notifier).loadOrders();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update order: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

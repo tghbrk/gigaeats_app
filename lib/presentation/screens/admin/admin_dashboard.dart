@@ -76,7 +76,7 @@ class _AdminDashboardTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
@@ -86,6 +86,13 @@ class _AdminDashboardTab extends ConsumerWidget {
             onPressed: () {
               // TODO: Navigate to notifications
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.developer_mode),
+            onPressed: () {
+              context.push('/test-consolidated');
+            },
+            tooltip: 'Developer Tools',
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),

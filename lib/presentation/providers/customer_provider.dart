@@ -45,8 +45,9 @@ class CustomerState {
 /// Customer notifier for managing customer operations
 class CustomerNotifier extends StateNotifier<CustomerState> {
   final CustomerRepository _repository;
+  final Ref _ref;
 
-  CustomerNotifier(this._repository) : super(const CustomerState());
+  CustomerNotifier(this._repository, this._ref) : super(const CustomerState());
 
   /// Load customers with optional filters
   Future<void> loadCustomers() async {
@@ -56,7 +57,7 @@ class CustomerNotifier extends StateNotifier<CustomerState> {
       final customers = await _repository.getCustomers(
         searchQuery: state.searchQuery.isNotEmpty ? state.searchQuery : null,
         type: state.selectedType,
-        isActive: state.isActiveFilter,
+        isActive: state.isActiveFilter ?? true, // Default to showing only active customers
       );
 
       state = state.copyWith(
@@ -124,11 +125,22 @@ class CustomerNotifier extends StateNotifier<CustomerState> {
   /// Update customer
   Future<Customer?> updateCustomer(Customer customer) async {
     try {
+      debugPrint('🔧 CustomerNotifier: updateCustomer called for ${customer.organizationName} (${customer.id})');
       final updatedCustomer = await _repository.updateCustomer(customer);
+      debugPrint('🔧 CustomerNotifier: Customer updated successfully, refreshing list...');
       await loadCustomers(); // Refresh the list
+      debugPrint('🔧 CustomerNotifier: Customer list refreshed');
+
+      // Invalidate the individual customer cache to ensure fresh data
+      debugPrint('🔧 CustomerNotifier: Invalidating customerByIdProvider cache for ${customer.id}');
+      _ref.invalidate(customerByIdProvider(customer.id));
+      debugPrint('🔧 CustomerNotifier: Cache invalidated');
+
       return updatedCustomer;
     } catch (e) {
       debugPrint('CustomerNotifier: Error updating customer: $e');
+      debugPrint('CustomerNotifier: Error type: ${e.runtimeType}');
+      debugPrint('CustomerNotifier: Stack trace: ${StackTrace.current}');
       state = state.copyWith(errorMessage: e.toString());
       return null;
     }
@@ -137,11 +149,16 @@ class CustomerNotifier extends StateNotifier<CustomerState> {
   /// Delete customer (soft delete)
   Future<bool> deleteCustomer(String customerId) async {
     try {
+      debugPrint('🔧 CustomerNotifier: deleteCustomer called for ID: $customerId');
       await _repository.deleteCustomer(customerId);
+      debugPrint('🔧 CustomerNotifier: Customer deleted successfully, refreshing list...');
       await loadCustomers(); // Refresh the list
+      debugPrint('🔧 CustomerNotifier: Customer list refreshed');
       return true;
     } catch (e) {
       debugPrint('CustomerNotifier: Error deleting customer: $e');
+      debugPrint('CustomerNotifier: Error type: ${e.runtimeType}');
+      debugPrint('CustomerNotifier: Stack trace: ${StackTrace.current}');
       state = state.copyWith(errorMessage: e.toString());
       return false;
     }
@@ -190,7 +207,7 @@ class CustomerNotifier extends StateNotifier<CustomerState> {
 /// Customer provider
 final customerProvider = StateNotifierProvider<CustomerNotifier, CustomerState>((ref) {
   final repository = ref.watch(customerRepositoryProvider);
-  return CustomerNotifier(repository);
+  return CustomerNotifier(repository, ref);
 });
 
 /// Web-specific customer provider for platform-aware data fetching
@@ -215,7 +232,7 @@ final webCustomersProvider = FutureProvider.family<List<Customer>, Map<String, d
 /// Simple web customers provider without parameters for basic usage
 final simpleWebCustomersProvider = FutureProvider<List<Customer>>((ref) async {
   final repository = ref.watch(customerRepositoryProvider);
-  return repository.getCustomers();
+  return repository.getCustomers(isActive: true); // Default to showing only active customers
 });
 
 /// Customer by ID provider

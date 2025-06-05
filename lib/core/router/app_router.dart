@@ -33,6 +33,7 @@ import '../../presentation/screens/test/customer_selector_test_screen.dart';
 import '../../presentation/screens/test/customer_infinite_loop_test.dart';
 import '../../presentation/screens/test/consolidated_test_screen.dart';
 import '../../presentation/screens/test/enhanced_features_test_screen.dart';
+import '../../presentation/screens/test/customer_selection_test_screen.dart';
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/screens/common/order_tracking_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
@@ -372,6 +373,11 @@ List<RouteBase> _buildRoutes() {
       path: '/test-enhanced-features',
       name: 'test-enhanced-features',
       builder: (context, state) => const EnhancedFeaturesTestScreen(),
+    ),
+    GoRoute(
+      path: '/test-customer-selection',
+      name: 'test-customer-selection',
+      builder: (context, state) => const CustomerSelectionTestScreen(),
     ),
   ];
 }

@@ -113,7 +113,8 @@ class _CustomerSelectorState extends ConsumerState<CustomerSelector> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header with toggle
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Customer Information',
@@ -121,36 +122,40 @@ class _CustomerSelectorState extends ConsumerState<CustomerSelector> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Spacer(),
-                if (widget.allowManualEntry)
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                        value: false,
-                        label: Text('Select Existing'),
-                        icon: Icon(Icons.search),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text('Manual Entry'),
-                        icon: Icon(Icons.edit),
-                      ),
-                    ],
-                    selected: {_isManualEntry},
-                    onSelectionChanged: (Set<bool> selection) {
-                      setState(() {
-                        _isManualEntry = selection.first;
-                        if (_isManualEntry) {
-                          widget.onCustomerSelected(null);
-                        } else {
-                          _nameController.clear();
-                          _phoneController.clear();
-                          _emailController.clear();
-                          widget.onManualEntryChanged?.call('', '', '');
-                        }
-                      });
-                    },
+                if (widget.allowManualEntry) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          label: Text('Select Existing'),
+                          icon: Icon(Icons.search),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text('Manual Entry'),
+                          icon: Icon(Icons.edit),
+                        ),
+                      ],
+                      selected: {_isManualEntry},
+                      onSelectionChanged: (Set<bool> selection) {
+                        setState(() {
+                          _isManualEntry = selection.first;
+                          if (_isManualEntry) {
+                            widget.onCustomerSelected(null);
+                          } else {
+                            _nameController.clear();
+                            _phoneController.clear();
+                            _emailController.clear();
+                            widget.onManualEntryChanged?.call('', '', '');
+                          }
+                        });
+                      },
+                    ),
                   ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -282,9 +287,9 @@ class _CustomerSelectorState extends ConsumerState<CustomerSelector> {
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Colors.white,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -295,23 +300,31 @@ class _CustomerSelectorState extends ConsumerState<CustomerSelector> {
                         'Selected: ${widget.selectedCustomer!.organizationName}',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: Colors.white,
                         ),
                       ),
                       Text(
                         widget.selectedCustomer!.contactPersonName,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       Text(
                         widget.selectedCustomer!.phoneNumber,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
                   onPressed: () => widget.onCustomerSelected(null),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                  ),
                   tooltip: 'Clear selection',
                 ),
               ],

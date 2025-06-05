@@ -247,6 +247,16 @@ class _ConsolidatedTestScreenState extends ConsumerState<ConsolidatedTestScreen>
                   icon: Icons.refresh,
                   color: Colors.teal,
                 ),
+                _buildTestCard(
+                  title: 'Customer Selection Text Color Fix',
+                  description: 'Tests customer selection cards with proper text contrast and color',
+                  buttonText: 'Test Text Colors',
+                  onPressed: () {
+                    context.push('/test-customer-selection');
+                  },
+                  icon: Icons.color_lens,
+                  color: Colors.deepPurple,
+                ),
               ],
             ),
 

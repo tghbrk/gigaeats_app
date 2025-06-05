@@ -294,7 +294,14 @@ class _DashboardTab extends ConsumerWidget {
                               ? 'New Order'
                               : 'New Order (${cartState.totalItems})',
                           onTap: () {
-                            context.push('/sales-agent/create-order');
+                            // Smart navigation based on cart state
+                            if (cartState.isEmpty) {
+                              // Navigate directly to vendor browsing for empty cart
+                              context.push('/sales-agent/vendors');
+                            } else {
+                              // Navigate to create order screen for cart with items
+                              context.push('/sales-agent/create-order');
+                            }
                           },
                         );
                       },

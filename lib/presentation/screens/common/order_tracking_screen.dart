@@ -19,7 +19,13 @@ class OrderTrackingScreen extends ConsumerWidget {
     final orderStream = ref.watch(orderDetailsStreamProvider(orderId));
 
     return ResponsiveScaffold(
-      title: 'Order Tracking',
+      title: orderStream.when(
+        data: (order) => order != null
+            ? 'Order #${order.orderNumber}'
+            : 'Order Details',
+        loading: () => 'Order Details',
+        error: (_, _) => 'Order Details',
+      ),
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
@@ -185,7 +191,6 @@ class OrderTrackingScreen extends ConsumerWidget {
                   _buildDetailRow('Customer Name', order.customerName),
                   if (order.contactPhone != null)
                     _buildDetailRow('Contact Phone', order.contactPhone!),
-                  _buildDetailRow('Customer ID', order.customerId),
                 ],
               ),
             ),
@@ -208,7 +213,6 @@ class OrderTrackingScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _buildDetailRow('Vendor Name', order.vendorName),
-                  _buildDetailRow('Vendor ID', order.vendorId),
                 ],
               ),
             ),
@@ -232,7 +236,6 @@ class OrderTrackingScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildDetailRow('Sales Agent', order.salesAgentName ?? 'Unknown'),
-                    _buildDetailRow('Agent ID', order.salesAgentId!),
                     if (order.commissionAmount != null)
                       _buildDetailRow(
                         'Commission',
@@ -345,6 +348,191 @@ class OrderTrackingScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // Detailed Menu Items Section
+                  if (order.items.isNotEmpty) ...[
+                    Text(
+                      'Menu Items (${order.items.length})',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...order.items.map((item) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Item name and total price
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.name,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                'RM ${item.totalPrice.toStringAsFixed(2)}',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Item description (if available)
+                          if (item.description.isNotEmpty) ...[
+                            Text(
+                              item.description,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+
+                          // Quantity and unit price
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Qty: ${item.quantity}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '@ RM ${item.unitPrice.toStringAsFixed(2)} each',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Customizations
+                          if (item.customizations != null && item.customizations!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.blue.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.tune,
+                                        size: 16,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Customizations:',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: Colors.blue.shade700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ...item.customizations!.entries.map((entry) =>
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 24, bottom: 2),
+                                      child: Text(
+                                        '• ${entry.key}: ${entry.value}',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: Colors.blue.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          // Special instructions/notes
+                          if (item.notes != null && item.notes!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.amber.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.note,
+                                    size: 16,
+                                    color: Colors.amber.shade700,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Special Instructions: ${item.notes}',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: Colors.amber.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Financial Summary
+                  Text(
+                    'Payment Breakdown',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _buildSummaryRow('Subtotal', 'RM ${order.subtotal.toStringAsFixed(2)}'),
                   _buildSummaryRow('Delivery Fee', 'RM ${order.deliveryFee.toStringAsFixed(2)}'),
                   _buildSummaryRow('SST (6%)', 'RM ${order.sstAmount.toStringAsFixed(2)}'),
@@ -355,7 +543,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                     isTotal: true,
                   ),
                   if (order.paymentMethod != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     _buildDetailRow('Payment Method', order.paymentMethod!),
                   ],
                   if (order.paymentStatus != null) ...[
@@ -366,95 +554,11 @@ class OrderTrackingScreen extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(height: 16),
 
-          // Delivery Information
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Delivery Information',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDetailRow('Street', order.deliveryAddress.street),
-                  _buildDetailRow('City', order.deliveryAddress.city),
-                  _buildDetailRow('State', order.deliveryAddress.state),
-                  _buildDetailRow('Postal Code', order.deliveryAddress.postalCode),
-                  _buildDetailRow('Country', order.deliveryAddress.country),
-                  if (order.deliveryAddress.notes != null && order.deliveryAddress.notes!.isNotEmpty)
-                    _buildDetailRow('Address Notes', order.deliveryAddress.notes!),
-                  if (order.specialInstructions != null && order.specialInstructions!.isNotEmpty)
-                    _buildDetailRow('Special Instructions', order.specialInstructions!),
-                ],
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 16),
 
-          // Order Status Timeline
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Order Progress',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildStatusTimeline(order.status),
-                ],
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 16),
 
-          // Real-time Updates Indicator
-          Card(
-            color: Colors.green.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.wifi,
-                    color: Colors.green.shade700,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Real-time updates enabled',
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
 
           // Action Buttons
           if (order.status == OrderStatus.pending) ...[
@@ -478,90 +582,7 @@ class OrderTrackingScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusTimeline(OrderStatus currentStatus) {
-    // Handle cancelled orders differently
-    if (currentStatus == OrderStatus.cancelled) {
-      return Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.close,
-                  size: 16,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Order Cancelled',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
 
-    final statuses = [
-      OrderStatus.pending,
-      OrderStatus.confirmed,
-      OrderStatus.preparing,
-      OrderStatus.ready,
-      OrderStatus.outForDelivery,
-      OrderStatus.delivered,
-    ];
-
-    final currentIndex = statuses.indexOf(currentStatus);
-
-    return Column(
-      children: statuses.asMap().entries.map((entry) {
-        final index = entry.key;
-        final status = entry.value;
-        final isCompleted = index <= currentIndex;
-        final isCurrent = index == currentIndex;
-
-        return Row(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: isCompleted ? Colors.green : Colors.grey.shade300,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isCompleted ? Icons.check : Icons.circle,
-                size: 16,
-                color: isCompleted ? Colors.white : Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                status.displayName,
-                style: TextStyle(
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                  color: isCompleted ? Colors.green : Colors.grey.shade600,
-                ),
-              ),
-            ),
-          ],
-        );
-      }).toList(),
-    );
-  }
 
   Color _getStatusColor(OrderStatus status) {
     switch (status) {

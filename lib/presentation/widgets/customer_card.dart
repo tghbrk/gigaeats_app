@@ -66,7 +66,7 @@ class CustomerCard extends StatelessWidget {
                   Text(
                     customer.contactPersonName,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -131,7 +131,8 @@ class CustomerCard extends StatelessWidget {
                   Text(
                     customer.contactPersonName,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -210,15 +211,16 @@ class CustomerCard extends StatelessWidget {
               Icon(
                 Icons.location_on,
                 size: 12,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   '${customer.address.city}, ${customer.address.state}',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
                     fontSize: 10,
+                    fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -239,7 +241,7 @@ class CustomerCard extends StatelessWidget {
             Icon(
               Icons.business,
               size: 16,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
             const SizedBox(width: 4),
             Expanded(
@@ -247,7 +249,7 @@ class CustomerCard extends StatelessWidget {
                 customer.type.displayName,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: _getTypeColor(),
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -261,14 +263,15 @@ class CustomerCard extends StatelessWidget {
             Icon(
               Icons.location_on,
               size: 16,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
             const SizedBox(width: 4),
             Expanded(
               child: Text(
                 '${customer.address.city}, ${customer.address.state}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
+                  fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -381,8 +384,9 @@ class CustomerCard extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             fontSize: 10,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -426,8 +430,9 @@ class CustomerCard extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               fontSize: 9,
+              fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

@@ -371,28 +371,40 @@ final pendingOrdersProvider = Provider<List<Order>>((ref) {
 
 final activeOrdersProvider = Provider<List<Order>>((ref) {
   final ordersState = ref.watch(ordersProvider);
-  return ordersState.orders
+  final activeOrders = ordersState.orders
       .where((order) =>
           order.status != OrderStatus.delivered &&
           order.status != OrderStatus.cancelled &&
           order.status != OrderStatus.ready)
       .toList();
+
+  // Sort by creation date in descending order (newest first)
+  activeOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return activeOrders;
 });
 
 final readyOrdersProvider = Provider<List<Order>>((ref) {
   final ordersState = ref.watch(ordersProvider);
-  return ordersState.orders
+  final readyOrders = ordersState.orders
       .where((order) => order.status == OrderStatus.ready)
       .toList();
+
+  // Sort by creation date in descending order (newest first)
+  readyOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return readyOrders;
 });
 
 final historyOrdersProvider = Provider<List<Order>>((ref) {
   final ordersState = ref.watch(ordersProvider);
-  return ordersState.orders
+  final historyOrders = ordersState.orders
       .where((order) =>
           order.status == OrderStatus.delivered ||
           order.status == OrderStatus.cancelled)
       .toList();
+
+  // Sort by creation date in descending order (newest first)
+  historyOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return historyOrders;
 });
 
 final completedOrdersProvider = Provider<List<Order>>((ref) {

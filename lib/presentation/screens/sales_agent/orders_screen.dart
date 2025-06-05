@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/order.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/repository_providers.dart';
+import '../../providers/cart_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../../core/utils/responsive_utils.dart';
 
@@ -72,14 +73,22 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                     order.status != OrderStatus.cancelled &&
                     order.status != OrderStatus.ready)
                 .toList();
+            // Sort by creation date descending (newest first)
+            activeOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
             final readyOrders = allOrders
                 .where((order) => order.status == OrderStatus.ready)
                 .toList();
+            // Sort by creation date descending (newest first)
+            readyOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
             final historyOrders = allOrders
                 .where((order) =>
                     order.status == OrderStatus.delivered ||
                     order.status == OrderStatus.cancelled)
                 .toList();
+            // Sort by creation date descending (newest first)
+            historyOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
             return TabBarView(
               controller: _tabController,
@@ -93,14 +102,25 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) => _buildErrorState(error.toString()),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          heroTag: "orders_new_order_fab",
-          onPressed: () {
-            // Navigate to create order screen
-            context.push('/sales-agent/create-order');
+        floatingActionButton: Consumer(
+          builder: (context, ref, child) {
+            final cartState = ref.watch(cartProvider);
+            return FloatingActionButton.extended(
+              heroTag: "orders_new_order_fab",
+              onPressed: () {
+                // Smart navigation based on cart state
+                if (cartState.isEmpty) {
+                  // Navigate directly to vendor browsing for empty cart
+                  context.push('/sales-agent/vendors');
+                } else {
+                  // Navigate to create order screen for cart with items
+                  context.push('/sales-agent/create-order');
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('New Order'),
+            );
           },
-          icon: const Icon(Icons.add),
-          label: const Text('New Order'),
         ),
       );
     } else {
@@ -143,14 +163,25 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                       _buildOrdersList(ref.watch(historyOrdersProvider)),
                     ],
                   ),
-        floatingActionButton: FloatingActionButton.extended(
-          heroTag: "orders_new_order_fab_mobile",
-          onPressed: () {
-            // Navigate to create order screen
-            context.push('/sales-agent/create-order');
+        floatingActionButton: Consumer(
+          builder: (context, ref, child) {
+            final cartState = ref.watch(cartProvider);
+            return FloatingActionButton.extended(
+              heroTag: "orders_new_order_fab_mobile",
+              onPressed: () {
+                // Smart navigation based on cart state
+                if (cartState.isEmpty) {
+                  // Navigate directly to vendor browsing for empty cart
+                  context.push('/sales-agent/vendors');
+                } else {
+                  // Navigate to create order screen for cart with items
+                  context.push('/sales-agent/create-order');
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('New Order'),
+            );
           },
-          icon: const Icon(Icons.add),
-          label: const Text('New Order'),
         ),
       );
     }
@@ -267,10 +298,22 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
             ),
           ),
           const SizedBox(height: 24),
-          CustomButton(
-            text: 'Create Order',
-            onPressed: () {
-              context.push('/sales-agent/create-order');
+          Consumer(
+            builder: (context, ref, child) {
+              final cartState = ref.watch(cartProvider);
+              return CustomButton(
+                text: 'Create Order',
+                onPressed: () {
+                  // Smart navigation based on cart state
+                  if (cartState.isEmpty) {
+                    // Navigate directly to vendor browsing for empty cart
+                    context.push('/sales-agent/vendors');
+                  } else {
+                    // Navigate to create order screen for cart with items
+                    context.push('/sales-agent/create-order');
+                  }
+                },
+              );
             },
           ),
         ],

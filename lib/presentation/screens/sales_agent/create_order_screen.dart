@@ -129,6 +129,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             _customerNameController.text = customer.organizationName;
                             _customerEmailController.text = customer.email;
                             _customerPhoneController.text = customer.phoneNumber;
+
+                            // Auto-populate address fields for delivery methods
+                            _autoPopulateAddressIfNeeded();
                           }
                         });
                       },
@@ -149,6 +152,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       selectedMethod: cartState.selectedDeliveryMethod ?? DeliveryMethod.ownFleet,
                       onMethodSelected: (method) {
                         ref.read(cartProvider.notifier).updateDeliveryMethod(method);
+                        // Auto-populate address when delivery method changes
+                        _autoPopulateAddressIfNeeded();
                       },
                       subtotal: cartState.subtotal,
                     ),
@@ -546,6 +551,33 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  void _autoPopulateAddressIfNeeded() {
+    // Only auto-populate if customer is selected and delivery method requires address
+    if (_selectedCustomer == null) return;
+
+    final cartState = ref.read(cartProvider);
+    final deliveryMethod = cartState.selectedDeliveryMethod ?? DeliveryMethod.ownFleet;
+
+    // Only auto-populate for Lalamove and Own Delivery Fleet
+    if (deliveryMethod == DeliveryMethod.lalamove || deliveryMethod == DeliveryMethod.ownFleet) {
+      final address = _selectedCustomer!.address;
+
+      setState(() {
+        _streetController.text = address.street;
+        _cityController.text = address.city;
+        _stateController.text = address.state;
+        _postalCodeController.text = address.postcode;
+
+        // Also populate delivery instructions if available
+        if (address.deliveryInstructions != null && address.deliveryInstructions!.isNotEmpty) {
+          _deliveryInstructionsController.text = address.deliveryInstructions!;
+        }
+      });
+
+      debugPrint('CreateOrderScreen: Auto-populated address for ${deliveryMethod.displayName}');
     }
   }
 

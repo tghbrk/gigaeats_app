@@ -329,7 +329,6 @@ build/
 .pub-cache/
 .pub/
 coverage/
-lib/generated_plugin_registrant.dart
 .flutter-versions
 
 # Platform-specific Flutter build outputs

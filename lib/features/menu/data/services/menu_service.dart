@@ -1,7 +1,7 @@
 
 import 'package:uuid/uuid.dart';
 
-import '../../features/menu/data/models/menu_item.dart';
+import '../models/menu_item.dart';
 
 class MenuService {
   static final List<MenuCategory> _categories = [];

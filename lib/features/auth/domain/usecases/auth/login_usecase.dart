@@ -1,10 +1,10 @@
 import 'package:dartz/dartz.dart';
 
-import '../../../core/errors/failures.dart';
-import '../../../core/utils/validators.dart';
-import '../../entities/user_entity.dart';
+import '../../../../../core/errors/failures.dart';
+import '../../../../../core/utils/validators.dart';
+import '../../../../../domain/entities/user_entity.dart';
+import '../../../../../domain/usecases/base_usecase.dart';
 import '../../repositories/auth_repository.dart';
-import '../base_usecase.dart';
 
 /// Use case for user login
 class LoginUseCase implements UseCase<UserEntity, LoginParams> {

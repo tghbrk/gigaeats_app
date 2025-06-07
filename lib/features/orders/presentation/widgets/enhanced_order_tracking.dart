@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../features/orders/data/models/order.dart';
+import '../../data/models/order.dart';
 import '../../data/models/order_status_history.dart';
 import '../providers/order_provider.dart';
 

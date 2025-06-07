@@ -1,7 +1,7 @@
 import 'package:dartz/dartz.dart';
 
-import '../../core/errors/failures.dart';
-import '../entities/user_entity.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../domain/entities/user_entity.dart';
 
 /// Abstract repository for authentication operations
 abstract class AuthRepository {

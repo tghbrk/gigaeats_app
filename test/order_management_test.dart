@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:gigaeats_app/data/models/order.dart';
-import 'package:gigaeats_app/data/models/order_status_history.dart';
-import 'package:gigaeats_app/data/models/order_notification.dart';
+import 'package:gigaeats_app/features/orders/data/models/order.dart';
+import 'package:gigaeats_app/features/orders/data/models/order_status_history.dart';
+import 'package:gigaeats_app/features/orders/data/models/order_notification.dart';
 
 void main() {
   group('Order Management System Tests', () {

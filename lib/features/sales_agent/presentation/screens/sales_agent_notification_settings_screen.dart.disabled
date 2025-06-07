@@ -1,0 +1,262 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../data/models/sales_agent_notification_preferences.dart';
+import '../../providers/sales_agent_notification_settings_provider.dart';
+import '../../providers/sales_agent_profile_provider.dart';
+import '../../../../shared/widgets/loading_widget.dart';
+import '../../../../shared/widgets/error_widget.dart';
+
+class SalesAgentNotificationSettingsScreen extends ConsumerWidget {
+  const SalesAgentNotificationSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(currentSalesAgentProfileProvider);
+
+    return profileAsync.when(
+      data: (profile) {
+        if (profile == null) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Notification Settings'),
+            ),
+            body: const CustomErrorWidget(
+              message: 'Sales agent profile not found',
+            ),
+          );
+        }
+        
+        return _buildNotificationSettings(profile.id);
+      },
+      loading: () => Scaffold(
+        appBar: AppBar(
+          title: const Text('Notification Settings'),
+        ),
+        body: const LoadingWidget(message: 'Loading profile information...'),
+      ),
+      error: (error, _) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Notification Settings'),
+        ),
+        body: CustomErrorWidget(
+          message: 'Failed to load profile: $error',
+          onRetry: () => ref.invalidate(currentSalesAgentProfileProvider),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationSettings(String salesAgentId) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final settingsState = ref.watch(salesAgentNotificationSettingsProvider(salesAgentId));
+        final categories = ref.watch(salesAgentNotificationCategoriesProvider);
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Notification Settings'),
+            actions: [
+              if (settingsState.isSaving)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    ref.read(salesAgentNotificationSettingsProvider(salesAgentId).notifier).refresh();
+                  },
+                ),
+            ],
+          ),
+          body: settingsState.isLoading
+              ? const LoadingWidget(message: 'Loading notification settings...')
+              : settingsState.errorMessage != null
+                  ? CustomErrorWidget(
+                      message: settingsState.errorMessage!,
+                      onRetry: () {
+                        ref.read(salesAgentNotificationSettingsProvider(salesAgentId).notifier).refresh();
+                      },
+                    )
+                  : _buildSettingsContent(salesAgentId, categories, settingsState),
+        );
+      },
+    );
+  }
+
+  Widget _buildSettingsContent(
+    String salesAgentId,
+    List<SalesAgentNotificationCategory> categories,
+    SalesAgentNotificationSettingsState settingsState,
+  ) {
+    return Column(
+      children: [
+        // Success Message
+        if (settingsState.successMessage != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              border: Border.all(color: Colors.green),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    settingsState.successMessage!,
+                    style: const TextStyle(color: Colors.green),
+                  ),
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    return IconButton(
+                      icon: const Icon(Icons.close, color: Colors.green),
+                      onPressed: () {
+                        ref.read(salesAgentNotificationSettingsProvider(salesAgentId).notifier).clearMessages();
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+        // Error Message
+        if (settingsState.errorMessage != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              border: Border.all(color: Colors.red),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    settingsState.errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    return IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () {
+                        ref.read(salesAgentNotificationSettingsProvider(salesAgentId).notifier).clearMessages();
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+        // Settings Content
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              return _buildCategoryCard(salesAgentId, category, settingsState);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryCard(
+    String salesAgentId,
+    SalesAgentNotificationCategory category,
+    SalesAgentNotificationSettingsState settingsState,
+  ) {
+    return Consumer(
+      builder: (context, ref, child) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Category Header
+                Row(
+                  children: [
+                    Icon(
+                      category.icon,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.title,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            category.description,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                
+                // Category Settings
+                ...category.settings.map<Widget>((setting) {
+                  final isEnabled = setting.getValue(settingsState.preferences);
+                  
+                  return SwitchListTile(
+                    title: Text(setting.title),
+                    subtitle: Text(
+                      setting.description,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    value: isEnabled,
+                    onChanged: settingsState.isSaving
+                        ? null
+                        : (value) {
+                            ref
+                                .read(salesAgentNotificationSettingsProvider(salesAgentId).notifier)
+                                .updateSinglePreference(setting.key, value);
+                          },
+                    contentPadding: EdgeInsets.zero,
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

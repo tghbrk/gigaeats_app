@@ -5,37 +5,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/user_role.dart';
 import '../../presentation/screens/splash_screen.dart';
-import '../../presentation/screens/auth/login_screen.dart';
-import '../../presentation/screens/auth/register_screen.dart';
-import '../../presentation/screens/sales_agent/sales_agent_dashboard.dart';
-import '../../presentation/screens/sales_agent/create_order_screen.dart';
-import '../../presentation/screens/sales_agent/vendor_details_screen.dart';
-import '../../presentation/screens/sales_agent/cart_screen.dart';
-import '../../presentation/screens/sales_agent/orders_screen.dart';
-import '../../presentation/screens/sales_agent/vendors_screen.dart';
-import '../../presentation/screens/sales_agent/customers_screen.dart';
-import '../../presentation/screens/sales_agent/add_customer_screen.dart';
-import '../../presentation/screens/sales_agent/customer_details_screen.dart';
-import '../../presentation/screens/sales_agent/edit_customer_screen.dart';
-import '../../presentation/screens/sales_agent/sales_agent_profile_screen.dart';
-import '../../presentation/screens/sales_agent/sales_agent_edit_profile_screen.dart';
-import '../../data/models/sales_agent_profile.dart';
-import '../../presentation/screens/vendor/vendor_dashboard.dart';
-import '../../presentation/screens/vendor/vendor_orders_screen.dart';
-import '../../presentation/screens/vendor/vendor_order_details_screen.dart';
-import '../../presentation/screens/vendor/vendor_management_screen.dart';
-import '../../presentation/screens/admin/admin_dashboard.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/sales_agent/presentation/screens/sales_agent_dashboard.dart';
+import '../../features/orders/presentation/screens/create_order_screen.dart';
+import '../../features/sales_agent/presentation/screens/vendor_details_screen.dart';
+import '../../features/sales_agent/presentation/screens/cart_screen.dart';
+import '../../features/orders/presentation/screens/orders_screen.dart';
+import '../../features/sales_agent/presentation/screens/vendors_screen.dart';
+import '../../features/customers/presentation/screens/customers_screen.dart';
+import '../../features/customers/presentation/screens/add_customer_screen.dart';
+import '../../features/customers/presentation/screens/customer_details_screen.dart';
+import '../../features/customers/presentation/screens/edit_customer_screen.dart';
+import '../../features/sales_agent/presentation/screens/sales_agent_profile_screen.dart';
+import '../../features/sales_agent/presentation/screens/sales_agent_edit_profile_screen.dart';
+import '../../features/sales_agent/presentation/screens/commission_screen.dart';
+import '../../features/sales_agent/data/models/sales_agent_profile.dart';
+import '../../features/vendors/presentation/screens/vendor_dashboard.dart';
+import '../../features/orders/presentation/screens/vendor_orders_screen.dart';
+import '../../features/vendors/presentation/screens/vendor_menu_management_screen.dart';
+import '../../features/vendors/presentation/screens/vendor_profile_screen.dart';
+import '../../features/vendors/presentation/screens/vendor_analytics_screen.dart';
+import '../../features/orders/presentation/screens/vendor_order_details_screen.dart';
+import '../../features/vendors/presentation/screens/vendor_management_screen.dart';
+import '../../features/admin/presentation/screens/admin_dashboard.dart';
+import '../../features/admin/presentation/screens/admin_users_screen.dart';
+import '../../features/admin/presentation/screens/admin_orders_screen.dart';
+import '../../features/admin/presentation/screens/admin_reports_screen.dart';
 import '../../core/constants/app_constants.dart';
-import '../../presentation/screens/test/data_test_screen.dart';
-import '../../presentation/screens/test/test_menu_screen.dart';
-import '../../presentation/screens/test/order_creation_test_screen.dart';
-import '../../presentation/screens/test/customer_selector_test_screen.dart';
-import '../../presentation/screens/test/customer_infinite_loop_test.dart';
-import '../../presentation/screens/test/consolidated_test_screen.dart';
-import '../../presentation/screens/test/enhanced_features_test_screen.dart';
-import '../../presentation/screens/test/customer_selection_test_screen.dart';
-import '../../presentation/providers/auth_provider.dart';
-import '../../presentation/screens/common/order_tracking_screen.dart';
+import '../../shared/test_screens/data_test_screen.dart';
+import '../../shared/test_screens/test_menu_screen.dart';
+import '../../shared/test_screens/order_creation_test_screen.dart';
+import '../../shared/test_screens/customer_selector_test_screen.dart';
+import '../../shared/test_screens/customer_infinite_loop_test.dart';
+import '../../shared/test_screens/sales_agent_profile_test_screen.dart';
+// TEMPORARILY COMMENTED OUT FOR QUICK WIN
+// import '../../shared/test_screens/consolidated_test_screen.dart';
+import '../../shared/test_screens/enhanced_features_test_screen.dart';
+// import '../../shared/test_screens/customer_selection_test_screen.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/orders/presentation/screens/order_tracking_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
 
 // Authentication state notifier for router refresh
@@ -243,7 +252,7 @@ List<RouteBase> _buildRoutes() {
         GoRoute(
           path: 'commissions',
           name: 'sales-agent-commissions',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const CommissionScreen(),
         ),
       ],
     ),
@@ -262,17 +271,17 @@ List<RouteBase> _buildRoutes() {
         GoRoute(
           path: 'menu',
           name: 'vendor-menu',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const VendorMenuManagementScreen(),
         ),
         GoRoute(
           path: 'profile',
           name: 'vendor-profile',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const VendorProfileScreen(),
         ),
         GoRoute(
           path: 'analytics',
           name: 'vendor-analytics',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const VendorAnalyticsScreen(),
         ),
         GoRoute(
           path: 'order-details/:orderId',
@@ -294,12 +303,12 @@ List<RouteBase> _buildRoutes() {
         GoRoute(
           path: 'users',
           name: 'admin-users',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const AdminUsersScreen(),
         ),
         GoRoute(
           path: 'orders',
           name: 'admin-orders',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const AdminOrdersScreen(),
         ),
         GoRoute(
           path: 'vendors',
@@ -309,7 +318,7 @@ List<RouteBase> _buildRoutes() {
         GoRoute(
           path: 'reports',
           name: 'admin-reports',
-          builder: (context, state) => const Placeholder(), // TODO: Implement
+          builder: (context, state) => const AdminReportsScreen(),
         ),
       ],
     ),
@@ -364,21 +373,28 @@ List<RouteBase> _buildRoutes() {
       name: 'test-customer-infinite-loop',
       builder: (context, state) => const CustomerInfiniteLoopTest(),
     ),
-    GoRoute(
-      path: '/test-consolidated',
-      name: 'test-consolidated',
-      builder: (context, state) => const ConsolidatedTestScreen(),
-    ),
+    // TEMPORARILY COMMENTED OUT FOR QUICK WIN
+    // GoRoute(
+    //   path: '/test-consolidated',
+    //   name: 'test-consolidated',
+    //   builder: (context, state) => const ConsolidatedTestScreen(),
+    // ),
     GoRoute(
       path: '/test-enhanced-features',
       name: 'test-enhanced-features',
       builder: (context, state) => const EnhancedFeaturesTestScreen(),
     ),
     GoRoute(
-      path: '/test-customer-selection',
-      name: 'test-customer-selection',
-      builder: (context, state) => const CustomerSelectionTestScreen(),
+      path: '/test-sales-agent-profile',
+      name: 'test-sales-agent-profile',
+      builder: (context, state) => const SalesAgentProfileTestScreen(),
     ),
+    // TEMPORARILY COMMENTED OUT FOR QUICK WIN
+    // GoRoute(
+    //   path: '/test-customer-selection',
+    //   name: 'test-customer-selection',
+    //   builder: (context, state) => const CustomerSelectionTestScreen(),
+    // ),
   ];
 }
 

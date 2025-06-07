@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../constants/app_constants.dart';
-import '../../presentation/providers/auth_provider.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 
 /// Utility class for authentication-related operations
 class AuthUtils {

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/router/app_router.dart';
-import '../providers/auth_provider.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -52,36 +52,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkAuthenticationStatus() async {
-    print('SplashScreen: Starting authentication check...');
+    debugPrint('SplashScreen: Starting authentication check...');
     // Wait for animation to complete
     await Future.delayed(const Duration(milliseconds: 2500));
 
     if (!mounted) return;
 
     try {
-      print('SplashScreen: Reading auth state...');
+      debugPrint('SplashScreen: Reading auth state...');
       // Check authentication state
       final authState = ref.read(authStateProvider);
-      print('SplashScreen: Auth state status: ${authState.status}');
-      print('SplashScreen: Auth state user: ${authState.user?.email}');
+      debugPrint('SplashScreen: Auth state status: ${authState.status}');
+      debugPrint('SplashScreen: Auth state user: ${authState.user?.email}');
 
       if (authState.status == AuthStatus.authenticated && authState.user != null) {
         // User is authenticated, navigate to appropriate dashboard
-        print('SplashScreen: User authenticated, navigating to dashboard...');
+        debugPrint('SplashScreen: User authenticated, navigating to dashboard...');
         final dashboardRoute = AppRouter.getDashboardRoute(authState.user!.role);
-        print('SplashScreen: Dashboard route: $dashboardRoute');
+        debugPrint('SplashScreen: Dashboard route: $dashboardRoute');
         if (mounted) {
           context.go(dashboardRoute);
         }
       } else if (authState.status == AuthStatus.unauthenticated) {
         // User is not authenticated, navigate to login
-        print('SplashScreen: User not authenticated, navigating to login...');
+        debugPrint('SplashScreen: User not authenticated, navigating to login...');
         if (mounted) {
           context.go(AppRoutes.login);
         }
       } else {
         // Still loading or initial state, wait a bit more
-        print('SplashScreen: Auth state still loading, waiting...');
+        debugPrint('SplashScreen: Auth state still loading, waiting...');
         await Future.delayed(const Duration(milliseconds: 1000));
         if (mounted) {
           _checkAuthenticationStatus(); // Retry
@@ -89,7 +89,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       }
     } catch (e) {
       // Error occurred, navigate to login
-      print('SplashScreen: Error during auth check: $e');
+      debugPrint('SplashScreen: Error during auth check: $e');
       if (mounted) {
         context.go(AppRoutes.login);
       }

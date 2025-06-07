@@ -1,6 +1,6 @@
-import '../models/customer.dart';
-import '../models/vendor.dart';
-import '../models/product.dart';
+import '../../features/customers/data/models/customer.dart';
+import '../../features/vendors/data/models/vendor.dart';
+import '../../features/menu/data/models/product.dart';
 
 /// Mock data service for development and testing
 class MockData {

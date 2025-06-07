@@ -1,51 +1,48 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:equatable/equatable.dart';
-
-part 'order_summary.g.dart';
-
-/// A simplified order model for displaying basic order information
-/// without the complexity of the full Order model
-@JsonSerializable()
-class OrderSummary extends Equatable {
+// Simple stub for order summary model
+class OrderSummary {
   final String id;
-  @JsonKey(name: 'order_number')
   final String orderNumber;
-  final String status;
-  @JsonKey(name: 'total_amount')
+  final double total;
   final double totalAmount;
-  @JsonKey(name: 'vendor_name')
+  final int itemCount;
+  final String status;
   final String? vendorName;
-  @JsonKey(name: 'customer_name')
-  final String? customerName;
-  @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
   const OrderSummary({
     required this.id,
     required this.orderNumber,
-    required this.status,
+    required this.total,
     required this.totalAmount,
+    required this.itemCount,
+    required this.status,
     this.vendorName,
-    this.customerName,
     required this.createdAt,
   });
 
-  factory OrderSummary.fromJson(Map<String, dynamic> json) => _$OrderSummaryFromJson(json);
-  Map<String, dynamic> toJson() => _$OrderSummaryToJson(this);
+  factory OrderSummary.fromJson(Map<String, dynamic> json) {
+    final total = (json['total'] ?? 0).toDouble();
+    return OrderSummary(
+      id: json['id'] ?? '',
+      orderNumber: json['order_number'] ?? json['id'] ?? '',
+      total: total,
+      totalAmount: total,
+      itemCount: json['item_count'] ?? 0,
+      status: json['status'] ?? '',
+      vendorName: json['vendor_name'],
+      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+    );
+  }
 
-  @override
-  List<Object?> get props => [
-        id,
-        orderNumber,
-        status,
-        totalAmount,
-        vendorName,
-        customerName,
-        createdAt,
-      ];
-
-  @override
-  String toString() {
-    return 'OrderSummary(orderNumber: $orderNumber, status: $status, totalAmount: $totalAmount)';
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'order_number': orderNumber,
+      'total': total,
+      'item_count': itemCount,
+      'status': status,
+      'vendor_name': vendorName,
+      'created_at': createdAt.toIso8601String(),
+    };
   }
 }

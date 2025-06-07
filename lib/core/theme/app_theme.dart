@@ -142,6 +142,20 @@ class AppTheme {
       type: BottomNavigationBarType.fixed,
       elevation: 8,
     ),
+    tabBarTheme: const TabBarThemeData(
+      labelColor: textOnPrimary, // White text for selected tab
+      unselectedLabelColor: Color(0xFFB0BEC5), // Light gray for unselected tabs
+      indicatorColor: textOnPrimary, // White indicator
+      indicatorSize: TabBarIndicatorSize.tab,
+      labelStyle: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.normal,
+      ),
+    ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(
         fontSize: 32,

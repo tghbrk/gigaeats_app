@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gigaeats_app/core/config/supabase_config.dart';
 import 'package:gigaeats_app/core/services/auth_sync_service.dart';
 import 'package:gigaeats_app/data/repositories/user_repository.dart';
-import 'package:gigaeats_app/data/repositories/vendor_repository.dart';
+import 'package:gigaeats_app/features/vendors/data/repositories/vendor_repository.dart';
 
 void main() {
   group('Supabase Integration Tests', () {
@@ -44,9 +44,9 @@ void main() {
     test('Repositories should have access to Supabase client', () {
       final userRepo = UserRepository();
       final vendorRepo = VendorRepository();
-      
+
       expect(userRepo.client, isNotNull);
-      expect(vendorRepo.client, isNotNull);
+      expect(vendorRepo.supabase, isNotNull);
     });
 
     group('Database Schema Tests', () {

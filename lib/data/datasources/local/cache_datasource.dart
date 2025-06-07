@@ -3,10 +3,10 @@ import 'dart:convert';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/utils/logger.dart';
 import '../../services/cache_service.dart';
-import '../../models/user.dart';
-import '../../models/vendor.dart' as vendor_model;
-import '../../models/order.dart';
-import '../../models/product.dart';
+import '../../../data/models/user.dart';
+import '../../../features/vendors/data/models/vendor.dart' as vendor_model;
+import '../../../features/orders/data/models/order.dart';
+import '../../../features/menu/data/models/product.dart';
 
 /// Local data source for caching operations
 abstract class CacheDataSource {

@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:gigaeats_app/main.dart' as app;
-import 'package:gigaeats_app/presentation/providers/auth_provider.dart';
-import 'package:gigaeats_app/presentation/providers/order_provider.dart';
-import 'package:gigaeats_app/presentation/providers/cart_provider.dart';
+import 'package:gigaeats_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:gigaeats_app/features/orders/presentation/providers/order_provider.dart';
+import 'package:gigaeats_app/features/sales_agent/presentation/providers/cart_provider.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

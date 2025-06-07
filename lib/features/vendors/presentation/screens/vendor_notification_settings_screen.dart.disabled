@@ -1,0 +1,259 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../providers/vendor_notification_settings_provider.dart';
+import '../../providers/repository_providers.dart';
+import '../../../../shared/widgets/loading_widget.dart';
+import '../../widgets/custom_error_widget.dart';
+
+class VendorNotificationSettingsScreen extends ConsumerStatefulWidget {
+  const VendorNotificationSettingsScreen({super.key});
+
+  @override
+  ConsumerState<VendorNotificationSettingsScreen> createState() =>
+      _VendorNotificationSettingsScreenState();
+}
+
+class _VendorNotificationSettingsScreenState
+    extends ConsumerState<VendorNotificationSettingsScreen> {
+  
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final vendorAsync = ref.watch(currentVendorProvider);
+        
+        return vendorAsync.when(
+          data: (vendor) {
+            if (vendor == null) {
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Notification Settings'),
+                ),
+                body: const CustomErrorWidget(
+                  message: 'Vendor not found',
+                ),
+              );
+            }
+            
+            return _buildNotificationSettings(vendor.id);
+          },
+          loading: () => Scaffold(
+            appBar: AppBar(
+              title: const Text('Notification Settings'),
+            ),
+            body: const LoadingWidget(message: 'Loading vendor information...'),
+          ),
+          error: (error, _) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Notification Settings'),
+            ),
+            body: CustomErrorWidget(
+              message: 'Failed to load vendor: $error',
+              onRetry: () => ref.invalidate(currentVendorProvider),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationSettings(String vendorId) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final settingsState = ref.watch(vendorNotificationSettingsProvider(vendorId));
+        final categories = ref.watch(notificationCategoriesProvider);
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Notification Settings'),
+            actions: [
+              if (settingsState.isSaving)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    ref.read(vendorNotificationSettingsProvider(vendorId).notifier).refresh();
+                  },
+                ),
+            ],
+          ),
+          body: settingsState.isLoading
+              ? const LoadingWidget(message: 'Loading notification settings...')
+              : settingsState.errorMessage != null
+                  ? CustomErrorWidget(
+                      message: settingsState.errorMessage!,
+                      onRetry: () {
+                        ref.read(vendorNotificationSettingsProvider(vendorId).notifier).refresh();
+                      },
+                    )
+                  : _buildSettingsContent(vendorId, categories, settingsState),
+        );
+      },
+    );
+  }
+
+  Widget _buildSettingsContent(
+    String vendorId,
+    List<dynamic> categories,
+    dynamic settingsState,
+  ) {
+    return Column(
+      children: [
+        // Success/Error Messages
+        if (settingsState.successMessage != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              border: Border.all(color: Colors.green),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    settingsState.successMessage!,
+                    style: const TextStyle(color: Colors.green),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.green),
+                  onPressed: () {
+                    ref.read(vendorNotificationSettingsProvider(vendorId).notifier).clearMessages();
+                  },
+                ),
+              ],
+            ),
+          ),
+
+        if (settingsState.errorMessage != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              border: Border.all(color: Colors.red),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    settingsState.errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.red),
+                  onPressed: () {
+                    ref.read(vendorNotificationSettingsProvider(vendorId).notifier).clearMessages();
+                  },
+                ),
+              ],
+            ),
+          ),
+
+        // Settings Content
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              return _buildCategoryCard(vendorId, category, settingsState);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryCard(String vendorId, dynamic category, dynamic settingsState) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Category Header
+            Row(
+              children: [
+                Icon(
+                  category.icon,
+                  color: Theme.of(context).primaryColor,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        category.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        category.description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            
+            // Category Settings
+            ...category.settings.map<Widget>((setting) {
+              final isEnabled = setting.getValue(settingsState.preferences);
+              
+              return SwitchListTile(
+                title: Text(setting.title),
+                subtitle: Text(
+                  setting.description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                value: isEnabled,
+                onChanged: settingsState.isSaving
+                    ? null
+                    : (value) {
+                        ref
+                            .read(vendorNotificationSettingsProvider(vendorId).notifier)
+                            .updateSinglePreference(setting.key, value);
+                      },
+                contentPadding: EdgeInsets.zero,
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+}

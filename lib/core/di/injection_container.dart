@@ -10,10 +10,10 @@ import '../network/api_client.dart';
 import '../utils/logger.dart';
 import '../../data/services/cache_service.dart';
 import '../../data/repositories/user_repository.dart';
-import '../../data/repositories/vendor_repository.dart';
-import '../../data/repositories/order_repository.dart';
-import '../../data/repositories/customer_repository.dart';
-import '../../data/repositories/menu_item_repository.dart';
+import '../../features/vendors/data/repositories/vendor_repository.dart';
+import '../../features/orders/data/repositories/order_repository.dart';
+import '../../features/customers/data/repositories/customer_repository.dart';
+import '../../features/menu/data/repositories/menu_item_repository.dart';
 import '../../core/services/file_upload_service.dart';
 
 import 'injection_container.config.dart';

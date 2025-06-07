@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import '../models/user.dart' as app_models;
-import '../models/user_role.dart';
+import '../../../data/models/user.dart' as app_models;
+import '../../../data/models/user_role.dart';
 import '../../core/config/supabase_config.dart';
 import 'base_repository.dart';
 

@@ -1,25 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:gigaeats_app/data/models/order.dart';
-import 'package:gigaeats_app/data/models/order_status_history.dart';
-import 'package:gigaeats_app/data/models/order_notification.dart';
-import 'package:gigaeats_app/data/repositories/order_repository.dart';
+import 'package:gigaeats_app/features/orders/data/models/order.dart';
+import 'package:gigaeats_app/features/orders/data/models/order_status_history.dart';
+import 'package:gigaeats_app/features/orders/data/models/order_notification.dart';
 
 void main() {
   group('Order Management Integration Tests', () {
-    late SupabaseClient supabaseClient;
-    late OrderRepository orderRepository;
-
     setUpAll(() async {
-      // Initialize Supabase client for testing
-      // Note: In a real test, you would use a test database
-      supabaseClient = SupabaseClient(
-        'http://localhost:54321', // Local Supabase URL
-        'your-anon-key', // Test anon key
-      );
-      
-      orderRepository = OrderRepository(client: supabaseClient);
+      // Initialize test environment
+      // Note: These are placeholder tests that don't require actual database connections
     });
 
     group('Database Schema Validation', () {

@@ -21,10 +21,14 @@ class CustomizationDialog extends StatefulWidget {
 class _CustomizationDialogState extends State<CustomizationDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  
+
   String _selectedType = CustomizationType.single.value;
   bool _isRequired = false;
   List<CustomizationOption> _options = [];
+
+  // Controllers for each option's fields
+  final List<TextEditingController> _optionNameControllers = [];
+  final List<TextEditingController> _optionPriceControllers = [];
 
   @override
   void initState() {
@@ -39,7 +43,19 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _disposeOptionControllers();
     super.dispose();
+  }
+
+  void _disposeOptionControllers() {
+    for (final controller in _optionNameControllers) {
+      controller.dispose();
+    }
+    for (final controller in _optionPriceControllers) {
+      controller.dispose();
+    }
+    _optionNameControllers.clear();
+    _optionPriceControllers.clear();
   }
 
   void _populateExistingData() {
@@ -48,6 +64,7 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
     _selectedType = customization.type;
     _isRequired = customization.isRequired;
     _options = List.from(customization.options);
+    _initializeControllersForOptions();
   }
 
   void _addDefaultOption() {
@@ -57,6 +74,18 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
       additionalPrice: 0.0,
       isDefault: false,
     ));
+    _initializeControllersForOptions();
+  }
+
+  void _initializeControllersForOptions() {
+    // Dispose existing controllers first
+    _disposeOptionControllers();
+
+    // Create new controllers for each option
+    for (final option in _options) {
+      _optionNameControllers.add(TextEditingController(text: option.name));
+      _optionPriceControllers.add(TextEditingController(text: option.additionalPrice.toString()));
+    }
   }
 
   @override
@@ -234,7 +263,7 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                 Expanded(
                   flex: 2,
                   child: TextFormField(
-                    initialValue: option.name,
+                    controller: _optionNameControllers[index],
                     decoration: const InputDecoration(
                       labelText: 'Option Name *',
                       hintText: 'e.g., Large, Extra Spicy',
@@ -254,7 +283,7 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
-                    initialValue: option.additionalPrice.toString(),
+                    controller: _optionPriceControllers[index],
                     decoration: const InputDecoration(
                       labelText: 'Price (RM)',
                       hintText: '0.00 (free)',
@@ -344,18 +373,42 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
         additionalPrice: 0.0,
         isDefault: false,
       ));
+
+      // Add controllers for the new option
+      _optionNameControllers.add(TextEditingController(text: ''));
+      _optionPriceControllers.add(TextEditingController(text: '0.0'));
     });
   }
 
   void _removeOption(int index) {
     setState(() {
       _options.removeAt(index);
+
+      // Dispose and remove controllers for the removed option
+      if (index < _optionNameControllers.length) {
+        _optionNameControllers[index].dispose();
+        _optionNameControllers.removeAt(index);
+      }
+      if (index < _optionPriceControllers.length) {
+        _optionPriceControllers[index].dispose();
+        _optionPriceControllers.removeAt(index);
+      }
     });
   }
 
   void _updateOption(int index, CustomizationOption option) {
     setState(() {
       _options[index] = option;
+
+      // Update controllers if they exist and the values have changed
+      if (index < _optionNameControllers.length &&
+          _optionNameControllers[index].text != option.name) {
+        _optionNameControllers[index].text = option.name;
+      }
+      if (index < _optionPriceControllers.length &&
+          _optionPriceControllers[index].text != option.additionalPrice.toString()) {
+        _optionPriceControllers[index].text = option.additionalPrice.toString();
+      }
     });
   }
 

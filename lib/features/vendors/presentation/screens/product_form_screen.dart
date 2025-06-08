@@ -880,8 +880,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   void _addCustomization() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => CustomizationDialog(
         onSave: (customization) {
           setState(() {
@@ -893,8 +895,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   void _editCustomization(int index) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => CustomizationDialog(
         customization: _customizations[index],
         onSave: (customization) {

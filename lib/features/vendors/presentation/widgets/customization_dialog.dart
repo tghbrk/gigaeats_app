@@ -90,11 +90,15 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
+    return Material(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
+        height: MediaQuery.of(context).size.height * 0.9,
         padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../features/orders/data/models/order.dart';
+import '../../data/models/order.dart';
 import '../../data/models/delivery_method.dart';
-import '../../features/orders/data/repositories/order_repository.dart';
-import '../../core/utils/debug_logger.dart';
-import 'repository_providers.dart';
+import '../../data/repositories/order_repository.dart';
+import '../../../../core/utils/debug_logger.dart';
+import '../../../../presentation/providers/repository_providers.dart';
 
 /// State for delivery proof real-time updates
 class DeliveryProofRealtimeState {

@@ -358,14 +358,59 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
             ),
             const SizedBox(height: 12),
             
-            ...order.items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
+            ...order.items.map((item) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${item.quantity}x'),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(item.name)),
-                  Text('RM ${item.totalPrice.toStringAsFixed(2)}'),
+                  Row(
+                    children: [
+                      Text('${item.quantity}x'),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(
+                        item.name,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )),
+                      Text(
+                        'RM ${item.totalPrice.toStringAsFixed(2)}',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Add customizations display
+                  if (item.customizations != null && item.customizations!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Customizations: ${_formatCustomizations(item.customizations!)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                  if (item.notes != null && item.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Note: ${item.notes}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.orange.shade700,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             )),
@@ -691,6 +736,23 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
         backgroundColor: Colors.orange,
       ),
     );
+  }
+
+  // Helper function to format customizations
+  String _formatCustomizations(Map<String, dynamic> customizations) {
+    final parts = <String>[];
+    customizations.forEach((key, value) {
+      if (value is Map && value.containsKey('name')) {
+        parts.add(value['name']);
+      } else if (value is List) {
+        for (var option in value) {
+          if (option is Map && option.containsKey('name')) {
+            parts.add(option['name']);
+          }
+        }
+      }
+    });
+    return parts.join(', ');
   }
 }
 

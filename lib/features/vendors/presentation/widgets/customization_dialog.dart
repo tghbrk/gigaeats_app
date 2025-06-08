@@ -269,9 +269,7 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                       hintText: 'e.g., Large, Extra Spicy',
                       border: OutlineInputBorder(),
                     ),
-                    onChanged: (value) {
-                      _updateOption(index, option.copyWith(name: value));
-                    },
+                    // Remove onChanged to prevent rebuilds during typing
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Required';
@@ -295,10 +293,7 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                     ],
-                    onChanged: (value) {
-                      final price = double.tryParse(value) ?? 0.0;
-                      _updateOption(index, option.copyWith(additionalPrice: price));
-                    },
+                    // Remove onChanged to prevent rebuilds during typing
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Price is required';
@@ -330,17 +325,24 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                     title: const Text('Default Option'),
                     value: option.isDefault,
                     onChanged: (value) {
-                      _updateOption(index, option.copyWith(isDefault: value ?? false));
-                      // Ensure only one default option
-                      if (value == true) {
-                        _clearOtherDefaults(index);
-                      }
+                      setState(() {
+                        _options[index] = option.copyWith(isDefault: value ?? false);
+                        // Ensure only one default option
+                        if (value == true) {
+                          for (int i = 0; i < _options.length; i++) {
+                            if (i != index) {
+                              _options[i] = _options[i].copyWith(isDefault: false);
+                            }
+                          }
+                        }
+                      });
                     },
                     controlAffinity: ListTileControlAffinity.leading,
                     dense: true,
                   ),
                 ),
-                if (option.additionalPrice == 0.0)
+                if (index < _optionPriceControllers.length &&
+                    (double.tryParse(_optionPriceControllers[index].text) ?? 0.0) == 0.0)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -396,31 +398,7 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
     });
   }
 
-  void _updateOption(int index, CustomizationOption option) {
-    setState(() {
-      _options[index] = option;
 
-      // Update controllers if they exist and the values have changed
-      if (index < _optionNameControllers.length &&
-          _optionNameControllers[index].text != option.name) {
-        _optionNameControllers[index].text = option.name;
-      }
-      if (index < _optionPriceControllers.length &&
-          _optionPriceControllers[index].text != option.additionalPrice.toString()) {
-        _optionPriceControllers[index].text = option.additionalPrice.toString();
-      }
-    });
-  }
-
-  void _clearOtherDefaults(int selectedIndex) {
-    setState(() {
-      for (int i = 0; i < _options.length; i++) {
-        if (i != selectedIndex) {
-          _options[i] = _options[i].copyWith(isDefault: false);
-        }
-      }
-    });
-  }
 
   void _saveCustomization() {
     if (!_formKey.currentState!.validate()) {
@@ -436,6 +414,9 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
       );
       return;
     }
+
+    // Update options with current controller values
+    _syncOptionsWithControllers();
 
     // Validate that all options have names
     final hasEmptyOptions = _options.any((option) => option.name.trim().isEmpty);
@@ -459,5 +440,18 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
 
     widget.onSave(customization);
     Navigator.of(context).pop();
+  }
+
+  void _syncOptionsWithControllers() {
+    for (int i = 0; i < _options.length; i++) {
+      if (i < _optionNameControllers.length && i < _optionPriceControllers.length) {
+        final name = _optionNameControllers[i].text;
+        final price = double.tryParse(_optionPriceControllers[i].text) ?? 0.0;
+        _options[i] = _options[i].copyWith(
+          name: name,
+          additionalPrice: price,
+        );
+      }
+    }
   }
 }

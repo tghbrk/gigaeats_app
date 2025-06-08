@@ -61,7 +61,9 @@ class MenuItemRepository extends BaseRepository {
 
       debugPrint('MenuItemRepository: Found ${response.length} menu items');
 
-      return response.map((json) {
+      // Load customizations for each menu item
+      final products = <Product>[];
+      for (final json in response) {
         try {
           // Handle potential null values and type conversions
           final processedJson = Map<String, dynamic>.from(json);
@@ -84,26 +86,93 @@ class MenuItemRepository extends BaseRepository {
             processedJson['rating'] = double.tryParse(processedJson['rating'].toString()) ?? 0.0;
           }
 
-          return Product.fromJson(processedJson);
+          final product = Product.fromJson(processedJson);
+
+          // Load customizations for this menu item
+          final customizations = await getMenuItemCustomizations(product.id);
+
+          // Create product with customizations
+          final productWithCustomizations = product.copyWith(customizations: customizations);
+          products.add(productWithCustomizations);
+
+          debugPrint('MenuItemRepository: Loaded ${customizations.length} customizations for ${product.name}');
         } catch (e) {
           debugPrint('Error parsing menu item JSON: $e');
           debugPrint('JSON: $json');
           rethrow;
         }
-      }).toList();
+      }
+
+      debugPrint('MenuItemRepository: Returning ${products.length} products with customizations');
+      return products;
     });
   }
 
   /// Get menu items stream for real-time updates
   Stream<List<Product>> getMenuItemsStream(String vendorId) {
+    print('🚨🚨🚨 MenuItemRepository: ===== getMenuItemsStream CALLED for vendor: $vendorId =====');
+    debugPrint('MenuItemRepository: ===== getMenuItemsStream CALLED for vendor: $vendorId =====');
     return executeStreamQuery(() {
       return supabase
           .from('menu_items')
           .stream(primaryKey: ['id'])
-          .map((data) => data
-              .where((item) => item['vendor_id'] == vendorId && item['is_available'] == true)
-              .map((json) => Product.fromJson(json))
-              .toList());
+          .asyncMap((data) async {
+            debugPrint('MenuItemRepository: Stream received ${data.length} raw menu items');
+
+            final filteredData = data
+                .where((item) => item['vendor_id'] == vendorId && item['is_available'] == true)
+                .toList();
+
+            debugPrint('MenuItemRepository: After filtering: ${filteredData.length} items for vendor $vendorId');
+
+            final products = <Product>[];
+
+            for (final json in filteredData) {
+              debugPrint('MenuItemRepository: Processing menu item: ${json['name']} (ID: ${json['id']})');
+
+              try {
+                // Handle potential null values and type conversions (same as getMenuItems)
+                final processedJson = Map<String, dynamic>.from(json);
+
+                // Ensure required fields have default values
+                processedJson['description'] = processedJson['description'] ?? '';
+                processedJson['tags'] = processedJson['tags'] ?? [];
+                processedJson['allergens'] = processedJson['allergens'] ?? [];
+                processedJson['gallery_images'] = processedJson['gallery_images'] ?? [];
+                processedJson['currency'] = processedJson['currency'] ?? 'MYR';
+
+                // Ensure numeric fields are properly typed
+                if (processedJson['base_price'] != null) {
+                  processedJson['base_price'] = double.tryParse(processedJson['base_price'].toString()) ?? 0.0;
+                }
+                if (processedJson['bulk_price'] != null) {
+                  processedJson['bulk_price'] = double.tryParse(processedJson['bulk_price'].toString());
+                }
+                if (processedJson['rating'] != null) {
+                  processedJson['rating'] = double.tryParse(processedJson['rating'].toString()) ?? 0.0;
+                }
+
+                final product = Product.fromJson(processedJson);
+
+                // Load customizations for this menu item
+                final customizations = await getMenuItemCustomizations(product.id);
+                debugPrint('MenuItemRepository: Loaded ${customizations.length} customizations for ${product.name}');
+
+                // Create product with customizations
+                final productWithCustomizations = product.copyWith(customizations: customizations);
+                products.add(productWithCustomizations);
+
+                debugPrint('MenuItemRepository: Added product ${productWithCustomizations.name} with ${productWithCustomizations.customizations.length} customizations');
+              } catch (e) {
+                debugPrint('MenuItemRepository: Error processing menu item: $e');
+                debugPrint('MenuItemRepository: JSON: $json');
+                // Continue with next item instead of failing the entire stream
+              }
+            }
+
+            debugPrint('MenuItemRepository: ===== getMenuItemsStream COMPLETED - returning ${products.length} products =====');
+            return products;
+          });
     });
   }
 
@@ -512,12 +581,17 @@ class MenuItemRepository extends BaseRepository {
 
   /// Get customizations for a menu item
   Future<List<MenuItemCustomization>> getMenuItemCustomizations(String menuItemId) async {
+    print('🔧🔧🔧 getMenuItemCustomizations CALLED for menu item: $menuItemId');
+    debugPrint('🔧 getMenuItemCustomizations CALLED for menu item: $menuItemId');
     return executeQuery(() async {
       final customizationsResponse = await supabase
           .from('menu_item_customizations')
           .select('*')
           .eq('menu_item_id', menuItemId)
           .order('display_order');
+
+      print('🔧🔧🔧 getMenuItemCustomizations: Found ${customizationsResponse.length} customizations for $menuItemId');
+      debugPrint('🔧 getMenuItemCustomizations: Found ${customizationsResponse.length} customizations for $menuItemId');
 
       final customizations = <MenuItemCustomization>[];
 
@@ -544,6 +618,8 @@ class MenuItemRepository extends BaseRepository {
         ));
       }
 
+      print('🔧🔧🔧 getMenuItemCustomizations: Returning ${customizations.length} customizations for $menuItemId');
+      debugPrint('🔧 getMenuItemCustomizations: Returning ${customizations.length} customizations for $menuItemId');
       return customizations;
     });
   }

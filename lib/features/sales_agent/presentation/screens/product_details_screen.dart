@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../menu/data/models/product.dart';
 import '../../../vendors/data/models/vendor.dart';
+import '../../../vendors/presentation/providers/vendor_provider.dart';
 import '../providers/cart_provider.dart';
 import '../../../../shared/widgets/custom_button.dart';
 
@@ -386,8 +387,29 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
       return const SizedBox.shrink();
     }
 
+    final theme = Theme.of(context);
+
     return Column(
-      children: product.customizations.map((group) {
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Customization section title
+        Text(
+          'Customize Your Order',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Select your preferences for this item',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Customization groups
+        ...product.customizations.map((group) {
         return Card(
           margin: const EdgeInsets.only(bottom: 16.0),
           child: Padding(
@@ -459,7 +481,8 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             ),
           ),
         );
-      }).toList(),
+      }),
+      ],
     );
   }
 
@@ -667,7 +690,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     return true;
   }
 
-  void _addToCart() {
+  void _addToCart() async {
     // Validate required customizations first
     if (!_validateRequiredCustomizations()) {
       return;
@@ -675,48 +698,85 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
 
     final product = widget.product;
 
-    // Create a temporary vendor object for the cart
-    // In a real app, you would fetch the vendor details
-    final tempVendor = Vendor(
-      id: product.vendorId,
-      businessName: 'Vendor ${product.vendorId}', // TODO: Get actual vendor name
-      userId: 'temp-user-id',
-      businessRegistrationNumber: 'TEMP-REG-001',
-      businessAddress: 'Temporary Address',
-      businessType: 'Restaurant',
-      cuisineTypes: [],
-      description: 'Temporary vendor for cart',
-      rating: 0.0,
-      totalReviews: 0,
-      totalOrders: 0,
-      isActive: true,
-      isVerified: false,
-      isHalalCertified: false,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-
-    ref.read(cartProvider.notifier).addItem(
-      product: product,
-      vendor: tempVendor,
-      quantity: _quantity,
-      customizations: _selectedCustomizations, // Pass selected customizations
-      notes: _selectedNotes,
-    );
-
+    // Show loading indicator
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.name} (x$_quantity) added to cart'),
-        action: SnackBarAction(
-          label: 'View Cart',
-          onPressed: () {
-            Navigator.pop(context);
-            // TODO: Navigate to cart
-          },
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Adding to cart...'),
+          ],
         ),
+        duration: Duration(seconds: 1),
       ),
     );
 
-    Navigator.pop(context);
+    try {
+      // Get vendor details from provider
+      final vendorAsync = ref.read(vendorDetailsProvider(product.vendorId));
+
+      await vendorAsync.when(
+        data: (vendor) async {
+          if (vendor != null) {
+            ref.read(cartProvider.notifier).addItem(
+              product: product,
+              vendor: vendor,
+              quantity: _quantity,
+              customizations: _selectedCustomizations, // Pass selected customizations
+              notes: _selectedNotes,
+            );
+
+            // Clear the loading snackbar and show success only if widget is still mounted
+            if (mounted) {
+              ScaffoldMessenger.of(context).clearSnackBars();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${product.name} (x$_quantity) added to cart'),
+                  backgroundColor: Colors.green,
+                  action: SnackBarAction(
+                    label: 'View Cart',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // Navigate to cart screen using go_router
+                      Navigator.pushNamed(context, '/sales-agent/cart');
+                    },
+                  ),
+                ),
+              );
+
+              Navigator.pop(context);
+            }
+          } else {
+            throw Exception('Vendor information not available');
+          }
+        },
+        loading: () async {
+          // Wait a bit for loading
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        error: (error, stack) async {
+          throw Exception('Failed to load vendor: $error');
+        },
+      );
+    } catch (e) {
+      // Clear the loading snackbar and show error only if widget is still mounted
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

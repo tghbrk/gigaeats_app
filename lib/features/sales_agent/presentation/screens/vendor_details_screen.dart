@@ -522,6 +522,14 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen>
   }
 
   void _addToCart(Product product) {
+    // Check if product has customizations
+    if (product.customizations.isNotEmpty) {
+      // Navigate to product details for customization selection
+      _showProductDetails(product);
+      return;
+    }
+
+    // For products without customizations, add directly to cart
     final vendorAsync = ref.read(vendorDetailsProvider(widget.vendorId));
 
     vendorAsync.whenData((vendor) {

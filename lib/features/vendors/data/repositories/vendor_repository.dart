@@ -223,6 +223,7 @@ class VendorRepository extends BaseRepository {
     int offset = 0,
   }) async {
     return executeQuery(() async {
+      debugPrint('VendorRepository: ===== getVendorProducts CALLED for vendor $vendorId =====');
       debugPrint('VendorRepository: Getting products for vendor $vendorId');
       debugPrint('VendorRepository: Platform is ${kIsWeb ? "web" : "mobile"}');
 
@@ -261,7 +262,9 @@ class VendorRepository extends BaseRepository {
 
       debugPrint('VendorRepository: Found ${response.length} products');
 
-      return response.map((json) {
+      // Load customizations for each menu item
+      final products = <Product>[];
+      for (final json in response) {
         try {
           // Handle potential null values and type conversions
           final processedJson = Map<String, dynamic>.from(json);
@@ -284,13 +287,25 @@ class VendorRepository extends BaseRepository {
             processedJson['rating'] = double.tryParse(processedJson['rating'].toString()) ?? 0.0;
           }
 
-          return Product.fromJson(processedJson);
+          final product = Product.fromJson(processedJson);
+
+          // Load customizations for this menu item
+          final customizations = await _getMenuItemCustomizations(product.id);
+
+          // Create product with customizations
+          final productWithCustomizations = product.copyWith(customizations: customizations);
+          products.add(productWithCustomizations);
+
+          debugPrint('VendorRepository: Loaded ${customizations.length} customizations for ${product.name}');
         } catch (e) {
           debugPrint('Error parsing product JSON: $e');
           debugPrint('JSON: $json');
           rethrow;
         }
-      }).toList();
+      }
+
+      debugPrint('VendorRepository: Returning ${products.length} products with customizations');
+      return products;
     });
   }
 
@@ -881,6 +896,44 @@ class VendorRepository extends BaseRepository {
       });
 
       return List<Map<String, dynamic>>.from(response);
+    });
+  }
+
+  /// Helper method to get customizations for a menu item
+  Future<List<MenuItemCustomization>> _getMenuItemCustomizations(String menuItemId) async {
+    return executeQuery(() async {
+      final customizationsResponse = await supabase
+          .from('menu_item_customizations')
+          .select('*')
+          .eq('menu_item_id', menuItemId)
+          .order('display_order');
+
+      final customizations = <MenuItemCustomization>[];
+
+      for (final customizationData in customizationsResponse) {
+        final optionsResponse = await supabase
+            .from('customization_options')
+            .select('*')
+            .eq('customization_id', customizationData['id'])
+            .order('display_order');
+
+        final options = optionsResponse.map((optionData) => CustomizationOption(
+          id: optionData['id'],
+          name: optionData['name'],
+          additionalPrice: (optionData['additional_price'] ?? 0.0).toDouble(),
+          isDefault: optionData['is_default'] ?? false,
+        )).toList();
+
+        customizations.add(MenuItemCustomization(
+          id: customizationData['id'],
+          name: customizationData['name'],
+          type: customizationData['type'] ?? 'single',
+          isRequired: customizationData['is_required'] ?? false,
+          options: options,
+        ));
+      }
+
+      return customizations;
     });
   }
 }

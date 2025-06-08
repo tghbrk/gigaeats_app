@@ -74,6 +74,11 @@ class ProductCard extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 4),
                             child: _buildBadge('🌶️ ${product.safeSpicyLevel}', Colors.red, Colors.white),
                           ),
+                        if (product.customizations.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: _buildBadge('CUSTOMIZE', Colors.purple, Colors.white),
+                          ),
                       ],
                     ),
                   ),
@@ -179,11 +184,16 @@ class ProductCard extends StatelessWidget {
                         IconButton(
                           onPressed: product.availability.isAvailable ? onAddToCart : null,
                           icon: Icon(
-                            Icons.add_shopping_cart,
+                            product.customizations.isNotEmpty
+                                ? Icons.tune // Settings/customize icon for products with customizations
+                                : Icons.add_shopping_cart, // Regular cart icon for simple products
                             color: product.availability.isAvailable
                                 ? theme.colorScheme.primary
                                 : theme.colorScheme.onSurface.withValues(alpha: 0.3),
                           ),
+                          tooltip: product.customizations.isNotEmpty
+                              ? 'Customize & Add to Cart'
+                              : 'Add to Cart',
                         ),
                     ],
                   ),

@@ -178,7 +178,7 @@ class ResponsiveBottomNavigationBar extends StatelessWidget {
       destinations: items.map((item) {
         return NavigationDestination(
           icon: item.icon,
-          selectedIcon: item.activeIcon ?? item.icon,
+          selectedIcon: item.activeIcon,
           label: item.label ?? '',
         );
       }).toList(),

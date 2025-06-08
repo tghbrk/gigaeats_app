@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/delivery_method.dart';
-import '../../features/sales_agent/presentation/providers/cart_provider.dart';
+import '../../../sales_agent/presentation/providers/cart_provider.dart';
 
 class DeliveryMethodSelector extends ConsumerWidget {
   final DeliveryMethod selectedMethod;

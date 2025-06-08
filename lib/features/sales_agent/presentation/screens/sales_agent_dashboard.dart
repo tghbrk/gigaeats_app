@@ -11,7 +11,7 @@ import '../../../../presentation/providers/repository_providers.dart';
 import '../providers/cart_provider.dart';
 // TEMPORARILY COMMENTED OUT FOR QUICK WIN
 // import '../providers/enhanced_commission_provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+
 import 'vendors_screen.dart';
 import '../../../orders/presentation/screens/orders_screen.dart';
 import '../../../customers/presentation/screens/customers_screen.dart';

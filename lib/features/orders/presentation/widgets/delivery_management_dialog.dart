@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/orders/data/models/order.dart';
+import '../../data/models/order.dart';
 import '../../data/models/delivery_method.dart';
 
 class DeliveryManagementDialog extends ConsumerStatefulWidget {

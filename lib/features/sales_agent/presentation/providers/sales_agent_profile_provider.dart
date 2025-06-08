@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../features/sales_agent/data/models/sales_agent_profile.dart';
-import '../../features/sales_agent/data/repositories/sales_agent_repository.dart';
-import 'repository_providers.dart';
-import 'auth_provider.dart';
+import '../../data/models/sales_agent_profile.dart';
+import '../../data/repositories/sales_agent_repository.dart';
+import '../../../../presentation/providers/repository_providers.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 // Current Sales Agent Profile Provider
 final currentSalesAgentProfileProvider = FutureProvider<SalesAgentProfile?>((ref) async {

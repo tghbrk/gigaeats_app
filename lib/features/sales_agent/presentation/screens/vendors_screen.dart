@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../vendors/data/models/vendor.dart';
 import '../../../vendors/presentation/providers/vendor_provider.dart';
 import '../../../../presentation/providers/repository_providers.dart';
-import '../../widgets/vendor_card.dart';
+
 import '../../widgets/search_bar_widget.dart';
 
 

@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/models/sales_agent_notification_preferences.dart';
-import '../../features/sales_agent/data/services/sales_agent_service.dart';
-import 'repository_providers.dart';
+import '../../data/services/sales_agent_service.dart';
+import '../../../../presentation/providers/repository_providers.dart';
 
 // Sales Agent Notification Settings State
 class SalesAgentNotificationSettingsState {

@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/sales_agent/data/repositories/sales_agent_repository.dart';
 import '../../features/sales_agent/data/models/sales_agent_profile.dart';
-import '../../features/auth/presentation/providers/auth_provider.dart';
+
 
 class SalesAgentProfileTestScreen extends ConsumerStatefulWidget {
   const SalesAgentProfileTestScreen({super.key});
@@ -18,6 +18,7 @@ class _SalesAgentProfileTestScreenState extends ConsumerState<SalesAgentProfileT
   bool _isLoading = false;
   SalesAgentProfile? _profile;
   Map<String, dynamic>? _statistics;
+
 
   void _addLog(String message) {
     setState(() {

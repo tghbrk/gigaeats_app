@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/customer.dart';
 import '../providers/customer_provider.dart';
 import '../../widgets/search_bar_widget.dart';
-import '../../../customers/widgets/customer_card.dart';
+import 'customer_card.dart';
 
 class CustomerSelector extends ConsumerStatefulWidget {
   final Customer? selectedCustomer;

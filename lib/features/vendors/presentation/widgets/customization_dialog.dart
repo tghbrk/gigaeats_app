@@ -90,40 +90,19 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.9,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.customization == null ? 'Add Customization' : 'Edit Customization'),
+        actions: [
+          TextButton(
+            onPressed: _saveCustomization,
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+      body: Padding(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.customization == null ? 'Add Customization' : 'Edit Customization',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Form
-            Expanded(
-              child: Form(
+        child: Form(
                 key: _formKey,
                 child: SingleChildScrollView(
                   child: Column(
@@ -227,31 +206,6 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                 ),
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // Actions
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _saveCustomization,
-                    child: const Text('Save'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -443,7 +397,6 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
     );
 
     widget.onSave(customization);
-    Navigator.of(context).pop();
   }
 
   void _syncOptionsWithControllers() {

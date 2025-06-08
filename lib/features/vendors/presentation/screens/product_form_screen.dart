@@ -880,32 +880,32 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   void _addCustomization() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CustomizationDialog(
-        onSave: (customization) {
-          setState(() {
-            _customizations.add(customization);
-          });
-        },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CustomizationDialog(
+          onSave: (customization) {
+            setState(() {
+              _customizations.add(customization);
+            });
+            Navigator.of(context).pop();
+          },
+        ),
       ),
     );
   }
 
   void _editCustomization(int index) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CustomizationDialog(
-        customization: _customizations[index],
-        onSave: (customization) {
-          setState(() {
-            _customizations[index] = customization;
-          });
-        },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CustomizationDialog(
+          customization: _customizations[index],
+          onSave: (customization) {
+            setState(() {
+              _customizations[index] = customization;
+            });
+            Navigator.of(context).pop();
+          },
+        ),
       ),
     );
   }

@@ -8,8 +8,7 @@ import '../../../menu/data/models/product.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../presentation/providers/repository_providers.dart';
 import '../../../../shared/widgets/loading_widget.dart';
-// TEMPORARILY COMMENTED OUT FOR QUICK WIN
-// import 'menu_item_form_screen.dart';
+import 'product_form_screen.dart';
 
 
 class VendorMenuScreen extends ConsumerStatefulWidget {
@@ -612,31 +611,27 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
     print('🍽️ [VENDOR-MENU-DEBUG] Navigating to add product screen');
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Add Menu Item')),
-          body: const Center(child: Text('Menu Item Form - Coming Soon')),
-        ),
+        builder: (context) => const ProductFormScreen(),
       ),
-    ).then((_) {
+    ).then((result) {
       // Refresh the products after adding
-      print('🍽️ [VENDOR-MENU-DEBUG] Returned from add product screen, refreshing...');
-      _loadProducts();
+      if (result == true) {
+        print('🍽️ [VENDOR-MENU-DEBUG] Returned from add product screen, refreshing...');
+        _loadProducts();
+      }
     });
   }
 
   void _navigateToEditProduct(String productId) {
-    // For now, just navigate to add form since we're using old Product model
-    // In a real app, you'd convert between Product and MenuItem models
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Edit Menu Item')),
-          body: const Center(child: Text('Menu Item Form - Coming Soon')),
-        ),
+        builder: (context) => ProductFormScreen(productId: productId),
       ),
-    ).then((_) {
+    ).then((result) {
       // Refresh the products after editing
-      _loadProducts();
+      if (result == true) {
+        _loadProducts();
+      }
     });
   }
 

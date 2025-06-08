@@ -2,11 +2,14 @@
 import 'package:uuid/uuid.dart';
 
 import '../models/menu_item.dart';
+import '../models/product.dart';
+import '../repositories/customization_repository.dart';
 
 class MenuService {
   static final List<MenuCategory> _categories = [];
   static final List<MenuItem> _menuItems = [];
   static final _uuid = const Uuid();
+  static final _customizationRepository = CustomizationRepository();
 
   // Get all categories for a vendor
   Future<List<MenuCategory>> getVendorCategories(String vendorId) async {
@@ -339,5 +342,169 @@ class MenuService {
       'halalItems': halalItems,
       'averagePrice': avgPrice,
     };
+  }
+
+  // Customization Management Methods
+
+  // Get all customizations for a menu item
+  Future<List<MenuItemCustomization>> getMenuItemCustomizations(String menuItemId) async {
+    return await _customizationRepository.getMenuItemCustomizations(menuItemId);
+  }
+
+  // Create a new customization group
+  Future<MenuItemCustomization> createCustomization({
+    required String menuItemId,
+    required String name,
+    required String type,
+    required bool isRequired,
+    int displayOrder = 0,
+  }) async {
+    return await _customizationRepository.createCustomization(
+      menuItemId: menuItemId,
+      name: name,
+      type: type,
+      isRequired: isRequired,
+      displayOrder: displayOrder,
+    );
+  }
+
+  // Update an existing customization group
+  Future<MenuItemCustomization> updateCustomization({
+    required String customizationId,
+    String? name,
+    String? type,
+    bool? isRequired,
+    int? displayOrder,
+  }) async {
+    return await _customizationRepository.updateCustomization(
+      customizationId: customizationId,
+      name: name,
+      type: type,
+      isRequired: isRequired,
+      displayOrder: displayOrder,
+    );
+  }
+
+  // Delete a customization group
+  Future<void> deleteCustomization(String customizationId) async {
+    return await _customizationRepository.deleteCustomization(customizationId);
+  }
+
+  // Create a new customization option
+  Future<CustomizationOption> createCustomizationOption({
+    required String customizationId,
+    required String name,
+    required double additionalPrice,
+    bool isDefault = false,
+    bool isAvailable = true,
+    int displayOrder = 0,
+  }) async {
+    return await _customizationRepository.createCustomizationOption(
+      customizationId: customizationId,
+      name: name,
+      additionalPrice: additionalPrice,
+      isDefault: isDefault,
+      isAvailable: isAvailable,
+      displayOrder: displayOrder,
+    );
+  }
+
+  // Update an existing customization option
+  Future<CustomizationOption> updateCustomizationOption({
+    required String optionId,
+    String? name,
+    double? additionalPrice,
+    bool? isDefault,
+    bool? isAvailable,
+    int? displayOrder,
+  }) async {
+    return await _customizationRepository.updateCustomizationOption(
+      optionId: optionId,
+      name: name,
+      additionalPrice: additionalPrice,
+      isDefault: isDefault,
+      isAvailable: isAvailable,
+      displayOrder: displayOrder,
+    );
+  }
+
+  // Delete a customization option
+  Future<void> deleteCustomizationOption(String optionId) async {
+    return await _customizationRepository.deleteCustomizationOption(optionId);
+  }
+
+  // Validate customizations for an order
+  Future<bool> validateOrderCustomizations({
+    required String menuItemId,
+    required Map<String, dynamic> customizations,
+  }) async {
+    return await _customizationRepository.validateOrderCustomizations(
+      menuItemId: menuItemId,
+      customizations: customizations,
+    );
+  }
+
+  // Get menu item with all customizations
+  Future<Map<String, dynamic>> getMenuItemWithCustomizations(String menuItemId) async {
+    return await _customizationRepository.getMenuItemWithCustomizations(menuItemId);
+  }
+
+  // Bulk create customizations for a menu item
+  Future<List<MenuItemCustomization>> bulkCreateCustomizations({
+    required String menuItemId,
+    required List<MenuItemCustomization> customizations,
+  }) async {
+    return await _customizationRepository.bulkCreateCustomizations(
+      menuItemId: menuItemId,
+      customizations: customizations,
+    );
+  }
+
+  // Convert Product to MenuItem (for backward compatibility)
+  MenuItem productToMenuItem(Product product) {
+    return MenuItem(
+      id: product.id,
+      vendorId: product.vendorId,
+      name: product.name,
+      description: product.description ?? '',
+      category: product.category,
+      basePrice: product.basePrice,
+      bulkPricingTiers: [], // Convert if needed
+      minimumOrderQuantity: 1,
+      maximumOrderQuantity: null,
+      imageUrls: product.imageUrl != null ? [product.imageUrl!] : [],
+      dietaryTypes: (product.isVegetarian ?? false) ? [DietaryType.vegetarian] : [],
+      allergens: [],
+      preparationTimeMinutes: 30,
+      availableQuantity: null,
+      unit: 'pax',
+      isHalalCertified: product.isHalal ?? false,
+      tags: product.tags,
+      status: (product.isAvailable ?? true) ? MenuItemStatus.available : MenuItemStatus.outOfStock,
+      createdAt: product.createdAt ?? DateTime.now(),
+      updatedAt: product.updatedAt ?? DateTime.now(),
+    );
+  }
+
+  // Convert MenuItem to Product (for new customization features)
+  Product menuItemToProduct(MenuItem menuItem, {List<MenuItemCustomization>? customizations}) {
+    return Product(
+      id: menuItem.id,
+      vendorId: menuItem.vendorId,
+      name: menuItem.name,
+      description: menuItem.description,
+      category: menuItem.category,
+      basePrice: menuItem.basePrice,
+      imageUrl: menuItem.imageUrls.isNotEmpty ? menuItem.imageUrls.first : null,
+      isAvailable: menuItem.status == MenuItemStatus.available,
+      isVegetarian: menuItem.dietaryTypes.contains(DietaryType.vegetarian),
+      isHalal: menuItem.isHalalCertified,
+      tags: menuItem.tags,
+      rating: 0.0,
+      totalReviews: 0,
+      createdAt: menuItem.createdAt,
+      updatedAt: menuItem.updatedAt,
+      customizations: customizations ?? [],
+    );
   }
 }

@@ -224,6 +224,20 @@ class CartScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  // Add this part to show customizations
+                  if (item.customizations != null && item.customizations!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        _formatCustomizations(item.customizations!),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   if (item.notes != null) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -440,5 +454,22 @@ class CartScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  // Helper function to format customizations
+  String _formatCustomizations(Map<String, dynamic> customizations) {
+    final parts = <String>[];
+    customizations.forEach((key, value) {
+      if (value is Map && value.containsKey('name')) {
+        parts.add(value['name']);
+      } else if (value is List) {
+        for (var option in value) {
+          if (option is Map && option.containsKey('name')) {
+            parts.add(option['name']);
+          }
+        }
+      }
+    });
+    return parts.join(', ');
   }
 }

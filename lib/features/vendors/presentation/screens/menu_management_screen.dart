@@ -8,7 +8,7 @@ import '../../providers/repository_providers.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../widgets/custom_error_widget.dart';
-// import 'menu_item_form_screen.dart'; // Disabled for now
+import 'product_form_screen.dart';
 
 // Provider for menu service (keeping for categories)
 final menuServiceProvider = Provider<MenuService>((ref) => MenuService());
@@ -430,60 +430,33 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
   }
 
   void _showAddMenuDialog() {
-    // Show a placeholder dialog since MenuItemFormScreen is disabled
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Menu Item'),
-        content: const Text('Menu item creation functionality is currently under development. Please check back later.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProductFormScreen(),
       ),
-    );
-
-    // TODO: Uncomment when MenuItemFormScreen is ready
-    // Navigator.of(context).push(
-    //   MaterialPageRoute(
-    //     builder: (context) => const MenuItemFormScreen(),
-    //   ),
-    // ).then((_) {
-    //   // Refresh the menu items after adding/editing
-    //   ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
-    //   ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
-    // });
+    ).then((result) {
+      // Refresh the menu items after adding/editing
+      if (result == true) {
+        ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
+        ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
+      }
+    });
   }
 
   void _handleMenuAction(String action, Product item) {
     switch (action) {
       case 'edit':
-        // Show placeholder dialog since MenuItemFormScreen is disabled
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Edit Menu Item'),
-            content: Text('Edit functionality for "${item.name}" is currently under development. Please check back later.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ProductFormScreen(productId: item.id),
           ),
-        );
-        // TODO: Uncomment when MenuItemFormScreen is ready
-        // Navigator.of(context).push(
-        //   MaterialPageRoute(
-        //     builder: (context) => MenuItemFormScreen(menuItemId: item.id),
-        //   ),
-        // ).then((_) {
-        //   // Refresh the menu items after editing
-        //   ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
-        //   ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
-        // });
+        ).then((result) {
+          // Refresh the menu items after editing
+          if (result == true) {
+            ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
+            ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
+          }
+        });
         break;
       case 'duplicate':
         _duplicateMenuItem(item);
@@ -513,27 +486,10 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Update ${item.name} Availability'),
-        content: const Text('Availability update form will be implemented here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteConfirmation(Product item) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Menu Item'),
-        content: Text('Are you sure you want to delete "${item.name}"?'),
+        content: Text(
+          'Current status: ${(item.isAvailable ?? false) ? "Available" : "Unavailable"}\n\n'
+          'Do you want to ${(item.isAvailable ?? false) ? "make it unavailable" : "make it available"}?'
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -542,7 +498,59 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // Delete item
+              _toggleAvailability(item);
+            },
+            child: Text((item.isAvailable ?? false) ? 'Make Unavailable' : 'Make Available'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _toggleAvailability(Product item) async {
+    try {
+      final menuItemRepository = ref.read(menuItemRepositoryProvider);
+      await menuItemRepository.toggleAvailability(item.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${item.name} availability updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update availability: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmation(Product item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Menu Item'),
+        content: Text(
+          'Are you sure you want to delete "${item.name}"?\n\n'
+          'This action cannot be undone.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deleteMenuItem(item);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
@@ -552,27 +560,37 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
     );
   }
 
+  Future<void> _deleteMenuItem(Product item) async {
+    try {
+      final menuItemRepository = ref.read(menuItemRepositoryProvider);
+      await menuItemRepository.deleteMenuItem(item.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${item.name} deleted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        ref.invalidate(vendorMenuItemsProvider(widget.vendorId));
+        ref.invalidate(vendorMenuStatsProvider(widget.vendorId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete item: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _duplicateMenuItem(Product item) async {
     try {
       final menuItemRepository = ref.read(menuItemRepositoryProvider);
-      final duplicatedItem = Product(
-        id: '', // Will be generated by the database
-        vendorId: item.vendorId,
-        name: '${item.name} (Copy)',
-        description: item.description,
-        category: item.category,
-        basePrice: item.basePrice,
-        imageUrl: item.imageUrl,
-        isAvailable: item.isAvailable,
-        isVegetarian: item.isVegetarian,
-        isHalal: item.isHalal,
-        tags: item.tags,
-        rating: 0.0, // Reset rating for duplicated item
-        totalReviews: 0, // Reset reviews for duplicated item
-        createdAt: DateTime.now(),
-      );
-
-      await menuItemRepository.createMenuItem(duplicatedItem);
+      await menuItemRepository.duplicateMenuItem(item.id, newName: '${item.name} (Copy)');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -35,7 +35,26 @@ class CartItem {
     required this.vendorName,
   });
 
-  double get totalPrice => unitPrice * quantity;
+  // Calculate the price of a single item including customizations
+  double get singleItemPrice {
+    double addonsPrice = 0;
+    if (customizations != null) {
+      customizations!.forEach((key, value) {
+        if (value is Map<String, dynamic> && value.containsKey('price')) {
+          addonsPrice += (value['price'] as num).toDouble();
+        } else if (value is List) {
+          for (var option in value) {
+            if (option is Map<String, dynamic> && option.containsKey('price')) {
+              addonsPrice += (option['price'] as num).toDouble();
+            }
+          }
+        }
+      });
+    }
+    return unitPrice + addonsPrice;
+  }
+
+  double get totalPrice => singleItemPrice * quantity;
 
   CartItem copyWith({
     String? id,
@@ -177,10 +196,11 @@ class CartNotifier extends StateNotifier<CartState> {
     Map<String, dynamic>? customizations,
     String? notes,
   }) {
+    // Generate a unique ID for the cart item based on product and customizations
+    final cartItemId = _generateCartItemId(product.id, customizations);
+
     final existingItemIndex = state.items.indexWhere(
-      (item) =>
-        item.productId == product.id &&
-        _areCustomizationsEqual(item.customizations, customizations),
+      (item) => item.id == cartItemId,
     );
 
     if (existingItemIndex >= 0) {
@@ -197,7 +217,7 @@ class CartNotifier extends StateNotifier<CartState> {
     } else {
       // Add new item
       final newItem = CartItem(
-        id: _uuid.v4(),
+        id: cartItemId, // Use generated ID
         productId: product.id,
         name: product.name,
         description: product.safeDescription,
@@ -319,6 +339,25 @@ class CartNotifier extends StateNotifier<CartState> {
 
   void updateDeliveryMethod(DeliveryMethod deliveryMethod) {
     state = state.copyWith(selectedDeliveryMethod: deliveryMethod);
+  }
+
+  // Helper method to create a unique ID for cart items
+  String _generateCartItemId(String productId, Map<String, dynamic>? customizations) {
+    if (customizations == null || customizations.isEmpty) {
+      return productId;
+    }
+    // Create a stable string representation of customizations
+    final sortedKeys = customizations.keys.toList()..sort();
+    final customizationString = sortedKeys.map((key) {
+      final value = customizations[key];
+      if (value is List) {
+        final sortedList = List.from(value)..sort();
+        return '$key:${sortedList.join(',')}';
+      }
+      return '$key:$value';
+    }).join(';');
+
+    return '$productId-$customizationString';
   }
 
   // Helper method to compare customizations

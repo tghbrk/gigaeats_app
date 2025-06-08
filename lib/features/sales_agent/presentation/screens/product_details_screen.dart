@@ -23,6 +23,8 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   int _quantity = 1;
   String? _selectedNotes;
   final TextEditingController _notesController = TextEditingController();
+  // New state to hold selected customizations
+  Map<String, dynamic> _selectedCustomizations = {};
 
   @override
   void dispose() {
@@ -177,6 +179,9 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   _buildPricingCard(),
 
                   const SizedBox(height: 16),
+
+                  // Render customization options
+                  _buildCustomizationOptions(),
 
                   // Availability Information
                   _buildAvailabilityCard(),
@@ -374,6 +379,90 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     );
   }
 
+  // New method to build customization options UI
+  Widget _buildCustomizationOptions() {
+    final product = widget.product;
+    if (product.customizations.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: product.customizations.map((group) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      group.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    if (group.isRequired) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '*',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (group.isRequired)
+                  Text(
+                    'Required',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                if (group.type == 'single')
+                  ...group.options.map((option) => RadioListTile<String>(
+                    title: Text('${option.name} (+RM ${option.additionalPrice.toStringAsFixed(2)})'),
+                    value: option.id ?? option.name, // Use name as fallback for new options
+                    groupValue: _selectedCustomizations[group.id ?? group.name]?['id'],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCustomizations[group.id ?? group.name] = {'id': value, 'name': option.name, 'price': option.additionalPrice};
+                      });
+                    },
+                  ))
+                else // Multiple choice
+                  ...group.options.map((option) {
+                    final currentSelections = _selectedCustomizations[group.id ?? group.name] as List? ?? [];
+                    final optionId = option.id ?? option.name; // Use name as fallback for new options
+                    final isSelected = currentSelections.any((e) => e['id'] == optionId);
+                    return CheckboxListTile(
+                      title: Text('${option.name} (+RM ${option.additionalPrice.toStringAsFixed(2)})'),
+                      value: isSelected,
+                      onChanged: (selected) {
+                        setState(() {
+                          final selections = List.from(currentSelections);
+                          if (selected == true) {
+                            selections.add({'id': optionId, 'name': option.name, 'price': option.additionalPrice});
+                          } else {
+                            selections.removeWhere((e) => e['id'] == optionId);
+                          }
+                          _selectedCustomizations[group.id ?? group.name] = selections;
+                        });
+                      },
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildAvailabilityCard() {
     final theme = Theme.of(context);
     final availability = widget.product.availability;
@@ -536,21 +625,54 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     );
   }
 
+  // Update total price calculation
   double _calculateTotalPrice() {
     final product = widget.product;
-    final pricing = product.pricing;
+    double basePrice = product.pricing.effectivePrice;
+    double addonsPrice = 0;
 
-    // Use bulk price if quantity meets minimum
-    final unitPrice = (pricing.bulkPrice != null &&
-                      pricing.bulkMinQuantity != null &&
-                      _quantity >= pricing.bulkMinQuantity!)
-        ? pricing.bulkPrice!
-        : pricing.effectivePrice;
+    _selectedCustomizations.forEach((groupId, value) {
+      if (value is Map && value.containsKey('price')) {
+        addonsPrice += (value['price'] as num).toDouble();
+      } else if (value is List) {
+        for (var option in value) {
+          if (option is Map && option.containsKey('price')) {
+            addonsPrice += (option['price'] as num).toDouble();
+          }
+        }
+      }
+    });
 
-    return unitPrice * _quantity;
+    return (basePrice + addonsPrice) * _quantity;
+  }
+
+  // Validate required customizations
+  bool _validateRequiredCustomizations() {
+    for (final group in widget.product.customizations) {
+      if (group.isRequired) {
+        final selection = _selectedCustomizations[group.id ?? group.name];
+        if (selection == null ||
+            (selection is List && selection.isEmpty) ||
+            (selection is Map && selection.isEmpty)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please select an option for ${group.name}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   void _addToCart() {
+    // Validate required customizations first
+    if (!_validateRequiredCustomizations()) {
+      return;
+    }
+
     final product = widget.product;
 
     // Create a temporary vendor object for the cart
@@ -578,6 +700,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
       product: product,
       vendor: tempVendor,
       quantity: _quantity,
+      customizations: _selectedCustomizations, // Pass selected customizations
       notes: _selectedNotes,
     );
 

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/menu_item.dart';
-import '../../../data/models/product.dart';
+import '../../../menu/data/models/product.dart';
 import '../../../data/services/menu_service.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
@@ -47,7 +47,8 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   List<String> _allergens = [];
   List<BulkPricingTier> _bulkPricingTiers = [];
   List<String> _imageUrls = [];
-  
+  List<MenuItemCustomization> _customizations = []; // Add state for customizations
+
   // Loading states
   bool _isLoading = false;
   bool _isSaving = false;
@@ -166,6 +167,9 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
                           _buildQuantitySection(),
                           const SizedBox(height: 24),
                           _buildDietarySection(),
+                          const SizedBox(height: 24),
+                          // New section for customizations
+                          _buildCustomizationSection(),
                           const SizedBox(height: 24),
                           _buildAdditionalInfoSection(),
                           const SizedBox(height: 24),
@@ -595,6 +599,139 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     );
   }
 
+  // New method to build the customization section
+  Widget _buildCustomizationSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Customizations',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _addCustomizationGroup,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Group'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_customizations.isEmpty)
+              const Text(
+                'No customization options added yet.',
+                style: TextStyle(color: Colors.grey),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _customizations.length,
+                itemBuilder: (context, index) {
+                  return _buildCustomizationGroupCard(_customizations[index], index);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomizationGroupCard(MenuItemCustomization customization, int index) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ExpansionTile(
+        title: Text(customization.name),
+        subtitle: Text('${customization.type}, ${customization.isRequired ? "Required" : "Optional"}'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              onPressed: () => _editCustomizationGroup(index),
+              icon: const Icon(Icons.edit),
+              tooltip: 'Edit group',
+            ),
+            IconButton(
+              onPressed: () => _deleteCustomizationGroup(index),
+              icon: const Icon(Icons.delete),
+              tooltip: 'Delete group',
+            ),
+            const Icon(Icons.expand_more),
+          ],
+        ),
+        children: [
+          ...customization.options.map((opt) => ListTile(
+            title: Text(opt.name),
+            trailing: Text('+ RM ${opt.additionalPrice.toStringAsFixed(2)}'),
+          )),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextButton.icon(
+              onPressed: () => _addOptionToGroup(index),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Option'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addOptionToGroup(int groupIndex) {
+    showDialog(
+      context: context,
+      builder: (context) => _CustomizationOptionDialog(
+        onSave: (option) {
+          setState(() {
+            final updatedOptions = List<CustomizationOption>.from(_customizations[groupIndex].options);
+            updatedOptions.add(option);
+            _customizations[groupIndex] = _customizations[groupIndex].copyWith(options: updatedOptions);
+          });
+        },
+      ),
+    );
+  }
+
+  void _addCustomizationGroup() {
+    showDialog(
+      context: context,
+      builder: (context) => _CustomizationGroupDialog(
+        onSave: (customization) {
+          setState(() {
+            _customizations.add(customization);
+          });
+        },
+      ),
+    );
+  }
+
+  void _editCustomizationGroup(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => _CustomizationGroupDialog(
+        customization: _customizations[index],
+        onSave: (customization) {
+          setState(() {
+            _customizations[index] = customization;
+          });
+        },
+      ),
+    );
+  }
+
+  void _deleteCustomizationGroup(int index) {
+    setState(() {
+      _customizations.removeAt(index);
+    });
+  }
+
   Widget _buildAdditionalInfoSection() {
     return Card(
       child: Padding(
@@ -868,6 +1005,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
       }
 
       print('🍽️ [MENU-FORM-DEBUG] Vendor found: ${vendor.id}');
+      print('🍽️ [MENU-FORM-DEBUG] Vendor object: ${vendor.toJson()}');
 
       final menuItemRepository = ref.read(menuItemRepositoryProvider);
 
@@ -879,8 +1017,39 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
       if (widget.menuItemId != null) {
         print('🍽️ [MENU-FORM-DEBUG] Updating existing menu item: ${widget.menuItemId}');
-        // TODO: Implement update functionality with Product model
-        throw Exception('Update functionality not yet implemented');
+
+        // Create updated product using existing ID and available form fields
+        final updatedProduct = Product(
+          id: widget.menuItemId!, // Use existing ID
+          vendorId: vendor.id,
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          category: _selectedCategory!,
+          basePrice: double.parse(_basePriceController.text),
+          currency: 'MYR', // Default currency
+          includesSst: false, // Default value
+          isAvailable: _status == MenuItemStatus.available,
+          minOrderQuantity: _minQuantityController.text.isNotEmpty ? int.parse(_minQuantityController.text) : 1,
+          maxOrderQuantity: _maxQuantityController.text.isNotEmpty ? int.parse(_maxQuantityController.text) : null,
+          preparationTimeMinutes: _prepTimeController.text.isNotEmpty ? int.parse(_prepTimeController.text) : 30,
+          allergens: _allergens,
+          isHalal: _isHalalCertified,
+          isVegetarian: _selectedDietaryTypes.contains(DietaryType.vegetarian),
+          isVegan: _selectedDietaryTypes.contains(DietaryType.vegan),
+          isSpicy: false, // Default value
+          spicyLevel: 0, // Default value
+          imageUrl: _imageUrls.isNotEmpty ? _imageUrls.first : null,
+          galleryImages: _imageUrls.length > 1 ? _imageUrls.sublist(1) : [],
+          isFeatured: false, // Default value
+          tags: _tagsController.text.isNotEmpty ? _tagsController.text.split(',').map((e) => e.trim()).toList() : [],
+          rating: 0.0,
+          totalReviews: 0,
+          customizations: _customizations, // Add customizations to the updated product
+        );
+
+        print('🍽️ [MENU-FORM-DEBUG] Updated product data: ${updatedProduct.toJson()}');
+        final result = await menuItemRepository.updateMenuItem(updatedProduct);
+        print('🍽️ [MENU-FORM-DEBUG] Menu item updated successfully: ${result.id}');
       } else {
         print('🍽️ [MENU-FORM-DEBUG] Creating new menu item...');
         // Create new item using Product model
@@ -899,6 +1068,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
           tags: tags,
           rating: 0.0,
           totalReviews: 0,
+          customizations: _customizations, // Add customizations to the new product
         );
 
         print('🍽️ [MENU-FORM-DEBUG] Product data: ${newProduct.toJson()}');
@@ -1169,6 +1339,269 @@ class _BulkPricingTierDialogState extends State<_BulkPricingTierDialog> {
     );
 
     widget.onSave(tier);
+    Navigator.of(context).pop();
+  }
+}
+
+// Customization Group Dialog Widget
+class _CustomizationGroupDialog extends StatefulWidget {
+  final MenuItemCustomization? customization;
+  final Function(MenuItemCustomization) onSave;
+
+  const _CustomizationGroupDialog({
+    this.customization,
+    required this.onSave,
+  });
+
+  @override
+  State<_CustomizationGroupDialog> createState() => _CustomizationGroupDialogState();
+}
+
+class _CustomizationGroupDialogState extends State<_CustomizationGroupDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  String _selectedType = 'single';
+  bool _isRequired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.customization != null) {
+      _nameController.text = widget.customization!.name;
+      _selectedType = widget.customization!.type;
+      _isRequired = widget.customization!.isRequired;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.customization != null;
+
+    return AlertDialog(
+      title: Text(isEditing ? 'Edit Customization Group' : 'Add Customization Group'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Group Name *',
+                hintText: 'e.g., Size, Spice Level',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter group name';
+                }
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            DropdownButtonFormField<String>(
+              value: _selectedType,
+              decoration: const InputDecoration(
+                labelText: 'Selection Type *',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'single', child: Text('Single Choice (Radio)')),
+                DropdownMenuItem(value: 'multiple', child: Text('Multiple Choice (Checkbox)')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value!;
+                });
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            SwitchListTile(
+              title: const Text('Required'),
+              subtitle: const Text('Customers must make a selection'),
+              value: _isRequired,
+              onChanged: (value) {
+                setState(() {
+                  _isRequired = value;
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _saveGroup,
+          child: Text(isEditing ? 'Update' : 'Add'),
+        ),
+      ],
+    );
+  }
+
+  void _saveGroup() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final group = MenuItemCustomization(
+      id: widget.customization?.id, // Use null for new customizations
+      name: _nameController.text.trim(),
+      type: _selectedType,
+      isRequired: _isRequired,
+      options: widget.customization?.options ?? [],
+    );
+
+    widget.onSave(group);
+    Navigator.of(context).pop();
+  }
+}
+
+// Customization Option Dialog Widget
+class _CustomizationOptionDialog extends StatefulWidget {
+  final CustomizationOption? option;
+  final Function(CustomizationOption) onSave;
+
+  const _CustomizationOptionDialog({
+    this.option,
+    required this.onSave,
+  });
+
+  @override
+  State<_CustomizationOptionDialog> createState() => _CustomizationOptionDialogState();
+}
+
+class _CustomizationOptionDialogState extends State<_CustomizationOptionDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _priceController = TextEditingController();
+  bool _isDefault = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.option != null) {
+      _nameController.text = widget.option!.name;
+      _priceController.text = widget.option!.additionalPrice.toString();
+      _isDefault = widget.option!.isDefault;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.option != null;
+
+    return AlertDialog(
+      title: Text(isEditing ? 'Edit Option' : 'Add Option'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Option Name *',
+                hintText: 'e.g., Large, Extra Spicy',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter option name';
+                }
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _priceController,
+              decoration: const InputDecoration(
+                labelText: 'Additional Price (RM)',
+                hintText: '0.00',
+                border: OutlineInputBorder(),
+                prefixText: 'RM ',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter price (use 0 for no additional cost)';
+                }
+                final price = double.tryParse(value);
+                if (price == null || price < 0) {
+                  return 'Invalid price';
+                }
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            SwitchListTile(
+              title: const Text('Default Selection'),
+              subtitle: const Text('Pre-select this option'),
+              value: _isDefault,
+              onChanged: (value) {
+                setState(() {
+                  _isDefault = value;
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _saveOption,
+          child: Text(isEditing ? 'Update' : 'Add'),
+        ),
+      ],
+    );
+  }
+
+  void _saveOption() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final option = CustomizationOption(
+      id: widget.option?.id, // Use null for new options
+      name: _nameController.text.trim(),
+      additionalPrice: double.parse(_priceController.text),
+      isDefault: _isDefault,
+    );
+
+    widget.onSave(option);
     Navigator.of(context).pop();
   }
 }

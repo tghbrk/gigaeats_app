@@ -319,6 +319,36 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
                       ),
                     ],
                   ),
+                  // Add customizations display
+                  if (item.customizations != null && item.customizations!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.tune,
+                            size: 16,
+                            color: Colors.blue,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Customizations: ${_formatCustomizations(item.customizations!)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (item.notes != null && item.notes!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Container(
@@ -776,5 +806,22 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
     final malaysianTime = dateTime.add(const Duration(hours: 8));
     final formatter = DateFormat('dd/MM/yyyy');
     return formatter.format(malaysianTime);
+  }
+
+  // Helper function to format customizations
+  String _formatCustomizations(Map<String, dynamic> customizations) {
+    final parts = <String>[];
+    customizations.forEach((key, value) {
+      if (value is Map && value.containsKey('name')) {
+        parts.add(value['name']);
+      } else if (value is List) {
+        for (var option in value) {
+          if (option is Map && option.containsKey('name')) {
+            parts.add(option['name']);
+          }
+        }
+      }
+    });
+    return parts.join(', ');
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'product_form_screen.dart';
 
 
 
@@ -258,47 +259,41 @@ class _VendorMenuManagementScreenState extends ConsumerState<VendorMenuManagemen
   }
 
   void _showAddMenuDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Menu Item'),
-        content: const Text('Menu item creation functionality will be implemented here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Add'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProductFormScreen(),
       ),
     );
   }
 
   void _handleMenuAction(String action, String itemName) {
-    String message;
     switch (action) {
       case 'edit':
-        message = 'Edit $itemName functionality will be implemented here.';
+        // Navigate to edit form - for demo purposes, we'll show a message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Edit $itemName - Navigate to ProductFormScreen with item ID')),
+        );
         break;
       case 'duplicate':
-        message = 'Duplicate $itemName functionality will be implemented here.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Duplicate $itemName functionality available in real implementation')),
+        );
         break;
       case 'toggle':
-        message = 'Toggle availability for $itemName functionality will be implemented here.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Toggle availability for $itemName functionality available in real implementation')),
+        );
         break;
       case 'delete':
-        message = 'Delete $itemName functionality will be implemented here.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete $itemName functionality available in real implementation')),
+        );
         break;
       default:
-        message = 'Unknown action';
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unknown action')),
+        );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   void _handleCategoryAction(String action, String categoryName) {

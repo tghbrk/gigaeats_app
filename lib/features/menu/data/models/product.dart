@@ -4,6 +4,90 @@ import 'package:equatable/equatable.dart';
 
 part 'product.g.dart';
 
+// New Classes for Customizations
+@JsonSerializable()
+class MenuItemCustomization extends Equatable {
+  @JsonKey(name: 'id')
+  final String? id; // Nullable for new customizations
+  @JsonKey(name: 'name')
+  final String name;
+  @JsonKey(name: 'type')
+  final String type; // 'single' or 'multiple'
+  @JsonKey(name: 'is_required')
+  final bool isRequired;
+  @JsonKey(name: 'options')
+  final List<CustomizationOption> options;
+
+  const MenuItemCustomization({
+    this.id, // Optional for new customizations
+    required this.name,
+    this.type = 'single',
+    this.isRequired = false,
+    this.options = const [],
+  });
+
+  factory MenuItemCustomization.fromJson(Map<String, dynamic> json) => _$MenuItemCustomizationFromJson(json);
+  Map<String, dynamic> toJson() => _$MenuItemCustomizationToJson(this);
+
+  @override
+  List<Object?> get props => [id, name, type, isRequired, options];
+
+  MenuItemCustomization copyWith({
+    String? id,
+    String? name,
+    String? type,
+    bool? isRequired,
+    List<CustomizationOption>? options,
+  }) {
+    return MenuItemCustomization(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      isRequired: isRequired ?? this.isRequired,
+      options: options ?? this.options,
+    );
+  }
+}
+
+@JsonSerializable()
+class CustomizationOption extends Equatable {
+  @JsonKey(name: 'id')
+  final String? id; // Nullable for new options
+  @JsonKey(name: 'name')
+  final String name;
+  @JsonKey(name: 'additional_price')
+  final double additionalPrice;
+  @JsonKey(name: 'is_default')
+  final bool isDefault;
+
+  const CustomizationOption({
+    this.id, // Optional for new options
+    required this.name,
+    this.additionalPrice = 0.0,
+    this.isDefault = false,
+  });
+
+  factory CustomizationOption.fromJson(Map<String, dynamic> json) => _$CustomizationOptionFromJson(json);
+  Map<String, dynamic> toJson() => _$CustomizationOptionToJson(this);
+
+  @override
+  List<Object?> get props => [id, name, additionalPrice, isDefault];
+
+  CustomizationOption copyWith({
+    String? id,
+    String? name,
+    double? additionalPrice,
+    bool? isDefault,
+  }) {
+    return CustomizationOption(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      additionalPrice: additionalPrice ?? this.additionalPrice,
+      isDefault: isDefault ?? this.isDefault,
+    );
+  }
+}
+
 @JsonSerializable()
 class Product extends Equatable {
   final String id;
@@ -56,6 +140,9 @@ class Product extends Equatable {
   final DateTime? createdAt;
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
+  // Add customizations list - stored as JSON in database
+  @JsonKey(name: 'customizations')
+  final List<MenuItemCustomization> customizations;
 
   const Product({
     required this.id,
@@ -87,6 +174,7 @@ class Product extends Equatable {
     this.isFeatured,
     this.createdAt,
     this.updatedAt,
+    this.customizations = const [],
   });
 
   factory Product.fromJson(Map<String, dynamic> json) => _$ProductFromJson(json);
@@ -122,6 +210,7 @@ class Product extends Equatable {
     bool? isFeatured,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<MenuItemCustomization>? customizations,
   }) {
     return Product(
       id: id ?? this.id,
@@ -153,6 +242,7 @@ class Product extends Equatable {
       isFeatured: isFeatured ?? this.isFeatured,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      customizations: customizations ?? this.customizations,
     );
   }
 
@@ -187,6 +277,7 @@ class Product extends Equatable {
         isFeatured,
         createdAt,
         updatedAt,
+        customizations,
       ];
 
   // Helper getters for backward compatibility and convenience
@@ -243,6 +334,9 @@ class ProductCategories {
   static const String rice = 'Rice Dishes';
   static const String noodles = 'Noodles';
   static const String curry = 'Curry & Gravy';
+  static const String mainCourse = 'Main Course'; // Added missing category
+  static const String pizza = 'Pizza'; // Added missing category
+  static const String salad = 'Salad'; // Added missing category
   static const String grilled = 'Grilled & BBQ';
   static const String soup = 'Soup';
   static const String appetizer = 'Appetizers';
@@ -259,6 +353,9 @@ class ProductCategories {
     rice,
     noodles,
     curry,
+    mainCourse, // Added missing category
+    pizza, // Added missing category
+    salad, // Added missing category
     grilled,
     soup,
     appetizer,

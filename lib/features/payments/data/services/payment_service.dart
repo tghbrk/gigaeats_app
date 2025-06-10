@@ -1,12 +1,11 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../features/payments/data/models/payment_method.dart' as app_payment;
-import '../../features/orders/data/models/order.dart';
+import '../models/payment_method.dart' as app_payment;
+import '../../../orders/data/models/order.dart';
 
 class PaymentResult {
   final bool success;
@@ -66,7 +65,6 @@ class PaymentService {
   
   // These should be loaded from environment variables or secure storage
   static const String _billplzApiKey = 'your-billplz-api-key';
-  static const String _stripePublishableKey = 'your-stripe-publishable-key';
   static const String _collectionId = 'your-collection-id';
   
   final bool _isProduction;
@@ -80,17 +78,7 @@ class PaymentService {
 
   String get _baseUrl => _isProduction ? _billplzApiUrl : _billplzSandboxUrl;
 
-  // Initialize Stripe
-  Future<void> initializeStripe() async {
-    try {
-      stripe.Stripe.publishableKey = _stripePublishableKey;
-      await stripe.Stripe.instance.applySettings();
-      debugPrint('Stripe initialized successfully');
-    } catch (e) {
-      debugPrint('Failed to initialize Stripe: $e');
-      rethrow;
-    }
-  }
+
 
   // Get available payment methods
   Future<List<app_payment.PaymentMethod>> getAvailablePaymentMethods() async {
@@ -203,35 +191,95 @@ class PaymentService {
     }
   }
 
+  // Create Payment Intent via Supabase Edge Function
+  Future<Map<String, dynamic>> createPaymentIntent({
+    required String orderId,
+    required double amount,
+    String currency = 'myr',
+  }) async {
+    try {
+      debugPrint('PaymentService: Creating payment intent for order $orderId, amount: $amount');
+
+      final response = await Supabase.instance.client.functions.invoke(
+        'process-payment',
+        body: {
+          'order_id': orderId,
+          'amount': amount,
+          'currency': currency,
+          'payment_method': 'credit_card',
+        },
+      );
+
+      debugPrint('PaymentService: Edge Function response status: ${response.status}');
+      debugPrint('PaymentService: Edge Function response data: ${response.data}');
+
+      // Check for response data
+      if (response.data == null) {
+        throw Exception('Failed to create payment intent: No response data from Edge Function');
+      }
+
+      // Check if the response indicates an error
+      if (response.data is Map && response.data['success'] == false) {
+        final errorMessage = response.data['error'] ?? 'Unknown error from payment service';
+        throw Exception('Payment service error: $errorMessage');
+      }
+
+      // For development/testing, create a mock response if Edge Function is not available
+      if (response.status != 200) {
+        debugPrint('PaymentService: Edge Function not available (status: ${response.status}), using mock response');
+        return _createMockPaymentIntent(orderId, amount, currency);
+      }
+
+      return response.data;
+    } catch (e) {
+      debugPrint('PaymentService: Error creating payment intent: $e');
+
+      // Check if this is a network/deployment issue and provide fallback
+      if (e.toString().contains('FunctionsException') ||
+          e.toString().contains('404') ||
+          e.toString().contains('not found')) {
+        debugPrint('PaymentService: Edge Function not deployed, using mock payment intent for testing');
+        return _createMockPaymentIntent(orderId, amount, currency);
+      }
+
+      throw Exception('Error creating payment intent: $e');
+    }
+  }
+
+  // Mock payment intent for development/testing when Edge Function is not available
+  Map<String, dynamic> _createMockPaymentIntent(String orderId, double amount, String currency) {
+    final mockClientSecret = 'pi_mock_${DateTime.now().millisecondsSinceEpoch}_secret_mock';
+    final mockTransactionId = 'pi_mock_${DateTime.now().millisecondsSinceEpoch}';
+
+    debugPrint('PaymentService: Created mock payment intent - client_secret: $mockClientSecret');
+
+    return {
+      'success': true,
+      'client_secret': mockClientSecret,
+      'transaction_id': mockTransactionId,
+      'status': 'pending',
+      'metadata': {
+        'gateway': 'stripe_mock',
+        'payment_method': 'credit_card',
+        'order_id': orderId,
+        'amount': amount,
+        'currency': currency,
+        'mock': true,
+      }
+    };
+  }
+
   // Process Credit Card Payment via Stripe
   Future<PaymentResult> processCreditCardPayment({
     required Order order,
     required String paymentMethodId,
   }) async {
     try {
-      // In a real implementation, you would:
-      // 1. Create payment intent on your backend
-      // 2. Confirm payment with Stripe
-      // 3. Handle 3D Secure if required
-      
-      // For now, simulate the process
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Simulate success/failure
-      final random = Random();
-      if (random.nextBool()) {
-        return PaymentResult.success(
-          transactionId: 'stripe_${DateTime.now().millisecondsSinceEpoch}',
-          metadata: {
-            'payment_method': 'credit_card',
-            'stripe_payment_method_id': paymentMethodId,
-          },
-        );
-      } else {
-        return PaymentResult.failure(
-          errorMessage: 'Card payment declined',
-        );
-      }
+      // This method is now deprecated in favor of the new Stripe flow
+      // Use createPaymentIntent + Stripe.instance.confirmPayment instead
+      return PaymentResult.failure(
+        errorMessage: 'Use the new Stripe payment flow with createPaymentIntent',
+      );
     } catch (e) {
       return PaymentResult.failure(
         errorMessage: 'Credit card payment error: $e',

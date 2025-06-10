@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
 
-import '../../../core/constants/app_constants.dart';
-import '../../../data/models/order.dart' hide PaymentMethod, PaymentStatus;
-import '../../../data/models/payment_method.dart';
-import '../../../data/services/payment_service.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../orders/data/models/order.dart' hide PaymentMethod, PaymentStatus;
+import '../../data/models/payment_method.dart';
+import '../../data/services/payment_service.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
-import '../../widgets/custom_error_widget.dart';
+import '../../../../shared/widgets/custom_error_widget.dart';
 
 // Provider for payment service
 final paymentServiceProvider = Provider<PaymentService>((ref) => PaymentService());
@@ -34,6 +35,7 @@ class PaymentScreen extends ConsumerStatefulWidget {
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   PaymentMethod? _selectedPaymentMethod;
   String? _selectedBankCode;
+  stripe.CardFieldInputDetails? _cardDetails;
   bool _isProcessing = false;
   String? _errorMessage;
 
@@ -42,11 +44,21 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final theme = Theme.of(context);
     final paymentMethodsAsync = ref.watch(availablePaymentMethodsProvider);
 
+    // Debug: Log when payment screen is built
+    debugPrint('PaymentScreen: Building payment screen for order ${widget.order.id}');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Payment'),
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            // Return false to indicate payment was not completed
+            Navigator.of(context).pop(false);
+          },
+        ),
       ),
       body: Column(
         children: [
@@ -290,6 +302,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               // Bank selection for FPX
               if (isSelected && method.type == PaymentMethodType.fpx)
                 _buildBankSelection(),
+
+              // Card field for credit card payments
+              if (isSelected && method.type == PaymentMethodType.creditCard)
+                _buildCardField(),
             ],
           ),
         ),
@@ -324,11 +340,64 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   _selectedBankCode = selected ? bank.key : null;
                 });
               },
-              selectedColor: AppConstants.primaryColor.withOpacity(0.2),
+              selectedColor: AppConstants.primaryColor.withValues(alpha: 0.2),
               checkmarkColor: AppConstants.primaryColor,
             );
           }).toList(),
         ),
+      ],
+    );
+  }
+
+  Widget _buildCardField() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 8),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Enter your card details:',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: stripe.CardField(
+            onCardChanged: (details) {
+              setState(() {
+                _cardDetails = details;
+                // Clear any previous error when user starts typing
+                if (_errorMessage != null) {
+                  _errorMessage = null;
+                }
+              });
+            },
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Card number',
+              hintStyle: TextStyle(color: Colors.grey),
+            ),
+            enablePostalCode: false, // Disable postal code for Malaysian cards
+          ),
+        ),
+        if (_cardDetails != null && !_cardDetails!.complete)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Please enter complete card details',
+              style: TextStyle(
+                color: Colors.orange.shade700,
+                fontSize: 12,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -374,12 +443,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     setState(() {
       _selectedPaymentMethod = method;
       _selectedBankCode = null; // Reset bank selection
+      _cardDetails = null; // Reset card details
       _errorMessage = null;
     });
   }
 
   Future<void> _processPayment() async {
     if (_selectedPaymentMethod == null) return;
+
+    debugPrint('PaymentScreen: Starting payment processing for ${_selectedPaymentMethod!.type}');
 
     // Validate FPX bank selection
     if (_selectedPaymentMethod!.type == PaymentMethodType.fpx && _selectedBankCode == null) {
@@ -389,10 +461,21 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       return;
     }
 
+    // Validate credit card details
+    if (_selectedPaymentMethod!.type == PaymentMethodType.creditCard &&
+        (_cardDetails == null || !_cardDetails!.complete)) {
+      setState(() {
+        _errorMessage = 'Please enter complete card details';
+      });
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _errorMessage = null;
     });
+
+    debugPrint('PaymentScreen: Payment validation passed, processing payment...');
 
     try {
       final paymentService = ref.read(paymentServiceProvider);
@@ -409,10 +492,78 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           break;
           
         case PaymentMethodType.creditCard:
-          // For credit card, you would typically collect card details first
-          result = await paymentService.processCreditCardPayment(
-            order: widget.order,
-            paymentMethodId: 'card_payment_method_id',
+          debugPrint('PaymentScreen: Processing credit card payment');
+
+          // Validate card details
+          if (_cardDetails == null || !_cardDetails!.complete) {
+            debugPrint('PaymentScreen: Card details incomplete');
+            setState(() {
+              _errorMessage = 'Please enter complete card details.';
+            });
+            return;
+          }
+
+          debugPrint('PaymentScreen: Card details valid, creating payment intent...');
+
+          // Create Payment Intent
+          final paymentIntentData = await paymentService.createPaymentIntent(
+            orderId: widget.order.id,
+            amount: widget.order.totalAmount,
+          );
+
+          debugPrint('PaymentScreen: Payment intent created: ${paymentIntentData.keys}');
+
+          final clientSecret = paymentIntentData['client_secret'];
+          if (clientSecret == null) {
+            throw Exception('Failed to get payment client secret.');
+          }
+
+          debugPrint('PaymentScreen: Confirming payment with Stripe...');
+          debugPrint('PaymentScreen: Client secret: ${clientSecret.substring(0, 20)}...');
+
+          // Check if this is a mock payment for testing
+          final isMockPayment = paymentIntentData['metadata']?['mock'] == true;
+
+          if (isMockPayment) {
+            debugPrint('PaymentScreen: Processing mock payment for testing');
+            // Simulate payment processing delay
+            await Future.delayed(const Duration(seconds: 2));
+            debugPrint('PaymentScreen: Mock payment completed successfully');
+          } else {
+            // Confirm the payment with Stripe using the actual card details
+            debugPrint('PaymentScreen: About to confirm payment with Stripe...');
+
+            try {
+              final paymentMethod = stripe.PaymentMethodParams.card(
+                paymentMethodData: stripe.PaymentMethodData(
+                  billingDetails: stripe.BillingDetails(
+                    email: null, // You can add customer email here if available
+                  ),
+                ),
+              );
+
+              debugPrint('PaymentScreen: Calling Stripe.instance.confirmPayment...');
+              final result = await stripe.Stripe.instance.confirmPayment(
+                paymentIntentClientSecret: clientSecret,
+                data: paymentMethod,
+              );
+
+              debugPrint('PaymentScreen: Stripe confirmPayment result: $result');
+              debugPrint('PaymentScreen: Stripe payment confirmed successfully');
+            } catch (stripeError) {
+              debugPrint('PaymentScreen: Stripe confirmPayment error: $stripeError');
+              debugPrint('PaymentScreen: Stripe error type: ${stripeError.runtimeType}');
+              rethrow; // Re-throw to be caught by outer try-catch
+            }
+          }
+
+          // If we reach here, payment was successful
+          result = PaymentResult.success(
+            transactionId: paymentIntentData['transaction_id'] ?? 'stripe_success',
+            metadata: {
+              'payment_method': 'credit_card',
+              'client_secret': clientSecret,
+            },
           );
           break;
           
@@ -435,7 +586,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       if (result.success) {
         // Payment successful
         if (mounted) {
-          context.go('/payment/success/${result.transactionId}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment completed successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Return success to the calling screen
+          Navigator.of(context).pop(true);
         }
       } else if (result.status == PaymentStatus.pending) {
         // Redirect to payment gateway
@@ -450,9 +608,30 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         });
       }
     } catch (e) {
+      debugPrint('PaymentScreen: Payment processing error: $e');
+      debugPrint('PaymentScreen: Error type: ${e.runtimeType}');
+      debugPrint('PaymentScreen: Error details: ${e.toString()}');
+
       setState(() {
         _errorMessage = 'Payment error: $e';
       });
+
+      // Show error message and allow user to retry or go back
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment failed: $e'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Go Back',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {

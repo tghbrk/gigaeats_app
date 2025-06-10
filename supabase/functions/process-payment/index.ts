@@ -1,11 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts"
+import Stripe from "https://esm.sh/stripe@14.5.0?target=deno"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Initialize Stripe with your secret key from environment variables
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
+  httpClient: Stripe.createFetchHttpClient(),
+  apiVersion: '2023-10-16',
+})
 
 interface PaymentRequest {
   order_id: string
@@ -21,6 +28,7 @@ interface PaymentResult {
   success: boolean
   transaction_id?: string
   payment_url?: string
+  client_secret?: string
   status: 'pending' | 'completed' | 'failed'
   error_message?: string
   metadata?: Record<string, any>
@@ -300,31 +308,52 @@ async function processFPXPayment(
 }
 
 async function processCreditCardPayment(
-  supabase: any, 
-  transaction: any, 
+  supabase: any,
+  transaction: any,
   request: PaymentRequest
 ): Promise<PaymentResult> {
-  // Simulate credit card payment processing
-  // In real implementation, integrate with Stripe or other card processor
-  
-  // For demo purposes, simulate processing
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // Simulate random success/failure
-  const isSuccess = Math.random() > 0.1 // 90% success rate
-  
-  if (isSuccess) {
+  try {
+    // Create a PaymentIntent with the order amount and currency
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(request.amount * 100), // Amount in cents
+      currency: request.currency?.toLowerCase() || 'myr',
+      metadata: {
+        order_id: request.order_id,
+        transaction_id: transaction.id
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    })
+
+    // Update transaction with Stripe PaymentIntent ID
+    await supabase
+      .from('payment_transactions')
+      .update({
+        gateway_transaction_id: paymentIntent.id,
+        metadata: {
+          ...transaction.metadata,
+          stripe_payment_intent_id: paymentIntent.id,
+          client_secret: paymentIntent.client_secret
+        }
+      })
+      .eq('id', transaction.id)
+
+    // Return the client secret for frontend confirmation
     return {
       success: true,
-      transaction_id: `card_${Date.now()}`,
-      status: 'completed',
+      transaction_id: paymentIntent.id,
+      client_secret: paymentIntent.client_secret,
+      status: 'pending',
       metadata: {
         gateway: 'stripe',
-        payment_method: 'credit_card'
+        payment_method: 'credit_card',
+        payment_intent_id: paymentIntent.id
       }
     }
-  } else {
-    throw new Error('Card payment declined')
+  } catch (error) {
+    console.error('Stripe PaymentIntent creation failed:', error)
+    throw new Error(`Credit card payment setup failed: ${error.message}`)
   }
 }
 

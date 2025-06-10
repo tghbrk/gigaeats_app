@@ -455,6 +455,74 @@ class VendorRepository extends BaseRepository {
     });
   }
 
+  /// Get vendor filtered metrics for a specific date range
+  Future<Map<String, dynamic>> getVendorFilteredMetrics(
+    String vendorId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return executeQuery(() async {
+      final authenticatedClient = await getAuthenticatedClient();
+
+      // Set default date range if not provided
+      final effectiveStartDate = startDate ?? DateTime.now();
+      final effectiveEndDate = endDate ?? DateTime.now();
+
+      // Format dates for SQL queries
+      final startDateStr = effectiveStartDate.toIso8601String().split('T')[0];
+      final endDateStr = effectiveEndDate.toIso8601String().split('T')[0];
+
+      debugPrint('🔍 [VENDOR-METRICS] Getting filtered metrics for vendor $vendorId from $startDateStr to $endDateStr');
+
+      // Get total orders and revenue for the date range
+      final ordersResponse = await authenticatedClient
+          .from('orders')
+          .select('total_amount')
+          .eq('vendor_id', vendorId)
+          .eq('status', 'delivered')
+          .gte('created_at', '${startDateStr}T00:00:00')
+          .lte('created_at', '${endDateStr}T23:59:59');
+
+      final totalOrders = ordersResponse.length;
+      final totalRevenue = ordersResponse.fold<double>(
+        0.0,
+        (sum, order) => sum + (order['total_amount'] as num).toDouble(),
+      );
+      final avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0.0;
+
+      // Get pending orders (current, not filtered by date)
+      final pendingResponse = await authenticatedClient
+          .from('orders')
+          .select('id')
+          .eq('vendor_id', vendorId)
+          .inFilter('status', ['pending', 'confirmed', 'preparing']);
+
+      final pendingOrders = pendingResponse.length;
+
+      // Get vendor rating and review count (overall, not filtered by date)
+      final vendorResponse = await authenticatedClient
+          .from('vendors')
+          .select('rating, total_reviews')
+          .eq('id', vendorId)
+          .single();
+
+      final rating = (vendorResponse['rating'] as num?)?.toDouble() ?? 0.0;
+      final totalReviews = vendorResponse['total_reviews'] as int? ?? 0;
+
+      debugPrint('🔍 [VENDOR-METRICS] Results: orders=$totalOrders, revenue=$totalRevenue, pending=$pendingOrders');
+
+      return {
+        'total_orders': totalOrders,
+        'total_revenue': totalRevenue,
+        'avg_order_value': avgOrderValue,
+        'pending_orders': pendingOrders,
+        'avg_preparation_time': 0, // TODO: Calculate from order timestamps
+        'rating': rating,
+        'total_reviews': totalReviews,
+      };
+    });
+  }
+
   /// Get vendor analytics for a date range
   Future<List<Map<String, dynamic>>> getVendorAnalytics(
     String vendorId, {

@@ -74,6 +74,19 @@ class VendorService {
     return await _vendorRepository.getVendorDashboardMetrics(vendorId);
   }
 
+  /// Get vendor filtered metrics for a specific date range
+  Future<Map<String, dynamic>> getVendorFilteredMetrics(
+    String vendorId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return await _vendorRepository.getVendorFilteredMetrics(
+      vendorId,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
   /// Get vendor analytics for a date range
   Future<List<Map<String, dynamic>>> getVendorAnalytics(
     String vendorId, {

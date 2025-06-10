@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/order.dart';
 // import '../utils/order_status_update_helper.dart';
 import '../../../../presentation/providers/repository_providers.dart';
+import '../../../vendors/presentation/widgets/assign_driver_dialog.dart';
 
 import '../../../../core/utils/responsive_utils.dart';
 
@@ -128,6 +129,7 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
               final now = DateTime.now();
               orders = allOrders.where((order) =>
                 order.status == OrderStatus.pending ||
+                order.status == OrderStatus.confirmed ||
                 (order.deliveryDate.isAfter(now) &&
                  !order.status.isDelivered &&
                  !order.status.isCancelled)
@@ -221,6 +223,7 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
               final now = DateTime.now();
               orders = allOrders.where((order) =>
                 order.status == OrderStatus.pending ||
+                order.status == OrderStatus.confirmed ||
                 (order.deliveryDate.isAfter(now) &&
                  !order.status.isDelivered &&
                  !order.status.isCancelled)
@@ -470,7 +473,8 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
                         const Spacer(),
                         if (order.status == OrderStatus.pending ||
                             order.status == OrderStatus.confirmed ||
-                            order.status == OrderStatus.preparing)
+                            order.status == OrderStatus.preparing ||
+                            (order.status == OrderStatus.ready && order.vendorCanHandleDelivery))
                           _buildQuickActions(order),
                       ],
                     ),
@@ -515,6 +519,13 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
             Icons.check_circle,
             Colors.teal,
             () => _updateOrderStatus(order, OrderStatus.ready),
+          ),
+        ] else if (order.status == OrderStatus.ready && order.vendorCanHandleDelivery) ...[
+          _buildActionButton(
+            'Assign Driver',
+            Icons.local_shipping,
+            Colors.indigo,
+            () => _showAssignDriverDialog(order),
           ),
         ],
       ],
@@ -623,5 +634,22 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
       default:
         return 'No orders yet';
     }
+  }
+
+  void _showAssignDriverDialog(Order order) {
+    showDialog(
+      context: context,
+      builder: (context) => AssignDriverDialog(
+        order: order,
+        onDriverAssigned: () {
+          // Refresh the orders list
+          if (kIsWeb) {
+            ref.invalidate(platformOrdersProvider);
+          } else {
+            ref.invalidate(ordersStreamProvider);
+          }
+        },
+      ),
+    );
   }
 }

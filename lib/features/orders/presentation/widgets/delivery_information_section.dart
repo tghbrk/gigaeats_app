@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/delivery_method.dart';
-import 'custom_text_field.dart';
+import '../../../../shared/widgets/custom_text_field.dart';
 
 class DeliveryInformationSection extends StatelessWidget {
   final DeliveryMethod selectedDeliveryMethod;

@@ -1,6 +1,8 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
 
+import 'delivery_method.dart';
+
 part 'order.g.dart';
 
 enum PaymentStatus {
@@ -240,6 +242,8 @@ class Order extends Equatable {
   final String? salesAgentId;
   @JsonKey(name: 'sales_agent_name')
   final String? salesAgentName;
+  @JsonKey(name: 'assigned_driver_id')
+  final String? assignedDriverId;
   @JsonKey(name: 'delivery_date')
   final DateTime deliveryDate;
   @JsonKey(name: 'delivery_address')
@@ -299,6 +303,7 @@ class Order extends Equatable {
     required this.customerName,
     this.salesAgentId,
     this.salesAgentName,
+    this.assignedDriverId,
     required this.deliveryDate,
     required this.deliveryAddress,
     this.paymentMethod,
@@ -340,6 +345,7 @@ class Order extends Equatable {
     String? customerName,
     String? salesAgentId,
     String? salesAgentName,
+    String? assignedDriverId,
     DateTime? deliveryDate,
     Address? deliveryAddress,
     String? paymentMethod,
@@ -376,6 +382,7 @@ class Order extends Equatable {
       customerName: customerName ?? this.customerName,
       salesAgentId: salesAgentId ?? this.salesAgentId,
       salesAgentName: salesAgentName ?? this.salesAgentName,
+      assignedDriverId: assignedDriverId ?? this.assignedDriverId,
       deliveryDate: deliveryDate ?? this.deliveryDate,
       deliveryAddress: deliveryAddress ?? this.deliveryAddress,
       paymentMethod: paymentMethod ?? this.paymentMethod,
@@ -415,6 +422,7 @@ class Order extends Equatable {
         customerName,
         salesAgentId,
         salesAgentName,
+        assignedDriverId,
         deliveryDate,
         deliveryAddress,
         paymentMethod,
@@ -441,8 +449,48 @@ class Order extends Equatable {
         contactPhone,
       ];
 
+  /// Get delivery method from metadata
+  DeliveryMethod get deliveryMethod {
+    if (metadata == null) return DeliveryMethod.customerPickup;
+
+    final deliveryMethodValue = metadata!['delivery_method'] as String?;
+    if (deliveryMethodValue == null) return DeliveryMethod.customerPickup;
+
+    return DeliveryMethod.fromString(deliveryMethodValue);
+  }
+
+  /// Check if this order uses customer pickup
+  bool get isCustomerPickup => deliveryMethod.isCustomerPickup;
+
+  /// Check if this order uses sales agent pickup
+  bool get isSalesAgentPickup => deliveryMethod.isSalesAgentPickup;
+
+  /// Check if this order uses own fleet delivery
+  bool get isOwnFleetDelivery => deliveryMethod.isOwnFleet;
+
+  /// Check if this order uses Lalamove delivery
+  bool get isLalamoveDelivery => deliveryMethod.isLalamove;
+
+  /// Check if this order is a pickup order (customer or sales agent)
+  bool get isPickupOrder => deliveryMethod.isPickup;
+
+  /// Check if this order requires driver assignment
+  bool get requiresDriverAssignment => deliveryMethod.requiresDriver;
+
+  /// Check if vendor should handle delivery actions for this order
+  bool get vendorCanHandleDelivery {
+    // Vendors can only handle delivery actions for their own fleet
+    return isOwnFleetDelivery;
+  }
+
+  /// Check if sales agent can mark this order as delivered
+  bool get salesAgentCanMarkDelivered {
+    // Sales agents can only mark delivered for sales agent pickup orders
+    return isSalesAgentPickup;
+  }
+
   @override
   String toString() {
-    return 'Order(id: $id, orderNumber: $orderNumber, status: $status, totalAmount: $totalAmount)';
+    return 'Order(id: $id, orderNumber: $orderNumber, status: $status, totalAmount: $totalAmount, deliveryMethod: ${deliveryMethod.displayName})';
   }
 }

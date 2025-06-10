@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../features/orders/data/models/order.dart';
+import '../../data/models/order.dart';
 import '../../data/models/delivery_method.dart';
-import '../../core/services/location_service.dart';
+import '../../../../core/services/location_service.dart';
 
 /// Widget that displays a comprehensive summary of delivery confirmation
 /// including photo preview, location display, and order details

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../data/models/order.dart';
 import '../../data/models/order_status_history.dart';
@@ -136,8 +137,8 @@ class OrdersNotifier extends StateNotifier<OrdersState> {
       // Generate customer ID if not provided
       String finalCustomerId;
       if (customerId == null) {
-        // Generate a test customer ID for development
-        finalCustomerId = 'cust_${DateTime.now().millisecondsSinceEpoch}';
+        // Generate a proper UUID for customer ID
+        finalCustomerId = const Uuid().v4();
         DebugLogger.info('Generated customer ID: $finalCustomerId', tag: 'OrderProvider');
 
         // Verify customer exists, create if not

@@ -1482,4 +1482,210 @@ class OrderRepository extends BaseRepository {
       return null;
     }
   }
+
+  // ===== DRIVER ASSIGNMENT METHODS =====
+
+  /// Assign a driver to an order and update order status to 'out_for_delivery'
+  Future<Order> assignDriverToOrder(String orderId, String driverId) async {
+    return executeQuery(() async {
+      debugPrint('OrderRepository: Assigning driver $driverId to order $orderId');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      // Update order with assigned driver and status
+      final updatedOrder = await authenticatedClient
+          .from('orders')
+          .update({
+            'assigned_driver_id': driverId,
+            'status': 'out_for_delivery',
+            'out_for_delivery_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', orderId)
+          .select('''
+            *,
+            vendor:vendors!orders_vendor_id_fkey(business_name),
+            customer:customers!orders_customer_id_fkey(organization_name),
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url
+              )
+            )
+          ''')
+          .single();
+
+      debugPrint('OrderRepository: Driver assigned successfully');
+
+      // Process the response similar to getOrders method
+      final orderData = Map<String, dynamic>.from(updatedOrder);
+
+      // Extract vendor name from joined data
+      if (orderData['vendor'] != null && orderData['vendor'] is Map) {
+        final vendorData = orderData['vendor'] as Map<String, dynamic>;
+        orderData['vendor_name'] = vendorData['business_name']?.toString() ?? 'Unknown Vendor';
+      } else {
+        orderData['vendor_name'] = 'Unknown Vendor';
+      }
+
+      // Extract customer name from joined data
+      if (orderData['customer'] != null && orderData['customer'] is Map) {
+        final customerData = orderData['customer'] as Map<String, dynamic>;
+        orderData['customer_name'] = customerData['organization_name']?.toString() ?? 'Unknown Customer';
+      } else {
+        orderData['customer_name'] = 'Unknown Customer';
+      }
+
+      // Remove the nested objects to avoid conflicts
+      orderData.remove('vendor');
+      orderData.remove('customer');
+
+      // Handle delivery_address field
+      if (orderData['delivery_address'] is String) {
+        try {
+          orderData['delivery_address'] = jsonDecode(orderData['delivery_address']);
+        } catch (e) {
+          orderData['delivery_address'] = {
+            'street': 'Unknown',
+            'city': 'Unknown',
+            'state': 'Unknown',
+            'postal_code': '00000',
+            'country': 'Malaysia',
+          };
+        }
+      }
+
+      return Order.fromJson(orderData);
+    });
+  }
+
+  /// Remove driver assignment from an order
+  Future<Order> unassignDriverFromOrder(String orderId) async {
+    return executeQuery(() async {
+      debugPrint('OrderRepository: Removing driver assignment from order $orderId');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      final updatedOrder = await authenticatedClient
+          .from('orders')
+          .update({
+            'assigned_driver_id': null,
+            'status': 'ready', // Revert to ready status
+            'out_for_delivery_at': null,
+          })
+          .eq('id', orderId)
+          .select('''
+            *,
+            vendor:vendors!orders_vendor_id_fkey(business_name),
+            customer:customers!orders_customer_id_fkey(organization_name),
+            order_items:order_items(*)
+          ''')
+          .single();
+
+      debugPrint('OrderRepository: Driver assignment removed successfully');
+
+      // Process response similar to assignDriverToOrder
+      final orderData = Map<String, dynamic>.from(updatedOrder);
+
+      if (orderData['vendor'] != null && orderData['vendor'] is Map) {
+        final vendorData = orderData['vendor'] as Map<String, dynamic>;
+        orderData['vendor_name'] = vendorData['business_name']?.toString() ?? 'Unknown Vendor';
+      } else {
+        orderData['vendor_name'] = 'Unknown Vendor';
+      }
+
+      if (orderData['customer'] != null && orderData['customer'] is Map) {
+        final customerData = orderData['customer'] as Map<String, dynamic>;
+        orderData['customer_name'] = customerData['organization_name']?.toString() ?? 'Unknown Customer';
+      } else {
+        orderData['customer_name'] = 'Unknown Customer';
+      }
+
+      orderData.remove('vendor');
+      orderData.remove('customer');
+
+      if (orderData['delivery_address'] is String) {
+        try {
+          orderData['delivery_address'] = jsonDecode(orderData['delivery_address']);
+        } catch (e) {
+          orderData['delivery_address'] = {
+            'street': 'Unknown',
+            'city': 'Unknown',
+            'state': 'Unknown',
+            'postal_code': '00000',
+            'country': 'Malaysia',
+          };
+        }
+      }
+
+      return Order.fromJson(orderData);
+    });
+  }
+
+  /// Get orders assigned to a specific driver
+  Future<List<Order>> getOrdersForDriver(String driverId) async {
+    return executeQuery(() async {
+      debugPrint('OrderRepository: Getting orders for driver: $driverId');
+
+      final authenticatedClient = await getAuthenticatedClient();
+      final response = await authenticatedClient
+          .from('orders')
+          .select('''
+            *,
+            vendor:vendors!orders_vendor_id_fkey(business_name),
+            customer:customers!orders_customer_id_fkey(organization_name),
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url
+              )
+            )
+          ''')
+          .eq('assigned_driver_id', driverId)
+          .order('created_at', ascending: false);
+
+      debugPrint('OrderRepository: Found ${response.length} orders for driver');
+
+      return response.map((json) {
+        final orderData = Map<String, dynamic>.from(json);
+
+        // Process similar to getOrders method
+        if (orderData['vendor'] != null && orderData['vendor'] is Map) {
+          final vendorData = orderData['vendor'] as Map<String, dynamic>;
+          orderData['vendor_name'] = vendorData['business_name']?.toString() ?? 'Unknown Vendor';
+        } else {
+          orderData['vendor_name'] = 'Unknown Vendor';
+        }
+
+        if (orderData['customer'] != null && orderData['customer'] is Map) {
+          final customerData = orderData['customer'] as Map<String, dynamic>;
+          orderData['customer_name'] = customerData['organization_name']?.toString() ?? 'Unknown Customer';
+        } else {
+          orderData['customer_name'] = 'Unknown Customer';
+        }
+
+        orderData.remove('vendor');
+        orderData.remove('customer');
+
+        if (orderData['delivery_address'] is String) {
+          try {
+            orderData['delivery_address'] = jsonDecode(orderData['delivery_address']);
+          } catch (e) {
+            orderData['delivery_address'] = {
+              'street': 'Unknown',
+              'city': 'Unknown',
+              'state': 'Unknown',
+              'postal_code': '00000',
+              'country': 'Malaysia',
+            };
+          }
+        }
+
+        return Order.fromJson(orderData);
+      }).toList();
+    });
+  }
 }

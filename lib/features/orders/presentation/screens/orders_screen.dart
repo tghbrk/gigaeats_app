@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/models/order.dart';
+import '../../data/models/delivery_method.dart';
 import '../providers/order_provider.dart';
 // import '../utils/order_status_update_helper.dart';
 import '../../../../presentation/providers/repository_providers.dart';
@@ -458,9 +459,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
               ),
               const SizedBox(height: 8),
 
-              // Delivery Info and Actions
+              // Delivery Type and Date Info
               Row(
                 children: [
+                  _buildDeliveryTypeChip(order.deliveryMethod),
+                  const SizedBox(width: 8),
                   Icon(
                     Icons.schedule,
                     size: 16,
@@ -469,7 +472,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      'Delivery: ${_formatDate(order.deliveryDate)}',
+                      _formatDate(order.deliveryDate),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
@@ -510,7 +513,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (order.status == OrderStatus.ready) ...[
+        if (order.status == OrderStatus.ready && order.salesAgentCanMarkDelivered) ...[
           _buildActionButton(
             'Delivered',
             Icons.check_circle,
@@ -575,7 +578,76 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
     return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
+  Widget _buildDeliveryTypeChip(DeliveryMethod deliveryMethod) {
+    final theme = Theme.of(context);
+
+    // Get appropriate icon and color for each delivery method
+    IconData icon;
+    Color color;
+
+    switch (deliveryMethod) {
+      case DeliveryMethod.customerPickup:
+        icon = Icons.store;
+        color = Colors.blue;
+        break;
+      case DeliveryMethod.salesAgentPickup:
+        icon = Icons.person;
+        color = Colors.green;
+        break;
+      case DeliveryMethod.ownFleet:
+        icon = Icons.local_shipping;
+        color = Colors.purple;
+        break;
+      case DeliveryMethod.lalamove:
+        icon = Icons.delivery_dining;
+        color = Colors.orange;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            deliveryMethod.displayName,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _markAsDelivered(Order order) async {
+    // Validate that sales agent can mark this order as delivered
+    if (!order.salesAgentCanMarkDelivered) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You can only mark sales agent pickup orders as delivered. '
+            'This order uses ${order.deliveryMethod.displayName}.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     try {
       // Show loading dialog
       showDialog(

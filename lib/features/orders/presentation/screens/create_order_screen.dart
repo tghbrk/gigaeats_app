@@ -13,6 +13,7 @@ import '../../../../shared/widgets/custom_text_field.dart';
 import '../../widgets/customer_selector.dart';
 import '../../widgets/delivery_method_selector.dart';
 import '../../widgets/delivery_information_section.dart';
+import '../../../payments/presentation/screens/payment_screen.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   const CreateOrderScreen({super.key});
@@ -735,17 +736,30 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       if (mounted) {
         debugPrint('CreateOrderScreen: Order created successfully: ${order?.id}');
 
-        // Clear the cart after successful order creation
-        ref.read(cartProvider.notifier).clearCart();
-
-        _showSuccessSnackBar('Order #${order?.orderNumber ?? 'N/A'} created successfully!');
-
-        // Navigate back with a delay to show the success message
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            context.pop();
-          }
-        });
+        // Navigate directly to payment screen without showing success message
+        if (order != null) {
+          // Navigate to payment screen with the created order
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => PaymentScreen(order: order),
+            ),
+          ).then((paymentResult) {
+            // Handle payment completion
+            if (paymentResult == true) {
+              // Payment successful - clear cart and navigate back
+              ref.read(cartProvider.notifier).clearCart();
+              _showSuccessSnackBar('Order #${order.orderNumber} completed successfully!');
+              Future.delayed(const Duration(seconds: 1), () {
+                if (mounted) {
+                  context.pop();
+                }
+              });
+            } else {
+              // Payment failed or cancelled - keep cart and stay on order screen
+              _showErrorSnackBar('Payment was not completed. Order #${order.orderNumber} is saved but requires payment.');
+            }
+          });
+        }
       }
     } catch (e) {
       debugPrint('CreateOrderScreen: Error creating order: $e');

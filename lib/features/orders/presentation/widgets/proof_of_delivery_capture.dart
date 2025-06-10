@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../features/orders/data/models/order.dart';
+import '../../data/models/order.dart';
 import '../../data/models/delivery_method.dart';
-import '../../core/services/camera_permission_service.dart';
-import '../../core/services/location_service.dart';
-import '../../core/config/supabase_config.dart';
+import '../../../../core/services/camera_permission_service.dart';
+import '../../../../core/services/location_service.dart';
+import '../../../../core/config/supabase_config.dart';
 import '../providers/repository_providers.dart';
 import 'delivery_confirmation_summary.dart';
 

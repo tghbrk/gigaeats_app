@@ -84,6 +84,8 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
     _cachedPeriod = period;
     _cachedDateRange = dateRange;
 
+    debugPrint('🔍 [ANALYTICS-FILTER] Period: $period, Start: ${startDate?.toIso8601String()}, End: ${endDate.toIso8601String()}');
+
     return dateRange;
   }
 
@@ -170,14 +172,14 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
           // Metrics Grid
           Consumer(
             builder: (context, ref, child) {
-
-              final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
+              final dateRange = _getDateRangeForPeriod(_selectedPeriod);
+              final metricsAsync = ref.watch(vendorFilteredMetricsProvider(dateRange));
 
               return metricsAsync.when(
                 data: (metrics) {
-                  final todayRevenue = metrics['today_revenue'] ?? 0.0;
-                  final todayOrders = metrics['today_orders'] ?? 0;
-                  final avgOrderValue = todayOrders > 0 ? todayRevenue / todayOrders : 0.0;
+                  final totalRevenue = metrics['total_revenue'] ?? 0.0;
+                  final totalOrders = metrics['total_orders'] ?? 0;
+                  final avgOrderValue = metrics['avg_order_value'] ?? 0.0;
                   final rating = metrics['rating'] ?? 0.0;
 
                   return GridView.count(
@@ -189,17 +191,17 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
                     childAspectRatio: 1.5,
                     children: [
                       _buildMetricCard(
-                        title: 'Today Revenue',
-                        value: 'RM ${todayRevenue.toStringAsFixed(2)}',
-                        change: 'Today',
+                        title: 'Total Revenue',
+                        value: 'RM ${totalRevenue.toStringAsFixed(2)}',
+                        change: _selectedPeriod,
                         isPositive: true,
                         icon: Icons.attach_money,
                         color: Colors.green,
                       ),
                       _buildMetricCard(
-                        title: 'Today Orders',
-                        value: '$todayOrders',
-                        change: 'Today',
+                        title: 'Total Orders',
+                        value: '$totalOrders',
+                        change: _selectedPeriod,
                         isPositive: true,
                         icon: Icons.receipt_long,
                         color: Colors.blue,
@@ -207,7 +209,7 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
                       _buildMetricCard(
                         title: 'Avg Order Value',
                         value: 'RM ${avgOrderValue.toStringAsFixed(2)}',
-                        change: 'Today',
+                        change: _selectedPeriod,
                         isPositive: true,
                         icon: Icons.trending_up,
                         color: Colors.orange,
@@ -324,7 +326,8 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
 
           Consumer(
             builder: (context, ref, child) {
-              final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
+              final dateRange = _getDateRangeForPeriod(_selectedPeriod);
+              final metricsAsync = ref.watch(vendorFilteredMetricsProvider(dateRange));
               final vendorAsync = ref.watch(currentVendorProvider);
 
               return Card(
@@ -332,15 +335,15 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
                   padding: const EdgeInsets.all(16),
                   child: metricsAsync.when(
                     data: (metrics) {
-                      final todayOrders = metrics['today_orders'] ?? 0;
-                      final todayRevenue = metrics['today_revenue'] ?? 0.0;
+                      final totalOrders = metrics['total_orders'] ?? 0;
+                      final totalRevenue = metrics['total_revenue'] ?? 0.0;
                       final pendingOrders = metrics['pending_orders'] ?? 0;
 
                       return Column(
                         children: [
-                          _buildPerformanceRow('Orders Today', '$todayOrders', Icons.today),
+                          _buildPerformanceRow('Orders ($_selectedPeriod)', '$totalOrders', Icons.today),
                           const Divider(),
-                          _buildPerformanceRow('Revenue Today', 'RM ${todayRevenue.toStringAsFixed(2)}', Icons.monetization_on),
+                          _buildPerformanceRow('Revenue ($_selectedPeriod)', 'RM ${totalRevenue.toStringAsFixed(2)}', Icons.monetization_on),
                           const Divider(),
                           _buildPerformanceRow('Pending Orders', '$pendingOrders', Icons.pending_actions),
                           const Divider(),

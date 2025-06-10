@@ -7,6 +7,7 @@ import '../../data/models/order.dart';
 import '../../../../presentation/providers/repository_providers.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
+import '../../../vendors/presentation/widgets/assign_driver_dialog.dart';
 
 class VendorOrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -610,18 +611,106 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
         );
 
       case OrderStatus.ready:
-        return SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _updateOrderStatus(order, OrderStatus.delivered),
-            icon: const Icon(Icons.done_all),
-            label: const Text('Mark as Delivered'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+        return Column(
+          children: [
+            // Show different actions based on delivery method
+            if (order.vendorCanHandleDelivery) ...[
+              // Assign for Delivery Button (only for own fleet)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAssignDriverDialog(order),
+                  icon: const Icon(Icons.local_shipping),
+                  label: const Text('Assign Driver'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ] else ...[
+              // For pickup orders, show disabled state with explanation
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      order.isCustomerPickup ? Icons.store : Icons.person,
+                      color: Colors.grey,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      order.isCustomerPickup
+                          ? 'Customer Pickup Order'
+                          : 'Sales Agent Pickup Order',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      order.isCustomerPickup
+                          ? 'Customer will collect this order'
+                          : 'Sales agent will collect this order',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+
+      case OrderStatus.outForDelivery:
+        return Column(
+          children: [
+            // Note: Driver assignment and tracking features will be available after database migration
+
+            // Mark as delivered button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _updateOrderStatus(order, OrderStatus.delivered),
+                icon: const Icon(Icons.check_circle),
+                label: const Text('Mark as Delivered'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            // Reassign driver button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showAssignDriverDialog(order),
+                icon: const Icon(Icons.swap_horiz),
+                label: const Text('Reassign Driver'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.indigo,
+                  side: const BorderSide(color: Colors.indigo),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         );
 
       default:
@@ -823,5 +912,18 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
       }
     });
     return parts.join(', ');
+  }
+
+  void _showAssignDriverDialog(Order order) {
+    showDialog(
+      context: context,
+      builder: (context) => AssignDriverDialog(
+        order: order,
+        onDriverAssigned: () {
+          // Refresh the order details
+          _loadOrderDetails();
+        },
+      ),
+    );
   }
 }

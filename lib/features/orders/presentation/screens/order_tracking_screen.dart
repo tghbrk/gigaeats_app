@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
 import '../../data/models/order.dart';
+import '../../data/models/delivery_method.dart';
 import '../providers/order_provider.dart';
 import '../../shared/widgets/loading_widget.dart';
 import '../../shared/widgets/error_widget.dart';
@@ -422,6 +423,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
 
   Widget _buildDeliveryInfo(Order order) {
     final theme = Theme.of(context);
+    final deliveryMethod = order.deliveryMethod;
 
     return Card(
       child: Padding(
@@ -436,13 +438,14 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
+            // Delivery Method Section
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
-                  Icons.location_on,
-                  color: theme.colorScheme.primary,
+                  _getDeliveryMethodIcon(deliveryMethod),
+                  color: _getDeliveryMethodColor(deliveryMethod),
                   size: 24,
                 ),
                 const SizedBox(width: 12),
@@ -451,25 +454,51 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Delivery Address',
+                        'Delivery Method',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _getDeliveryMethodColor(deliveryMethod).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _getDeliveryMethodColor(deliveryMethod).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          deliveryMethod.displayName,
+                          style: TextStyle(
+                            color: _getDeliveryMethodColor(deliveryMethod),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
-                        '${order.deliveryAddress.street}\n'
-                        '${order.deliveryAddress.city}, ${order.deliveryAddress.state} ${order.deliveryAddress.postalCode}',
-                        style: theme.textTheme.bodyMedium,
+                        _getDeliveryMethodDescription(deliveryMethod),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            
-            const SizedBox(height: 16),
-            
+
+            const SizedBox(height: 20),
+
+            // Address or Pickup Location Section
+            _buildAddressSection(order, deliveryMethod, theme),
+
+            const SizedBox(height: 20),
+
+            // Delivery Time Section
             Row(
               children: [
                 Icon(
@@ -483,7 +512,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Delivery Time',
+                        deliveryMethod.isPickup ? 'Pickup Time' : 'Delivery Time',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -498,9 +527,163 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                 ),
               ],
             ),
+
+            // Driver Information (for delivery methods that require drivers)
+            if (deliveryMethod.requiresDriver && order.assignedDriverId != null)
+              _buildDriverSection(order, theme),
+
+            // Special Instructions
+            if (order.specialInstructions != null && order.specialInstructions!.isNotEmpty)
+              _buildSpecialInstructionsSection(order, theme),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAddressSection(Order order, DeliveryMethod deliveryMethod, ThemeData theme) {
+    if (deliveryMethod.isPickup) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.store,
+            color: theme.colorScheme.primary,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pickup Location',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  order.vendorName,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${order.deliveryAddress.street}\n'
+                  '${order.deliveryAddress.city}, ${order.deliveryAddress.state} ${order.deliveryAddress.postalCode}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.location_on,
+            color: theme.colorScheme.primary,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Delivery Address',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${order.deliveryAddress.street}\n'
+                  '${order.deliveryAddress.city}, ${order.deliveryAddress.state} ${order.deliveryAddress.postalCode}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildDriverSection(Order order, ThemeData theme) {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Icon(
+              Icons.person,
+              color: theme.colorScheme.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Assigned Driver',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Driver ID: ${order.assignedDriverId}',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSpecialInstructionsSection(Order order, ThemeData theme) {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.note,
+              color: theme.colorScheme.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Special Instructions',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    order.specialInstructions!,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -753,6 +936,46 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
       }
     });
     return parts.join(', ');
+  }
+
+  // Helper methods for delivery method display
+  IconData _getDeliveryMethodIcon(DeliveryMethod deliveryMethod) {
+    switch (deliveryMethod) {
+      case DeliveryMethod.customerPickup:
+        return Icons.store;
+      case DeliveryMethod.salesAgentPickup:
+        return Icons.person;
+      case DeliveryMethod.ownFleet:
+        return Icons.local_shipping;
+      case DeliveryMethod.lalamove:
+        return Icons.delivery_dining;
+    }
+  }
+
+  Color _getDeliveryMethodColor(DeliveryMethod deliveryMethod) {
+    switch (deliveryMethod) {
+      case DeliveryMethod.customerPickup:
+        return Colors.blue;
+      case DeliveryMethod.salesAgentPickup:
+        return Colors.green;
+      case DeliveryMethod.ownFleet:
+        return Colors.purple;
+      case DeliveryMethod.lalamove:
+        return Colors.orange;
+    }
+  }
+
+  String _getDeliveryMethodDescription(DeliveryMethod deliveryMethod) {
+    switch (deliveryMethod) {
+      case DeliveryMethod.customerPickup:
+        return 'Customer will collect the order from the vendor location';
+      case DeliveryMethod.salesAgentPickup:
+        return 'Sales agent will collect the order from the vendor';
+      case DeliveryMethod.ownFleet:
+        return 'Order will be delivered using our own delivery fleet';
+      case DeliveryMethod.lalamove:
+        return 'Order will be delivered via Lalamove service';
+    }
   }
 }
 

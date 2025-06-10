@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/commission.dart';
-import '../../features/orders/data/models/order.dart';
+import '../../../orders/data/models/order.dart';
 
 class CommissionService {
   static final List<Commission> _commissions = [];

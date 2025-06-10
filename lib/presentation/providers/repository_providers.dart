@@ -305,6 +305,30 @@ final vendorDashboardMetricsProvider = FutureProvider<Map<String, dynamic>>((ref
   return await vendorRepository.getVendorDashboardMetrics(vendor.id);
 });
 
+// Vendor Filtered Metrics Provider for Analytics
+final vendorFilteredMetricsProvider = FutureProvider.family<Map<String, dynamic>, Map<String, DateTime?>>((ref, dateRange) async {
+  final vendor = await ref.watch(currentVendorProvider.future);
+
+  if (vendor == null) {
+    return {
+      'total_orders': 0,
+      'total_revenue': 0.0,
+      'avg_order_value': 0.0,
+      'pending_orders': 0,
+      'avg_preparation_time': 0,
+      'rating': 0.0,
+      'total_reviews': 0,
+    };
+  }
+
+  final vendorRepository = ref.watch(vendorRepositoryProvider);
+  return await vendorRepository.getVendorFilteredMetrics(
+    vendor.id,
+    startDate: dateRange['startDate'],
+    endDate: dateRange['endDate'],
+  );
+});
+
 // Vendor Total Orders Count Provider - Real-time calculation from orders table
 final vendorTotalOrdersProvider = FutureProvider<int>((ref) async {
   final vendor = await ref.watch(currentVendorProvider.future);
@@ -765,9 +789,10 @@ final upcomingOrdersProvider = Provider<List<Order>>((ref) {
   final allOrders = ref.watch(platformOrdersProvider).value ?? [];
   final now = DateTime.now();
 
-  // Orders that are pending or have future delivery dates
+  // Orders that are pending, confirmed, or have future delivery dates
   return allOrders.where((order) =>
     order.status == OrderStatus.pending ||
+    order.status == OrderStatus.confirmed ||
     (order.deliveryDate.isAfter(now) &&
      !order.status.isDelivered &&
      !order.status.isCancelled)

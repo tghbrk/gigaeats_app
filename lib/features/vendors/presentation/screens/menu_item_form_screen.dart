@@ -9,7 +9,7 @@ import '../../../data/services/menu_service.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../providers/repository_providers.dart';
+import '../providers/repository_providers.dart';
 import 'package:uuid/uuid.dart';
 
 class MenuItemFormScreen extends ConsumerStatefulWidget {

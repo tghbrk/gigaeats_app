@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
 import '../../../../shared/widgets/custom_button.dart';
@@ -196,7 +196,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                       ? 'We sent a 6-digit code to $_verificationPhone. Please enter it below.'
                       : 'Enter your Malaysian phone number to receive a verification code.',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -281,7 +281,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -295,7 +295,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                       Text(
                         'Malaysian phone numbers only. Format: 01X-XXXXXXX or +601X-XXXXXXX',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -310,7 +310,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                   child: Text(
                     'Version ${AppConstants.appVersion}',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ),

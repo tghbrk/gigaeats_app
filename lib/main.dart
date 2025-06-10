@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'dart:developer' as developer;
 
 import 'core/constants/app_constants.dart';
@@ -53,6 +54,30 @@ void main() async {
       developer.log('❌ Supabase initialization failed: $e', name: 'GigaEats-Error');
     } else {
       debugPrint('Supabase initialization failed: $e');
+    }
+  }
+
+  // Initialize Stripe
+  try {
+    // Using the correct Stripe publishable key
+    const stripeKey = "pk_test_51RXohtPCN6tLb5FzbEFGMeZ1aU5FJ3owQEoiwUMxcAqro6AsETh7Vs8aQgDxj0eSHWLYXwy2sgvcY3hqURz17Zgj00mGOBYIMn";
+    debugPrint('🔑 Setting Stripe publishable key: ${stripeKey.substring(0, 20)}...');
+    debugPrint('🔑 Full key length: ${stripeKey.length}');
+    debugPrint('🔑 Key ends with: ${stripeKey.substring(stripeKey.length - 10)}');
+
+    Stripe.publishableKey = stripeKey;
+    await Stripe.instance.applySettings();
+
+    if (kIsWeb && kDebugMode) {
+      developer.log('✅ Stripe initialized successfully with key: ${stripeKey.substring(0, 20)}...', name: 'GigaEats');
+    } else {
+      debugPrint('✅ Stripe initialized successfully with key: ${stripeKey.substring(0, 20)}...');
+    }
+  } catch (e) {
+    if (kIsWeb && kDebugMode) {
+      developer.log('❌ Stripe initialization failed: $e', name: 'GigaEats-Error');
+    } else {
+      debugPrint('❌ Stripe initialization failed: $e');
     }
   }
 

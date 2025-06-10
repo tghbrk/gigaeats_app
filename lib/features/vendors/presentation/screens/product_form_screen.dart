@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../menu/data/models/product.dart';
-import '../../providers/repository_providers.dart';
+import '../providers/repository_providers.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../core/services/camera_permission_service.dart';
 import '../widgets/customization_dialog.dart';

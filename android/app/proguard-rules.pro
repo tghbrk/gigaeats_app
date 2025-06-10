@@ -55,10 +55,8 @@
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
 
-# Firebase rules (if using Firebase)
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
+# Google Play Services rules (for location services)
+-keep class com.google.android.gms.location.** { *; }
 -dontwarn com.google.android.gms.**
 
 # Supabase/HTTP rules

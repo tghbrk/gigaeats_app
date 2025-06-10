@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../menu/data/models/menu_item.dart';
 import '../../../menu/data/models/product.dart';
 import '../../../menu/data/services/menu_service.dart';
-import '../../providers/repository_providers.dart';
+import '../providers/repository_providers.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../widgets/custom_error_widget.dart';

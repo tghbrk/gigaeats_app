@@ -5,6 +5,7 @@ import 'customization_performance_test_screen.dart';
 import 'customization_uat_screen.dart';
 import 'performance_monitoring_dashboard.dart';
 import 'feedback_analytics_dashboard.dart';
+import 'payment_test_screen.dart';
 
 class EnhancedFeaturesTestScreen extends ConsumerStatefulWidget {
   const EnhancedFeaturesTestScreen({super.key});
@@ -133,6 +134,25 @@ class _EnhancedFeaturesTestScreenState extends ConsumerState<EnhancedFeaturesTes
               },
               icon: Icons.feedback,
               color: Colors.purple,
+            ),
+
+            const SizedBox(height: 16),
+
+            // Payment Integration Testing
+            _buildTestCard(
+              title: '💳 Payment Integration',
+              description: 'Test Stripe payment integration with various card scenarios and error handling',
+              buttonText: 'Test Payments',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PaymentTestScreen(),
+                  ),
+                );
+              },
+              icon: Icons.payment,
+              color: Colors.blue,
             ),
 
             const SizedBox(height: 16),

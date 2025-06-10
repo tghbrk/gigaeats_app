@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../orders/data/models/order.dart';
+import '../../../orders/data/models/delivery_method.dart';
 import '../../../../shared/widgets/dashboard_card.dart';
 import '../../../../shared/widgets/quick_action_button.dart';
 import '../../../orders/presentation/providers/order_provider.dart';
@@ -132,6 +133,13 @@ class _DashboardTab extends ConsumerWidget {
               context.push('/test-sales-agent-profile');
             },
             tooltip: 'Profile Test',
+          ),
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_checkout),
+            onPressed: () {
+              context.push('/test-order-creation');
+            },
+            tooltip: 'Order Creation Test',
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -355,7 +363,27 @@ class _DashboardTab extends ConsumerWidget {
                             ),
                           ),
                           title: Text('Order #${order.orderNumber}'),
-                          subtitle: Text('${order.customerName} • RM ${order.totalAmount.toStringAsFixed(2)}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${order.customerName} • RM ${order.totalAmount.toStringAsFixed(2)}'),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  _buildDeliveryTypeIcon(order.deliveryMethod),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    order.deliveryMethod.displayName,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: _getDeliveryMethodColor(order.deliveryMethod),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -418,6 +446,45 @@ class _DashboardTab extends ConsumerWidget {
         return Colors.green;
       case OrderStatus.cancelled:
         return Colors.red;
+    }
+  }
+
+  Widget _buildDeliveryTypeIcon(DeliveryMethod deliveryMethod) {
+    IconData icon;
+    Color color = _getDeliveryMethodColor(deliveryMethod);
+
+    switch (deliveryMethod) {
+      case DeliveryMethod.customerPickup:
+        icon = Icons.store;
+        break;
+      case DeliveryMethod.salesAgentPickup:
+        icon = Icons.person;
+        break;
+      case DeliveryMethod.ownFleet:
+        icon = Icons.local_shipping;
+        break;
+      case DeliveryMethod.lalamove:
+        icon = Icons.delivery_dining;
+        break;
+    }
+
+    return Icon(
+      icon,
+      size: 14,
+      color: color,
+    );
+  }
+
+  Color _getDeliveryMethodColor(DeliveryMethod deliveryMethod) {
+    switch (deliveryMethod) {
+      case DeliveryMethod.customerPickup:
+        return Colors.blue;
+      case DeliveryMethod.salesAgentPickup:
+        return Colors.green;
+      case DeliveryMethod.ownFleet:
+        return Colors.purple;
+      case DeliveryMethod.lalamove:
+        return Colors.orange;
     }
   }
 }

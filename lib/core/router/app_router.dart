@@ -13,6 +13,8 @@ import '../../features/sales_agent/presentation/screens/vendor_details_screen.da
 import '../../features/sales_agent/presentation/screens/cart_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
 import '../../features/sales_agent/presentation/screens/vendors_screen.dart';
+import '../../features/payments/presentation/screens/payment_screen.dart';
+import '../../features/orders/data/models/order.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/customers/presentation/screens/add_customer_screen.dart';
 import '../../features/customers/presentation/screens/customer_details_screen.dart';
@@ -330,6 +332,43 @@ List<RouteBase> _buildRoutes() {
       builder: (context, state) {
         final orderId = state.pathParameters['orderId']!;
         return OrderTrackingScreen(orderId: orderId);
+      },
+    ),
+
+    // Payment Routes
+    GoRoute(
+      path: '/payment/:orderId',
+      name: 'payment',
+      builder: (context, state) {
+        final orderId = state.pathParameters['orderId']!;
+        // For testing, we'll create a mock order
+        // In production, this would fetch the order from the database
+        final mockOrder = Order(
+          id: orderId,
+          orderNumber: 'TEST-001',
+          status: OrderStatus.pending,
+          items: [],
+          vendorId: 'test-vendor',
+          vendorName: 'Test Vendor',
+          customerId: 'test-customer',
+          customerName: 'Test Customer',
+          deliveryDate: DateTime.now().add(const Duration(days: 1)),
+          deliveryAddress: Address(
+            street: '123 Test Street',
+            city: 'Kuala Lumpur',
+            state: 'Selangor',
+            postalCode: '50000',
+            country: 'Malaysia',
+          ),
+          subtotal: 25.00,
+          deliveryFee: 5.00,
+          sstAmount: 1.50,
+          totalAmount: 31.50,
+          commissionAmount: 1.75,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        return PaymentScreen(order: mockOrder);
       },
     ),
     GoRoute(

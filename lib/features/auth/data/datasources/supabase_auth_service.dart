@@ -321,6 +321,32 @@ class SupabaseAuthService {
     }
   }
 
+  /// Resend verification email
+  Future<AuthResult> resendVerificationEmail(String email) async {
+    try {
+      debugPrint('SupabaseAuthService: Resending verification email to $email');
+
+      await _supabase.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+
+      debugPrint('SupabaseAuthService: Verification email resent successfully');
+      return AuthResult.success(null);
+    } on AuthException catch (e) {
+      debugPrint('SupabaseAuthService: Failed to resend verification email: ${e.message}');
+      return AuthResult.failure(_getSupabaseErrorMessage(e));
+    } catch (e) {
+      debugPrint('SupabaseAuthService: Unexpected error resending verification email: $e');
+      return AuthResult.failure('An unexpected error occurred: ${e.toString()}');
+    }
+  }
+
+  /// Get user profile from database (public method)
+  Future<User?> getUserProfile(String userId) async {
+    return _getUserProfile(userId);
+  }
+
   /// Get user profile from database
   Future<User?> _getUserProfile(String userId) async {
     try {

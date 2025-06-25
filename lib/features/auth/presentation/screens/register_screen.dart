@@ -121,6 +121,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       case UserRole.customer:
         context.go(AppRoutes.salesAgentDashboard); // Customers use sales agent interface
         break;
+      case UserRole.driver:
+        context.go('/driver/dashboard'); // TODO: Add proper driver dashboard route
+        break;
     }
   }
 
@@ -156,7 +159,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Text(
                   'Create your account to get started',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -211,7 +214,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: theme.colorScheme.outline.withOpacity(0.5),
+                          color: theme.colorScheme.outline.withValues(alpha: 0.5),
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -365,6 +368,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return 'Manage the platform and oversee operations';
       case UserRole.customer:
         return 'Place bulk food orders for your organization';
+      case UserRole.driver:
+        return 'Deliver orders and earn money on flexible schedule';
     }
   }
 }

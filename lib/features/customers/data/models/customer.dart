@@ -7,6 +7,8 @@ part 'customer.g.dart';
 @JsonSerializable()
 class Customer extends Equatable {
   final String id;
+  @JsonKey(name: 'user_id')
+  final String? userId; // Optional: if customer has app access
   @JsonKey(name: 'sales_agent_id')
   final String salesAgentId;
   @JsonKey(name: 'customer_type')
@@ -45,6 +47,7 @@ class Customer extends Equatable {
 
   const Customer({
     required this.id,
+    this.userId,
     required this.salesAgentId,
     required this.type,
     required this.organizationName,
@@ -301,6 +304,7 @@ class Customer extends Equatable {
 
   Customer copyWith({
     String? id,
+    String? userId,
     String? salesAgentId,
     CustomerType? type,
     String? organizationName,
@@ -324,6 +328,7 @@ class Customer extends Equatable {
   }) {
     return Customer(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       salesAgentId: salesAgentId ?? this.salesAgentId,
       type: type ?? this.type,
       organizationName: organizationName ?? this.organizationName,
@@ -354,6 +359,7 @@ class Customer extends Equatable {
   @override
   List<Object?> get props => [
         id,
+        userId,
         salesAgentId,
         type,
         organizationName,

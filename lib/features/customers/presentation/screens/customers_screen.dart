@@ -137,7 +137,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
         error: (error, _) => _buildErrorState(error.toString()),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: "customers_add_customer_fab",
+        heroTag: 'customers_add_customer_fab',
         onPressed: () {
           context.push('/sales-agent/customers/add');
         },
@@ -172,7 +172,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
               ? _buildErrorState(customersState.errorMessage!)
               : _buildCustomersList(customersState.customers),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: "customers_add_customer_fab_mobile",
+        heroTag: 'customers_add_customer_fab_mobile',
         onPressed: () {
           context.push('/sales-agent/customers/add');
         },

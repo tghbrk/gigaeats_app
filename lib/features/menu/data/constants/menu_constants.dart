@@ -1,6 +1,3 @@
-/// Constants and enums for menu management
-library menu_constants;
-
 // Menu Item Status Enum
 enum MenuItemStatus {
   available('available', 'Available'),

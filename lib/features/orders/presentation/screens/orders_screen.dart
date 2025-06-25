@@ -108,7 +108,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           builder: (context, ref, child) {
             final cartState = ref.watch(cartProvider);
             return FloatingActionButton.extended(
-              heroTag: "orders_new_order_fab",
+              heroTag: 'orders_new_order_fab',
               onPressed: () {
                 // Smart navigation based on cart state
                 if (cartState.isEmpty) {
@@ -169,7 +169,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           builder: (context, ref, child) {
             final cartState = ref.watch(cartProvider);
             return FloatingActionButton.extended(
-              heroTag: "orders_new_order_fab_mobile",
+              heroTag: 'orders_new_order_fab_mobile',
               onPressed: () {
                 // Smart navigation based on cart state
                 if (cartState.isEmpty) {
@@ -579,8 +579,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
   }
 
   Widget _buildDeliveryTypeChip(DeliveryMethod deliveryMethod) {
-    final theme = Theme.of(context);
-
     // Get appropriate icon and color for each delivery method
     IconData icon;
     Color color;

@@ -215,13 +215,13 @@ class ProductSerializationUtils {
       
       // Check required customizations
       if (customization.isRequired && selections.isEmpty) {
-        errors[customization.id] = '${customization.name} is required';
+        errors[customization.id ?? customization.name] = '${customization.name} is required';
         continue;
       }
-      
+
       // Check selection type constraints
       if (customization.type == 'single' && selections.length > 1) {
-        errors[customization.id] = '${customization.name} allows only one selection';
+        errors[customization.id ?? customization.name] = '${customization.name} allows only one selection';
         continue;
       }
       
@@ -229,7 +229,7 @@ class ProductSerializationUtils {
       final validOptionIds = customization.options.map((o) => o.id).toSet();
       for (final selectedId in selections) {
         if (!validOptionIds.contains(selectedId)) {
-          errors[customization.id] = 'Invalid option selected for ${customization.name}';
+          errors[customization.id ?? customization.name] = 'Invalid option selected for ${customization.name}';
           break;
         }
       }
@@ -245,11 +245,12 @@ class ProductSerializationUtils {
     for (final customization in product.customizations) {
       final defaultOptions = customization.options
           .where((option) => option.isDefault)
-          .map((option) => option.id)
+          .map((option) => option.id ?? '')
+          .where((id) => id.isNotEmpty)
           .toList();
-      
+
       if (defaultOptions.isNotEmpty) {
-        defaults[customization.id] = defaultOptions;
+        defaults[customization.id ?? customization.name] = defaultOptions;
       }
     }
     

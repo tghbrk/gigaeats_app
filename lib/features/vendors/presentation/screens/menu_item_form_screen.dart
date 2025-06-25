@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../data/models/menu_item.dart';
-import '../../../menu/data/models/product.dart';
-import '../../../data/services/menu_service.dart';
+import '../../../menu/data/models/menu_item.dart';
+import '../../../menu/data/models/product.dart' as product_model;
+import '../../../menu/data/services/menu_service.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -47,12 +47,12 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   List<String> _allergens = [];
   List<BulkPricingTier> _bulkPricingTiers = [];
   List<String> _imageUrls = [];
-  List<MenuItemCustomization> _customizations = []; // Add state for customizations
+  List<product_model.MenuItemCustomization> _customizations = []; // Add state for customizations
 
   // Loading states
   bool _isLoading = false;
   bool _isSaving = false;
-  
+
   // Data
   List<MenuCategory> _categories = [];
   MenuItem? _existingItem;
@@ -131,7 +131,6 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isEditing = widget.menuItemId != null;
 
     return Scaffold(
@@ -635,7 +634,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _customizations.length,
                 itemBuilder: (context, index) {
-                  return _buildCustomizationGroupCard(_customizations[index], index);
+                  return _buildCustomizationGroupCard(_customizations[index] as MenuItemCustomization, index);
                 },
               ),
           ],
@@ -669,7 +668,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
         children: [
           ...customization.options.map((opt) => ListTile(
             title: Text(opt.name),
-            trailing: Text('+ RM ${opt.additionalPrice.toStringAsFixed(2)}'),
+            trailing: Text('+ RM ${(opt as dynamic).additionalCost?.toStringAsFixed(2) ?? (opt as dynamic).additionalPrice?.toStringAsFixed(2) ?? "0.00"}'),
           )),
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -690,7 +689,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
       builder: (context) => _CustomizationOptionDialog(
         onSave: (option) {
           setState(() {
-            final updatedOptions = List<CustomizationOption>.from(_customizations[groupIndex].options);
+            final updatedOptions = List<product_model.CustomizationOption>.from(_customizations[groupIndex].options);
             updatedOptions.add(option);
             _customizations[groupIndex] = _customizations[groupIndex].copyWith(options: updatedOptions);
           });
@@ -1019,7 +1018,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
         print('🍽️ [MENU-FORM-DEBUG] Updating existing menu item: ${widget.menuItemId}');
 
         // Create updated product using existing ID and available form fields
-        final updatedProduct = Product(
+        final updatedProduct = product_model.Product(
           id: widget.menuItemId!, // Use existing ID
           vendorId: vendor.id,
           name: _nameController.text.trim(),
@@ -1054,7 +1053,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
         print('🍽️ [MENU-FORM-DEBUG] Creating new menu item...');
         // Create new item using Product model
         const uuid = Uuid();
-        final newProduct = Product(
+        final newProduct = product_model.Product(
           id: uuid.v4(), // Temporary ID, will be replaced by database
           vendorId: vendor.id,
           name: _nameController.text.trim(),
@@ -1345,8 +1344,8 @@ class _BulkPricingTierDialogState extends State<_BulkPricingTierDialog> {
 
 // Customization Group Dialog Widget
 class _CustomizationGroupDialog extends StatefulWidget {
-  final MenuItemCustomization? customization;
-  final Function(MenuItemCustomization) onSave;
+  final product_model.MenuItemCustomization? customization;
+  final Function(product_model.MenuItemCustomization) onSave;
 
   const _CustomizationGroupDialog({
     this.customization,
@@ -1458,12 +1457,12 @@ class _CustomizationGroupDialogState extends State<_CustomizationGroupDialog> {
       return;
     }
 
-    final group = MenuItemCustomization(
+    final group = product_model.MenuItemCustomization(
       id: widget.customization?.id, // Use null for new customizations
       name: _nameController.text.trim(),
       type: _selectedType,
       isRequired: _isRequired,
-      options: widget.customization?.options ?? [],
+      options: widget.customization?.options.cast<product_model.CustomizationOption>() ?? [],
     );
 
     widget.onSave(group);
@@ -1473,8 +1472,8 @@ class _CustomizationGroupDialogState extends State<_CustomizationGroupDialog> {
 
 // Customization Option Dialog Widget
 class _CustomizationOptionDialog extends StatefulWidget {
-  final CustomizationOption? option;
-  final Function(CustomizationOption) onSave;
+  final product_model.CustomizationOption? option;
+  final Function(product_model.CustomizationOption) onSave;
 
   const _CustomizationOptionDialog({
     this.option,
@@ -1594,7 +1593,7 @@ class _CustomizationOptionDialogState extends State<_CustomizationOptionDialog> 
       return;
     }
 
-    final option = CustomizationOption(
+    final option = product_model.CustomizationOption(
       id: widget.option?.id, // Use null for new options
       name: _nameController.text.trim(),
       additionalPrice: double.parse(_priceController.text),

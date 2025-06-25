@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../menu/data/models/product.dart';
-import '../../../vendors/data/models/vendor.dart';
+
 import '../../../vendors/presentation/providers/vendor_provider.dart';
 import '../providers/cart_provider.dart';
 import '../../../../shared/widgets/custom_button.dart';

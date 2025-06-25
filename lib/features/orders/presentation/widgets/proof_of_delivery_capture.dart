@@ -8,7 +8,7 @@ import '../../data/models/delivery_method.dart';
 import '../../../../core/services/camera_permission_service.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/config/supabase_config.dart';
-import '../providers/repository_providers.dart';
+import '../../../../presentation/providers/repository_providers.dart';
 import 'delivery_confirmation_summary.dart';
 
 class ProofOfDeliveryCapture extends ConsumerStatefulWidget {

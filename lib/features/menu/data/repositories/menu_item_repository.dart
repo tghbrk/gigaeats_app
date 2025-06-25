@@ -352,9 +352,6 @@ class MenuItemRepository extends BaseRepository {
       final vendorId = await _getCurrentVendorId();
       if (vendorId == null) throw Exception('Vendor not found');
 
-      final fileName = '${vendorId}_${menuItemId}_gallery_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final filePath = 'menu_items/gallery/$fileName';
-
       // Storage upload temporarily disabled for quick launch
       // await supabase.storage
       //     .from('menu-images')

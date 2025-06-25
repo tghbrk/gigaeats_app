@@ -5,6 +5,73 @@ import '../models/driver.dart';
 
 /// Repository for managing driver data and operations
 class DriverRepository extends BaseRepository {
+  /// Get all drivers across all vendors (admin function)
+  Future<List<Driver>> getAllDrivers() async {
+    return executeQuery(() async {
+      debugPrint('DriverRepository: Getting all drivers');
+
+      final response = await supabase
+          .from('drivers')
+          .select()
+          .eq('is_active', true)
+          .order('created_at', ascending: false);
+
+      debugPrint('DriverRepository: Found ${response.length} drivers');
+
+      return response.map((json) => Driver.fromJson(json)).toList();
+    });
+  }
+
+  /// Get all driver statistics across all vendors (admin function)
+  Future<Map<String, dynamic>> getAllDriverStatistics() async {
+    return executeQuery(() async {
+      debugPrint('DriverRepository: Getting all driver statistics');
+
+      final response = await supabase
+          .from('drivers')
+          .select('status, vendor_id')
+          .eq('is_active', true);
+
+      final stats = <String, int>{
+        'total': response.length,
+        'online': 0,
+        'offline': 0,
+        'on_delivery': 0,
+      };
+
+      final vendorStats = <String, Map<String, int>>{};
+
+      for (final driver in response) {
+        final status = driver['status'] as String;
+        final vendorId = driver['vendor_id'] as String;
+
+        // Update global stats
+        stats[status] = (stats[status] ?? 0) + 1;
+
+        // Update vendor-specific stats
+        if (!vendorStats.containsKey(vendorId)) {
+          vendorStats[vendorId] = {
+            'total': 0,
+            'online': 0,
+            'offline': 0,
+            'on_delivery': 0,
+          };
+        }
+        vendorStats[vendorId]!['total'] = vendorStats[vendorId]!['total']! + 1;
+        vendorStats[vendorId]![status] = (vendorStats[vendorId]![status] ?? 0) + 1;
+      }
+
+      final result = {
+        'global': stats,
+        'by_vendor': vendorStats,
+      };
+
+      debugPrint('DriverRepository: All driver statistics: $result');
+
+      return result;
+    });
+  }
+
   /// Get all drivers for a specific vendor
   Future<List<Driver>> getDriversForVendor(String vendorId) async {
     return executeQuery(() async {

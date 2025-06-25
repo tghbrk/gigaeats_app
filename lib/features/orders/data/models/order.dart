@@ -459,6 +459,9 @@ class Order extends Equatable {
     return DeliveryMethod.fromString(deliveryMethodValue);
   }
 
+  /// Get effective delivery method (alias for deliveryMethod)
+  DeliveryMethod get effectiveDeliveryMethod => deliveryMethod;
+
   /// Check if this order uses customer pickup
   bool get isCustomerPickup => deliveryMethod.isCustomerPickup;
 

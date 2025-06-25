@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../data/models/order.dart';
-import '../../data/models/delivery_method.dart';
+
 import '../../../../core/services/location_service.dart';
 
 /// Widget that displays a comprehensive summary of delivery confirmation

@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../data/models/sales_agent_notification_preferences.dart';
 import '../../data/services/sales_agent_service.dart';
 import '../../../../presentation/providers/repository_providers.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 // Sales Agent Notification Settings State
 class SalesAgentNotificationSettingsState {
@@ -430,4 +431,20 @@ final salesAgentNotificationCategoriesProvider = Provider<List<SalesAgentNotific
       ],
     ),
   ];
+});
+
+// Current Sales Agent Notification Settings Provider
+// This provider gets the notification settings for the currently authenticated sales agent
+final currentSalesAgentNotificationSettingsProvider = StateNotifierProvider<SalesAgentNotificationSettingsNotifier, SalesAgentNotificationSettingsState>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final currentUser = authState.user;
+  final salesAgentService = ref.watch(salesAgentServiceProvider);
+
+  if (currentUser == null) {
+    // Return a notifier with default state if no user is authenticated
+    return SalesAgentNotificationSettingsNotifier(salesAgentService, 'default');
+  }
+
+  // Return the notifier for the current user's sales agent ID
+  return SalesAgentNotificationSettingsNotifier(salesAgentService, currentUser.id);
 });

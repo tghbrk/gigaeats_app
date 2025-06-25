@@ -2,7 +2,8 @@ enum UserRole {
   salesAgent('sales_agent', 'Sales Agent'),
   vendor('vendor', 'Vendor'),
   admin('admin', 'Admin'),
-  customer('customer', 'Customer');
+  customer('customer', 'Customer'),
+  driver('driver', 'Driver');
 
   const UserRole(this.value, this.displayName);
 
@@ -20,4 +21,5 @@ enum UserRole {
   bool get isVendor => this == UserRole.vendor;
   bool get isAdmin => this == UserRole.admin;
   bool get isCustomer => this == UserRole.customer;
+  bool get isDriver => this == UserRole.driver;
 }

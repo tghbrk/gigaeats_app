@@ -2,7 +2,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../models/menu_item.dart';
-import '../models/product.dart';
+import '../models/product.dart' as product_model;
 import '../repositories/customization_repository.dart';
 
 class MenuService {
@@ -347,12 +347,12 @@ class MenuService {
   // Customization Management Methods
 
   // Get all customizations for a menu item
-  Future<List<MenuItemCustomization>> getMenuItemCustomizations(String menuItemId) async {
+  Future<List<product_model.MenuItemCustomization>> getMenuItemCustomizations(String menuItemId) async {
     return await _customizationRepository.getMenuItemCustomizations(menuItemId);
   }
 
   // Create a new customization group
-  Future<MenuItemCustomization> createCustomization({
+  Future<product_model.MenuItemCustomization> createCustomization({
     required String menuItemId,
     required String name,
     required String type,
@@ -369,7 +369,7 @@ class MenuService {
   }
 
   // Update an existing customization group
-  Future<MenuItemCustomization> updateCustomization({
+  Future<product_model.MenuItemCustomization> updateCustomization({
     required String customizationId,
     String? name,
     String? type,
@@ -391,7 +391,7 @@ class MenuService {
   }
 
   // Create a new customization option
-  Future<CustomizationOption> createCustomizationOption({
+  Future<product_model.CustomizationOption> createCustomizationOption({
     required String customizationId,
     required String name,
     required double additionalPrice,
@@ -410,7 +410,7 @@ class MenuService {
   }
 
   // Update an existing customization option
-  Future<CustomizationOption> updateCustomizationOption({
+  Future<product_model.CustomizationOption> updateCustomizationOption({
     required String optionId,
     String? name,
     double? additionalPrice,
@@ -450,9 +450,9 @@ class MenuService {
   }
 
   // Bulk create customizations for a menu item
-  Future<List<MenuItemCustomization>> bulkCreateCustomizations({
+  Future<List<product_model.MenuItemCustomization>> bulkCreateCustomizations({
     required String menuItemId,
-    required List<MenuItemCustomization> customizations,
+    required List<product_model.MenuItemCustomization> customizations,
   }) async {
     return await _customizationRepository.bulkCreateCustomizations(
       menuItemId: menuItemId,
@@ -461,7 +461,7 @@ class MenuService {
   }
 
   // Convert Product to MenuItem (for backward compatibility)
-  MenuItem productToMenuItem(Product product) {
+  MenuItem productToMenuItem(product_model.Product product) {
     return MenuItem(
       id: product.id,
       vendorId: product.vendorId,
@@ -487,8 +487,8 @@ class MenuService {
   }
 
   // Convert MenuItem to Product (for new customization features)
-  Product menuItemToProduct(MenuItem menuItem, {List<MenuItemCustomization>? customizations}) {
-    return Product(
+  product_model.Product menuItemToProduct(MenuItem menuItem, {List<product_model.MenuItemCustomization>? customizations}) {
+    return product_model.Product(
       id: menuItem.id,
       vendorId: menuItem.vendorId,
       name: menuItem.name,

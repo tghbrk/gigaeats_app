@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/menu/data/models/product.dart';
-import '../../features/vendors/data/models/vendor.dart';
-import '../../features/sales_agent/presentation/providers/cart_provider.dart';
+
 
 class CustomizationUATScreen extends ConsumerStatefulWidget {
   const CustomizationUATScreen({super.key});
@@ -14,7 +12,7 @@ class CustomizationUATScreen extends ConsumerStatefulWidget {
 class _CustomizationUATScreenState extends ConsumerState<CustomizationUATScreen> {
   int _currentScenario = 0;
   final List<String> _testResults = [];
-  bool _isTestingInProgress = false;
+  final bool _isTestingInProgress = false;
 
   final List<TestScenario> _testScenarios = [
     TestScenario(

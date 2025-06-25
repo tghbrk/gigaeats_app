@@ -60,7 +60,7 @@ void main() async {
   // Initialize Stripe
   try {
     // Using the correct Stripe publishable key
-    const stripeKey = "pk_test_51RXohtPCN6tLb5FzbEFGMeZ1aU5FJ3owQEoiwUMxcAqro6AsETh7Vs8aQgDxj0eSHWLYXwy2sgvcY3hqURz17Zgj00mGOBYIMn";
+    const stripeKey = 'pk_test_51RXohtPCN6tLb5FzbEFGMeZ1aU5FJ3owQEoiwUMxcAqro6AsETh7Vs8aQgDxj0eSHWLYXwy2sgvcY3hqURz17Zgj00mGOBYIMn';
     debugPrint('🔑 Setting Stripe publishable key: ${stripeKey.substring(0, 20)}...');
     debugPrint('🔑 Full key length: ${stripeKey.length}');
     debugPrint('🔑 Key ends with: ${stripeKey.substring(stripeKey.length - 10)}');

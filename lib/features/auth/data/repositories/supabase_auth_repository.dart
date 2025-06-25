@@ -385,6 +385,8 @@ class SupabaseAuthRepository implements AuthRepository {
         return UserRoleEntity.vendor;
       case UserRole.customer:
         return UserRoleEntity.customer;
+      case UserRole.driver:
+        return UserRoleEntity.customer; // TODO: Add driver entity when available
     }
   }
 
@@ -399,6 +401,7 @@ class SupabaseAuthRepository implements AuthRepository {
         return UserRole.vendor;
       case UserRoleEntity.customer:
         return UserRole.customer;
+      // Note: Driver role maps to customer entity until driver entity is available
     }
   }
 

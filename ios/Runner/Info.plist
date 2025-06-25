@@ -45,5 +45,36 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Location permissions for delivery tracking -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs location access to track delivery routes and provide navigation.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs location access to track delivery routes and provide navigation.</string>
+
+	<!-- Google Maps API Key -->
+	<key>GMSApiKey</key>
+	<string>YOUR_GOOGLE_MAPS_API_KEY_HERE</string>
+
+	<!-- URL Schemes for deep linking -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>gigaeats.app.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>gigaeats</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>supabase.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>https</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -707,6 +707,24 @@ class VendorRepository extends BaseRepository {
     });
   }
 
+  /// Delete vendor (soft delete by setting is_active to false)
+  Future<void> deleteVendor(String vendorId) async {
+    return executeQuery(() async {
+      debugPrint('VendorRepository: Soft deleting vendor: $vendorId');
+
+      final authenticatedClient = await getAuthenticatedClient();
+      await authenticatedClient
+          .from('vendors')
+          .update({
+            'is_active': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', vendorId);
+
+      debugPrint('VendorRepository: Vendor soft deleted successfully');
+    });
+  }
+
   /// Update order status
   Future<void> updateOrderStatus(
     String orderId,

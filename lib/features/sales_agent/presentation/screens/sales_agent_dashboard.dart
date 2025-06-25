@@ -241,7 +241,7 @@ class _DashboardTab extends ConsumerWidget {
                         icon: Icons.people,
                         color: Colors.purple,
                       ),
-                      error: (_, __) => const DashboardCard(
+                      error: (_, _) => const DashboardCard(
                         title: 'Customers',
                         value: '0',
                         subtitle: 'Error loading',

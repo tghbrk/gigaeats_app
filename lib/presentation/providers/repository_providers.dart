@@ -19,6 +19,10 @@ import '../../features/vendors/data/models/vendor.dart';
 import '../../features/orders/presentation/providers/order_provider.dart';
 import '../../features/vendors/presentation/providers/vendor_provider.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/orders/data/services/delivery_fee_service.dart';
+
+import '../../core/utils/logger.dart';
+import '../../core/services/security_service.dart';
 // Removed unused import: delivery_proof_realtime_provider.dart
 
 // Supabase client provider
@@ -611,6 +615,21 @@ final fileUploadServiceProvider = Provider<FileUploadService>((ref) {
 final salesAgentServiceProvider = Provider<SalesAgentService>((ref) {
   final salesAgentRepository = ref.watch(salesAgentRepositoryProvider);
   return SalesAgentService(salesAgentRepository: salesAgentRepository);
+});
+
+// Delivery Fee Service Provider
+final deliveryFeeServiceProvider = Provider<DeliveryFeeService>((ref) {
+  return DeliveryFeeService();
+});
+
+// Logger Provider
+final loggerProvider = Provider<AppLogger>((ref) {
+  return AppLogger();
+});
+
+// Security Service Provider
+final securityServiceProvider = Provider<SecurityService>((ref) {
+  return SecurityService();
 });
 
 // Web-specific data providers using authenticated Supabase client

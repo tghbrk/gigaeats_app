@@ -240,6 +240,8 @@ class Driver extends Equatable {
   final String name;
   @JsonKey(name: 'phone_number')
   final String phoneNumber;
+  @JsonKey(name: 'profile_photo_url')
+  final String? profilePhotoUrl;
   @JsonKey(name: 'vehicle_details', fromJson: _vehicleDetailsFromJson, toJson: _vehicleDetailsToJson)
   final VehicleDetails vehicleDetails;
   @JsonKey(fromJson: _driverStatusFromJson, toJson: _driverStatusToJson)
@@ -261,6 +263,7 @@ class Driver extends Equatable {
     this.userId,
     required this.name,
     required this.phoneNumber,
+    this.profilePhotoUrl,
     required this.vehicleDetails,
     required this.status,
     this.lastLocation,
@@ -299,6 +302,7 @@ class Driver extends Equatable {
         userId,
         name,
         phoneNumber,
+        profilePhotoUrl,
         vehicleDetails,
         status,
         lastLocation,
@@ -314,6 +318,7 @@ class Driver extends Equatable {
     String? userId,
     String? name,
     String? phoneNumber,
+    String? profilePhotoUrl,
     VehicleDetails? vehicleDetails,
     DriverStatus? status,
     DriverLocation? lastLocation,
@@ -328,6 +333,7 @@ class Driver extends Equatable {
       userId: userId ?? this.userId,
       name: name ?? this.name,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
       vehicleDetails: vehicleDetails ?? this.vehicleDetails,
       status: status ?? this.status,
       lastLocation: lastLocation ?? this.lastLocation,

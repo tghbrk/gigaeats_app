@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -97,38 +97,34 @@ class DeliveryProofRealtimeNotifier extends StateNotifier<DeliveryProofRealtimeS
         case PostgresChangeEvent.insert:
         case PostgresChangeEvent.update:
           final proofData = payload.newRecord;
-          if (proofData != null) {
-            final proof = ProofOfDelivery.fromJson(proofData);
-            final orderId = proofData['order_id'] as String;
+          final proof = ProofOfDelivery.fromJson(proofData);
+          final orderId = proofData['order_id'] as String;
 
-            final updatedProofs = Map<String, ProofOfDelivery>.from(state.deliveryProofs);
-            updatedProofs[orderId] = proof;
+          final updatedProofs = Map<String, ProofOfDelivery>.from(state.deliveryProofs);
+          updatedProofs[orderId] = proof;
 
-            state = state.copyWith(
-              deliveryProofs: updatedProofs,
-              lastUpdate: DateTime.now(),
-            );
+          state = state.copyWith(
+            deliveryProofs: updatedProofs,
+            lastUpdate: DateTime.now(),
+          );
 
-            DebugLogger.info('Delivery proof updated for order: $orderId', tag: 'DeliveryProofRealtime');
+          DebugLogger.info('Delivery proof updated for order: $orderId', tag: 'DeliveryProofRealtime');
 
-            // Trigger order refresh to get updated status
-            _refreshOrderData(orderId);
-          }
+          // Trigger order refresh to get updated status
+          _refreshOrderData(orderId);
           break;
         case PostgresChangeEvent.delete:
           final oldData = payload.oldRecord;
-          if (oldData != null) {
-            final orderId = oldData['order_id'] as String;
-            final updatedProofs = Map<String, ProofOfDelivery>.from(state.deliveryProofs);
-            updatedProofs.remove(orderId);
+          final orderId = oldData['order_id'] as String;
+          final updatedProofs = Map<String, ProofOfDelivery>.from(state.deliveryProofs);
+          updatedProofs.remove(orderId);
 
-            state = state.copyWith(
-              deliveryProofs: updatedProofs,
-              lastUpdate: DateTime.now(),
-            );
+          state = state.copyWith(
+            deliveryProofs: updatedProofs,
+            lastUpdate: DateTime.now(),
+          );
 
-            DebugLogger.info('Delivery proof deleted for order: $orderId', tag: 'DeliveryProofRealtime');
-          }
+          DebugLogger.info('Delivery proof deleted for order: $orderId', tag: 'DeliveryProofRealtime');
           break;
         default:
           // Handle all other events including PostgresChangeEvent.all
@@ -144,26 +140,24 @@ class DeliveryProofRealtimeNotifier extends StateNotifier<DeliveryProofRealtimeS
   void _handleOrderUpdate(PostgresChangePayload payload) {
     try {
       final orderData = payload.newRecord;
-      if (orderData != null) {
-        // Check if this is a delivery-related status update
-        final status = orderData['status'] as String?;
-        final deliveryProofId = orderData['delivery_proof_id'] as String?;
-        
-        if (status == 'delivered' && deliveryProofId != null) {
-          DebugLogger.info('Order delivered status update: ${orderData['id']}', tag: 'DeliveryProofRealtime');
-          
-          // Process the order data to handle JSON fields
-          final processedData = _processOrderData(orderData);
-          final order = Order.fromJson(processedData);
-          
-          final updatedOrders = Map<String, Order>.from(state.updatedOrders);
-          updatedOrders[order.id] = order;
+      // Check if this is a delivery-related status update
+      final status = orderData['status'] as String?;
+      final deliveryProofId = orderData['delivery_proof_id'] as String?;
 
-          state = state.copyWith(
-            updatedOrders: updatedOrders,
-            lastUpdate: DateTime.now(),
-          );
-        }
+      if (status == 'delivered' && deliveryProofId != null) {
+        DebugLogger.info('Order delivered status update: ${orderData['id']}', tag: 'DeliveryProofRealtime');
+
+        // Process the order data to handle JSON fields
+        final processedData = _processOrderData(orderData);
+        final order = Order.fromJson(processedData);
+
+        final updatedOrders = Map<String, Order>.from(state.updatedOrders);
+        updatedOrders[order.id] = order;
+
+        state = state.copyWith(
+          updatedOrders: updatedOrders,
+          lastUpdate: DateTime.now(),
+        );
       }
     } catch (e) {
       DebugLogger.error('Error handling order update: $e', tag: 'DeliveryProofRealtime');

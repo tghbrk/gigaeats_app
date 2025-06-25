@@ -41,7 +41,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final paymentMethodsAsync = ref.watch(availablePaymentMethodsProvider);
 
     // Debug: Log when payment screen is built

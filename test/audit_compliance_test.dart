@@ -89,24 +89,24 @@ void main() {
 
       test('should detect SQL injection attempts', () {
         // SQL injection patterns
-        expect(InputValidator.containsSqlInjection("'; DROP TABLE users; --"), isTrue);
-        expect(InputValidator.containsSqlInjection("1' OR '1'='1"), isTrue);
-        expect(InputValidator.containsSqlInjection("UNION SELECT * FROM users"), isTrue);
+        expect(InputValidator.containsSqlInjection('\'; DROP TABLE users; --'), isTrue);
+        expect(InputValidator.containsSqlInjection('1\' OR \'1\'=\'1'), isTrue);
+        expect(InputValidator.containsSqlInjection('UNION SELECT * FROM users'), isTrue);
 
         // Safe inputs
-        expect(InputValidator.containsSqlInjection("normal text"), isFalse);
-        expect(InputValidator.containsSqlInjection("user@example.com"), isFalse);
+        expect(InputValidator.containsSqlInjection('normal text'), isFalse);
+        expect(InputValidator.containsSqlInjection('user@example.com'), isFalse);
       });
 
       test('should detect XSS attempts', () {
         // XSS patterns
-        expect(InputValidator.containsXss("<script>alert('xss')</script>"), isTrue);
-        expect(InputValidator.containsXss("javascript:alert('xss')"), isTrue);
-        expect(InputValidator.containsXss("<iframe src='evil.com'></iframe>"), isTrue);
+        expect(InputValidator.containsXss('<script>alert(\'xss\')</script>'), isTrue);
+        expect(InputValidator.containsXss('javascript:alert(\'xss\')'), isTrue);
+        expect(InputValidator.containsXss('<iframe src=\'evil.com\'></iframe>'), isTrue);
 
         // Safe inputs
-        expect(InputValidator.containsXss("normal text"), isFalse);
-        expect(InputValidator.containsXss("user@example.com"), isFalse);
+        expect(InputValidator.containsXss('normal text'), isFalse);
+        expect(InputValidator.containsXss('user@example.com'), isFalse);
       });
 
       test('should sanitize input correctly', () {

@@ -32,28 +32,32 @@ final authStateProvider = StateNotifierProvider<AuthStateNotifier, AuthState>((r
 });
 
 // Auth State
-enum AuthStatus { initial, authenticated, unauthenticated, loading }
+enum AuthStatus { initial, authenticated, unauthenticated, loading, emailVerificationPending }
 
 class AuthState {
   final AuthStatus status;
   final User? user;
   final String? errorMessage;
+  final String? pendingVerificationEmail;
 
   const AuthState({
     required this.status,
     this.user,
     this.errorMessage,
+    this.pendingVerificationEmail,
   });
 
   AuthState copyWith({
     AuthStatus? status,
     User? user,
     String? errorMessage,
+    String? pendingVerificationEmail,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
       errorMessage: errorMessage ?? this.errorMessage,
+      pendingVerificationEmail: pendingVerificationEmail ?? this.pendingVerificationEmail,
     );
   }
 }
@@ -253,6 +257,80 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
 
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  /// Handle email verification completion
+  Future<bool> handleEmailVerificationComplete() async {
+    _logger.info('AuthStateNotifier: Handling email verification completion');
+
+    try {
+      // Clear pending verification state and refresh auth status
+      state = state.copyWith(
+        pendingVerificationEmail: null,
+        errorMessage: null,
+      );
+
+      // Refresh authentication state to get updated user info
+      await _checkAuthStatus();
+
+      // Check if user is now authenticated
+      final isAuthenticated = state.status == AuthStatus.authenticated && state.user != null;
+
+      _logger.info('AuthStateNotifier: Email verification handled successfully, authenticated: $isAuthenticated');
+      return isAuthenticated;
+    } catch (e) {
+      _logger.error('AuthStateNotifier: Error handling email verification: $e');
+      state = state.copyWith(
+        errorMessage: 'Verification completed but there was an issue. Please try signing in manually.',
+      );
+      return false;
+    }
+  }
+
+  /// Clear pending verification state
+  void clearPendingVerification() {
+    _logger.info('AuthStateNotifier: Clearing pending verification');
+
+    state = state.copyWith(
+      status: AuthStatus.unauthenticated,
+      pendingVerificationEmail: null,
+      errorMessage: null,
+      user: null,
+    );
+  }
+
+  /// Resend verification email
+  Future<void> resendVerificationEmail([String? email]) async {
+    final targetEmail = email ?? state.pendingVerificationEmail;
+    if (targetEmail == null) {
+      _logger.warning('AuthStateNotifier: No email provided for verification');
+      state = state.copyWith(
+        errorMessage: 'No email provided for verification',
+      );
+      return;
+    }
+
+    _logger.info('AuthStateNotifier: Resending verification email to $targetEmail');
+
+    try {
+      final result = await _authService.resendVerificationEmail(targetEmail);
+      if (result.isSuccess) {
+        _logger.info('AuthStateNotifier: Verification email resent successfully');
+        state = state.copyWith(
+          errorMessage: null,
+        );
+      } else {
+        _logger.error('AuthStateNotifier: Failed to resend verification email: ${result.errorMessage}');
+        state = state.copyWith(
+          errorMessage: result.errorMessage,
+        );
+      }
+    } catch (e) {
+      _logger.error('AuthStateNotifier: Error resending verification email: $e');
+      state = state.copyWith(
+        errorMessage: 'Failed to resend verification email. Please try again.',
+      );
+    }
   }
 
   /// Force refresh authentication state

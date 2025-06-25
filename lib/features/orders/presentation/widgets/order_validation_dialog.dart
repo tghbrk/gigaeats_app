@@ -58,7 +58,7 @@ class OrderValidationDialog extends StatelessWidget {
             context,
             'Attempted Status',
             attemptedStatus,
-            Colors.red.withOpacity(0.7),
+            Colors.red.withValues(alpha: 0.7),
           ),
           
           const SizedBox(height: 16),

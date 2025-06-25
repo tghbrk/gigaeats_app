@@ -335,6 +335,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
         return Colors.blue;
       case UserRole.customer:
         return Colors.green;
+      case UserRole.driver:
+        return Colors.teal;
     }
   }
 
@@ -348,6 +350,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
         return Icons.person_pin;
       case UserRole.customer:
         return Icons.person;
+      case UserRole.driver:
+        return Icons.local_shipping;
     }
   }
 
@@ -361,6 +365,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
         return 'Sales Agent';
       case UserRole.customer:
         return 'Customer';
+      case UserRole.driver:
+        return 'Driver';
     }
   }
 

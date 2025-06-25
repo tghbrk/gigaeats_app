@@ -156,14 +156,41 @@ async function validateOrderData(
     errors.push('Vendor is currently inactive')
   }
 
-  // Validate customer exists
-  const { data: customer, error: customerError } = await supabase
+  // Validate customer exists (check both customers and customer_profiles tables)
+  let customer = null
+
+  console.log(`🔍 Validating customer ID: ${orderData.customer_id}`)
+
+  // First try customers table (for business customers)
+  const { data: businessCustomer, error: businessError } = await supabase
     .from('customers')
-    .select('id, business_name')
+    .select('id, organization_name as name')
     .eq('id', orderData.customer_id)
     .single()
 
-  if (customerError || !customer) {
+  console.log(`🔍 Business customer query result:`, businessCustomer, businessError)
+
+  if (businessCustomer) {
+    customer = businessCustomer
+    console.log(`✅ Found business customer: ${businessCustomer.name}`)
+  } else {
+    // Try customer_profiles table (for individual customers)
+    const { data: individualCustomer, error: individualError } = await supabase
+      .from('customer_profiles')
+      .select('id, full_name as name')
+      .eq('id', orderData.customer_id)
+      .single()
+
+    console.log(`🔍 Individual customer query result:`, individualCustomer, individualError)
+
+    if (individualCustomer) {
+      customer = individualCustomer
+      console.log(`✅ Found individual customer: ${individualCustomer.name}`)
+    }
+  }
+
+  if (!customer) {
+    console.log(`❌ Customer not found for ID: ${orderData.customer_id}`)
     errors.push('Customer not found')
   }
 

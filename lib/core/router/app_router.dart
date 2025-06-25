@@ -34,6 +34,7 @@ import '../../features/admin/presentation/screens/admin_dashboard.dart';
 import '../../features/admin/presentation/screens/admin_users_screen.dart';
 import '../../features/admin/presentation/screens/admin_orders_screen.dart';
 import '../../features/admin/presentation/screens/admin_reports_screen.dart';
+import '../../features/drivers/presentation/screens/driver_dashboard.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/test_screens/data_test_screen.dart';
 import '../../shared/test_screens/test_menu_screen.dart';
@@ -325,6 +326,13 @@ List<RouteBase> _buildRoutes() {
       ],
     ),
 
+    // Driver Routes
+    GoRoute(
+      path: AppRoutes.driverDashboard,
+      name: 'driver-dashboard',
+      builder: (context, state) => const DriverDashboard(),
+    ),
+
     // Shared Routes
     GoRoute(
       path: AppRoutes.orderDetails,
@@ -449,6 +457,8 @@ class AppRouter {
         return AppRoutes.adminDashboard;
       case UserRole.customer:
         return AppRoutes.salesAgentDashboard; // Customers use sales agent interface
+      case UserRole.driver:
+        return AppRoutes.driverDashboard;
     }
   }
 

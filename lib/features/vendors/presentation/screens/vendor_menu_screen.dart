@@ -235,7 +235,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: "vendor_menu_add_item_fab",
+        heroTag: 'vendor_menu_add_item_fab',
         onPressed: () => _navigateToAddProduct(),
         icon: const Icon(Icons.add),
         label: const Text('Add Item'),

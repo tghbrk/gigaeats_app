@@ -41,9 +41,8 @@ class CustomizationState {
 // Customization notifier for managing menu item customizations
 class CustomizationNotifier extends StateNotifier<CustomizationState> {
   final CustomizationRepository _repository;
-  final MenuService _menuService;
 
-  CustomizationNotifier(this._repository, this._menuService) : super(const CustomizationState());
+  CustomizationNotifier(this._repository) : super(const CustomizationState());
 
   // Load customizations for a menu item
   Future<void> loadCustomizations(String menuItemId) async {
@@ -255,8 +254,7 @@ class CustomizationNotifier extends StateNotifier<CustomizationState> {
 final customizationProvider = StateNotifierProvider.family<CustomizationNotifier, CustomizationState, String>(
   (ref, menuItemId) {
     final repository = ref.watch(customizationRepositoryProvider);
-    final menuService = ref.watch(menuServiceProvider);
-    final notifier = CustomizationNotifier(repository, menuService);
+    final notifier = CustomizationNotifier(repository);
     
     // Auto-load customizations when provider is created
     Future.microtask(() => notifier.loadCustomizations(menuItemId));

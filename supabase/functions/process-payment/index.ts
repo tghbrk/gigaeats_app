@@ -124,7 +124,13 @@ async function validatePaymentRequest(
   }
 
   // Validate order exists and user has access
-  const { data: order, error: orderError } = await supabase
+  // Use service role client to bypass RLS for order lookup
+  const serviceRoleClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  const { data: order, error: orderError } = await serviceRoleClient
     .from('orders')
     .select(`
       id, order_number, total_amount, status, payment_status,
@@ -139,9 +145,10 @@ async function validatePaymentRequest(
   }
 
   // Check user access to order
-  const hasAccess = order.sales_agent_id === userId || 
+  const hasAccess = order.sales_agent_id === userId ||
                    order.vendors.user_id === userId ||
-                   await isAdmin(supabase, userId)
+                   await isAdmin(supabase, userId) ||
+                   await isCustomerOwner(supabase, userId, order.customer_id)
 
   if (!hasAccess) {
     return { isValid: false, error: 'Access denied to this order' }
@@ -422,11 +429,34 @@ async function logPaymentAction(
 }
 
 async function isAdmin(supabase: any, userId: string): Promise<boolean> {
-  const { data: user } = await supabase
+  // Use service role client to bypass RLS
+  const serviceRoleClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  const { data: user } = await serviceRoleClient
     .from('users')
     .select('role')
     .eq('id', userId)
     .single()
-  
+
   return user?.role === 'admin'
+}
+
+async function isCustomerOwner(supabase: any, userId: string, customerId: string): Promise<boolean> {
+  // Use service role client to bypass RLS
+  const serviceRoleClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  const { data: customerProfile } = await serviceRoleClient
+    .from('customer_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('id', customerId)
+    .single()
+
+  return !!customerProfile
 }

@@ -35,33 +35,33 @@ class _ConsolidatedTestScreenState extends ConsumerState<ConsolidatedTestScreen>
 
     // Sample data from the actual database
     final sampleCustomerData = {
-      "id": "550e8400-e29b-41d4-a716-446655440301",
-      "sales_agent_id": "550e8400-e29b-41d4-a716-446655440001",
-      "organization_name": "Tech Solutions Sdn Bhd",
-      "contact_person_name": "Ahmad Rahman",
-      "email": "ahmad@techsolutions.com",
-      "phone_number": "+60123456793",
-      "alternate_phone_number": null,
-      "address": {
-        "city": "Kuala Lumpur",
-        "state": "Kuala Lumpur",
-        "street": "789 Jalan Tech",
-        "country": "Malaysia",
-        "postal_code": "50000"
+      'id': '550e8400-e29b-41d4-a716-446655440301',
+      'sales_agent_id': '550e8400-e29b-41d4-a716-446655440001',
+      'organization_name': 'Tech Solutions Sdn Bhd',
+      'contact_person_name': 'Ahmad Rahman',
+      'email': 'ahmad@techsolutions.com',
+      'phone_number': '+60123456793',
+      'alternate_phone_number': null,
+      'address': {
+        'city': 'Kuala Lumpur',
+        'state': 'Kuala Lumpur',
+        'street': '789 Jalan Tech',
+        'country': 'Malaysia',
+        'postal_code': '50000'
       },
-      "customer_type": "corporate",
-      "business_info": {},
-      "preferences": {},
-      "total_spent": "1250.00",
-      "total_orders": 8,
-      "average_order_value": "0.00",
-      "last_order_date": null,
-      "is_active": true,
-      "is_verified": true,
-      "notes": null,
-      "tags": [],
-      "created_at": "2025-05-28 08:19:47.351839+00",
-      "updated_at": "2025-05-28 08:19:47.351839+00"
+      'customer_type': 'corporate',
+      'business_info': {},
+      'preferences': {},
+      'total_spent': '1250.00',
+      'total_orders': 8,
+      'average_order_value': '0.00',
+      'last_order_date': null,
+      'is_active': true,
+      'is_verified': true,
+      'notes': null,
+      'tags': [],
+      'created_at': '2025-05-28 08:19:47.351839+00',
+      'updated_at': '2025-05-28 08:19:47.351839+00'
     };
 
     try {

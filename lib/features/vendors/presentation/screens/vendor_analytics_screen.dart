@@ -17,7 +17,7 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   String _selectedPeriod = 'This Month';
-  bool _isLoading = false;
+  final bool _isLoading = false;
   Map<String, DateTime?>? _cachedDateRange;
   String? _cachedPeriod;
 
@@ -84,7 +84,7 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
     _cachedPeriod = period;
     _cachedDateRange = dateRange;
 
-    debugPrint('🔍 [ANALYTICS-FILTER] Period: $period, Start: ${startDate?.toIso8601String()}, End: ${endDate.toIso8601String()}');
+    debugPrint('🔍 [ANALYTICS-FILTER] Period: $period, Start: ${startDate.toIso8601String()}, End: ${endDate.toIso8601String()}');
 
     return dateRange;
   }

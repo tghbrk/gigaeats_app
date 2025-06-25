@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/auth_utils.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import 'admin_notification_settings_screen.dart';
 

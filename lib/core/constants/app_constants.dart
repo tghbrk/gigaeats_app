@@ -177,6 +177,9 @@ class AppRoutes {
   static const String adminVendors = '/admin/vendors';
   static const String adminReports = '/admin/reports';
 
+  // Driver Routes
+  static const String driverDashboard = '/driver/dashboard';
+
   // Shared Routes
   static const String orderDetails = '/order-details/:orderId';
   static const String vendorDetails = '/vendor-details/:vendorId';

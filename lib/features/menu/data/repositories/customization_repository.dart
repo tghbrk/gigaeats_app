@@ -1,9 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/product.dart';
-import '../../../../core/config/supabase_config.dart';
 
 class CustomizationRepository {
-  final SupabaseClient _supabase = SupabaseConfig.client;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   // Get all customizations for a menu item
   Future<List<MenuItemCustomization>> getMenuItemCustomizations(String menuItemId) async {

@@ -24,17 +24,17 @@ class InputValidator {
   /// SQL injection patterns to detect
   static final List<RegExp> _sqlInjectionPatterns = [
     RegExp(r"('|(\\')|(;)|(\\;))", caseSensitive: false),
-    RegExp(r"((\s*(union|select|insert|delete|update|drop|create|alter|exec|execute)\s+))", caseSensitive: false),
-    RegExp(r"((\s*(or|and)\s+[\w\s]*\s*=\s*[\w\s]*\s*))", caseSensitive: false),
-    RegExp(r"(--|\#|\/\*|\*\/)", caseSensitive: false),
+    RegExp(r'((\s*(union|select|insert|delete|update|drop|create|alter|exec|execute)\s+))', caseSensitive: false),
+    RegExp(r'((\s*(or|and)\s+[\w\s]*\s*=\s*[\w\s]*\s*))', caseSensitive: false),
+    RegExp(r'(--|\#|\/\*|\*\/)', caseSensitive: false),
   ];
 
   /// XSS patterns to detect
   static final List<RegExp> _xssPatterns = [
-    RegExp(r"<script[^>]*>.*?</script>", caseSensitive: false),
-    RegExp(r"javascript:", caseSensitive: false),
-    RegExp(r"on\w+\s*=", caseSensitive: false),
-    RegExp(r"<iframe[^>]*>.*?</iframe>", caseSensitive: false),
+    RegExp(r'<script[^>]*>.*?</script>', caseSensitive: false),
+    RegExp(r'javascript:', caseSensitive: false),
+    RegExp(r'on\w+\s*=', caseSensitive: false),
+    RegExp(r'<iframe[^>]*>.*?</iframe>', caseSensitive: false),
   ];
 
   /// Validates email format

@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/menu_item.dart';
+import '../../menu/data/models/menu_item.dart';
 
 /// Temporary stub for MenuService - to be implemented later
 class MenuService {

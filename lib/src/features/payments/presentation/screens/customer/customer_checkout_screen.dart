@@ -13,6 +13,7 @@ import '../../../../orders/presentation/providers/customer/customer_cart_provide
 import '../../../../orders/presentation/providers/customer/customer_order_provider.dart';
 import '../../../../orders/presentation/providers/enhanced_cart_provider.dart';
 import '../../../../orders/data/models/customer_delivery_method.dart';
+import '../../../../../core/services/card_field_manager.dart';
 import '../../../../user_management/presentation/providers/customer_address_provider.dart' as address_provider;
 import '../../../../orders/presentation/providers/checkout_defaults_provider.dart';
 import '../../../../orders/presentation/providers/checkout_fallback_provider.dart';
@@ -45,23 +46,112 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
   CustomerPaymentMethod? _savedPaymentMethod;
   bool _useSavedPaymentMethod = false;
 
+  // Payment method selection UI visibility state
+  bool _showFullPaymentMethodUI = false;
+
+  // CardField lifecycle management
+  bool _cardFieldMounted = false;
+  final CardFieldManager _cardFieldManager = CardFieldManager();
+  static const String _screenId = 'customer_checkout_screen';
+
   @override
   void initState() {
     super.initState();
     // Auto-populate defaults and analyze fallback scenarios when checkout screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeCheckout();
+      // Request CardField permission after checkout initialization
+      _requestCardFieldPermission();
     });
+  }
+
+  /// Check if this screen is still the active route and release CardField if not
+  void _checkRouteStatus() {
+    if (!mounted) return;
+
+    final currentRoute = ModalRoute.of(context);
+    if (currentRoute != null && !currentRoute.isCurrent) {
+      // This screen is no longer the current route, release CardField permission
+      debugPrint('🔄 [CHECKOUT-SCREEN] Screen no longer current, releasing CardField permission');
+      _cardFieldManager.releaseCardFieldPermission(_screenId);
+      setState(() {
+        _cardFieldMounted = false;
+      });
+    }
+  }
+
+  /// Force checkout fallback re-analysis to detect payment method changes
+  Future<void> _forceCheckoutFallbackReAnalysis() async {
+    try {
+      debugPrint('🔄 [CHECKOUT-SCREEN] Forcing fallback re-analysis for payment method detection');
+
+      // First, refresh payment methods to ensure we have the latest data
+      try {
+        await ref.read(customerPaymentMethodsProvider.notifier).refresh();
+        debugPrint('✅ [CHECKOUT-SCREEN] Payment methods refreshed successfully');
+      } catch (e) {
+        debugPrint('⚠️ [CHECKOUT-SCREEN] Payment methods refresh failed: $e');
+        // Continue with fallback analysis even if refresh fails
+      }
+
+      // Force re-analysis of checkout fallback state
+      await ref.read(checkoutFallbackProvider.notifier).forceReAnalysis(
+        reason: 'Returned to checkout screen - checking for payment method changes'
+      );
+
+      debugPrint('✅ [CHECKOUT-SCREEN] Fallback re-analysis completed');
+    } catch (e, stack) {
+      debugPrint('❌ [CHECKOUT-SCREEN] Error during fallback re-analysis: $e');
+      debugPrint('Stack trace: $stack');
+    }
+  }
+
+  /// Request permission to use CardField from global manager
+  void _requestCardFieldPermission() {
+    if (!mounted) return;
+
+    final hasPermission = _cardFieldManager.requestCardFieldPermission(_screenId);
+    if (hasPermission) {
+      // Register cleanup callback
+      _cardFieldManager.registerCleanupCallback(_screenId, () {
+        if (mounted) {
+          setState(() {
+            _cardFieldMounted = false;
+          });
+        }
+      });
+
+      // Initialize CardField
+      setState(() {
+        _cardFieldMounted = true;
+      });
+      debugPrint('✅ [CHECKOUT-SCREEN] CardField initialized and mounted');
+    } else {
+      debugPrint('❌ [CHECKOUT-SCREEN] CardField permission denied - another CardField is active');
+      // Don't show error in checkout screen, just disable CardField
+      setState(() {
+        _cardFieldMounted = false;
+      });
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // Check if this screen is still the active route for CardField management
+    _checkRouteStatus();
+
     // Check if we need to re-trigger auto-population after hot restart
     // and watch for checkout defaults changes
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _checkAndRetriggerAutoPopulation();
       await _handleCheckoutDefaultsChange();
+
+      // Force fallback re-analysis when returning to checkout screen
+      // This ensures that if users added payment methods in another screen,
+      // the fallback UI will automatically transition to normal checkout
+      await _forceCheckoutFallbackReAnalysis();
     });
   }
 
@@ -127,6 +217,11 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
   Future<void> _initializeCheckout() async {
     debugPrint('🚀 [CHECKOUT-SCREEN] Starting checkout initialization');
 
+    // Reset payment method UI state to default (compact view)
+    setState(() {
+      _showFullPaymentMethodUI = false;
+    });
+
     // Ensure provider synchronization first
     await _ensureProviderSynchronization();
 
@@ -183,8 +278,18 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
 
   @override
   void dispose() {
+    debugPrint('🔧 [CHECKOUT-SCREEN] Disposing screen and cleaning up CardField');
+
+    // Release CardField permission from global manager
+    _cardFieldManager.releaseCardFieldPermission(_screenId);
+
+    // Mark CardField as unmounted to prevent platform view conflicts
+    _cardFieldMounted = false;
+
+    // Dispose controllers
     _promoCodeController.dispose();
     _orderNotesController.dispose();
+
     super.dispose();
   }
 
@@ -957,99 +1062,182 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
             ),
             const SizedBox(height: 12),
 
-            // Show default payment method info if auto-populated
+            // Conditional rendering based on default payment method and UI state
             Consumer(
               builder: (context, ref, child) {
                 final defaults = ref.watch(checkoutDefaultsProvider);
-                // Handle synchronous provider directly
-                {
-                    if (defaults.hasPaymentMethod && defaults.defaultPaymentMethod != null) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: theme.colorScheme.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Default: ${defaults.defaultPaymentMethod!.displayName}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
+
+                // Show compact default view when user has default payment method and hasn't chosen to change it
+                if (defaults.hasPaymentMethod &&
+                    defaults.defaultPaymentMethod != null &&
+                    !_showFullPaymentMethodUI) {
+                  return _buildCompactDefaultPaymentView(defaults.defaultPaymentMethod!, theme);
                 }
+
+                // Show full payment method selection UI
+                return _buildFullPaymentMethodSelection(theme);
               },
-            ),
-
-            RadioListTile<String>(
-              title: const Text('Credit/Debit Card'),
-              subtitle: const Text('Pay securely with your card'),
-              value: 'card',
-              groupValue: _selectedPaymentMethod,
-              onChanged: (value) async {
-                setState(() => _selectedPaymentMethod = value!);
-                ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
-                // Sync to enhanced cart provider with resilient error handling
-                await _syncPaymentMethodToEnhancedCart(value!);
-              },
-              contentPadding: EdgeInsets.zero,
-            ),
-
-            // Show card payment options when card is selected
-            if (_selectedPaymentMethod == 'card') ...[
-              const SizedBox(height: 12),
-              _buildCardPaymentSection(theme),
-            ],
-
-            const SizedBox(height: 8),
-
-            RadioListTile<String>(
-              title: const Text('Cash on Delivery'),
-              subtitle: const Text('Pay when your order arrives'),
-              value: 'cash',
-              groupValue: _selectedPaymentMethod,
-              onChanged: (value) async {
-                setState(() => _selectedPaymentMethod = value!);
-                ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
-                // Sync to enhanced cart provider with resilient error handling
-                await _syncPaymentMethodToEnhancedCart(value!);
-              },
-              contentPadding: EdgeInsets.zero,
-            ),
-
-            RadioListTile<String>(
-              title: const Text('Digital Wallet'),
-              subtitle: const Text('GigaEats Wallet'),
-              value: 'wallet',
-              groupValue: _selectedPaymentMethod,
-              onChanged: (value) async {
-                setState(() => _selectedPaymentMethod = value!);
-                ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
-                // Sync to enhanced cart provider with resilient error handling
-                await _syncPaymentMethodToEnhancedCart(value!);
-              },
-              contentPadding: EdgeInsets.zero,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Build compact default payment method view
+  Widget _buildCompactDefaultPaymentView(CustomerPaymentMethod defaultPaymentMethod, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.payment,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Default Payment Method',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      defaultPaymentMethod.displayName,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showFullPaymentMethodUI = true;
+                  });
+                },
+                child: Text(
+                  'Change',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build full payment method selection UI
+  Widget _buildFullPaymentMethodSelection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show "Back to Default" option if user has a default payment method
+        Consumer(
+          builder: (context, ref, child) {
+            final defaults = ref.watch(checkoutDefaultsProvider);
+            if (defaults.hasPaymentMethod && defaults.defaultPaymentMethod != null && _showFullPaymentMethodUI) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _showFullPaymentMethodUI = false;
+                        });
+                      },
+                      icon: const Icon(Icons.arrow_back, size: 16),
+                      label: Text('Back to Default (${defaults.defaultPaymentMethod!.displayName})'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+
+        RadioListTile<String>(
+          title: const Text('Credit/Debit Card'),
+          subtitle: const Text('Pay securely with your card'),
+          value: 'card',
+          groupValue: _selectedPaymentMethod,
+          onChanged: (value) async {
+            setState(() => _selectedPaymentMethod = value!);
+            ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
+            // Sync to enhanced cart provider with resilient error handling
+            await _syncPaymentMethodToEnhancedCart(value!);
+          },
+          contentPadding: EdgeInsets.zero,
+        ),
+
+        // Show card payment options when card is selected
+        if (_selectedPaymentMethod == 'card') ...[
+          const SizedBox(height: 12),
+          _buildCardPaymentSection(theme),
+        ],
+
+        const SizedBox(height: 8),
+
+        RadioListTile<String>(
+          title: const Text('Cash on Delivery'),
+          subtitle: const Text('Pay when your order arrives'),
+          value: 'cash',
+          groupValue: _selectedPaymentMethod,
+          onChanged: (value) async {
+            setState(() => _selectedPaymentMethod = value!);
+            ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
+            // Sync to enhanced cart provider with resilient error handling
+            await _syncPaymentMethodToEnhancedCart(value!);
+          },
+          contentPadding: EdgeInsets.zero,
+        ),
+
+        RadioListTile<String>(
+          title: const Text('Digital Wallet'),
+          subtitle: const Text('GigaEats Wallet'),
+          value: 'wallet',
+          groupValue: _selectedPaymentMethod,
+          onChanged: (value) async {
+            setState(() => _selectedPaymentMethod = value!);
+            ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
+            // Sync to enhanced cart provider with resilient error handling
+            await _syncPaymentMethodToEnhancedCart(value!);
+          },
+          contentPadding: EdgeInsets.zero,
+        ),
+      ],
     );
   }
 
@@ -1482,19 +1670,31 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
               borderRadius: BorderRadius.circular(8),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: stripe.CardField(
-              onCardChanged: (details) {
-                setState(() {
-                  _cardDetails = details;
-                });
-              },
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Card number',
-                hintStyle: TextStyle(color: Colors.grey),
-              ),
-              enablePostalCode: false, // Disable postal code for Malaysian cards
-            ),
+            child: _cardFieldMounted
+              ? stripe.CardField(
+                  onCardChanged: (details) {
+                    if (!mounted) return; // Prevent setState after disposal
+                    setState(() {
+                      _cardDetails = details;
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Card number',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
+                  enablePostalCode: false, // Disable postal code for Malaysian cards
+                )
+              : Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(
+                    child: Text('Loading payment form...'),
+                  ),
+                ),
           ),
         ],
       ],

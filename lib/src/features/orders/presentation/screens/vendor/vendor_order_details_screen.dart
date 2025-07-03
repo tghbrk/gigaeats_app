@@ -29,37 +29,74 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
   @override
   void initState() {
     super.initState();
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] initState() called');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Widget order ID: ${widget.orderId}');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order ID length: ${widget.orderId.length}');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order ID format check: ${widget.orderId.contains('-')}');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] About to call _loadOrderDetails()...');
     _loadOrderDetails();
   }
 
   Future<void> _loadOrderDetails() async {
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] _loadOrderDetails() started');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Loading order with ID: ${widget.orderId}');
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Getting orderRepository from ref...');
       final orderRepository = ref.read(orderRepositoryProvider);
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] OrderRepository obtained successfully');
+
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Calling getOrderById with ID: ${widget.orderId}');
       final order = await orderRepository.getOrderById(widget.orderId);
-      
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order fetched successfully: ${order?.id}');
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order number: ${order?.orderNumber}');
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order customer: ${order?.customerName}');
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order status: ${order?.status}');
+
       if (mounted) {
+        debugPrint('🔍 [VENDOR-ORDER-DETAILS] Widget is still mounted, updating state...');
         setState(() {
           _order = order;
           _isLoading = false;
         });
+        debugPrint('🔍 [VENDOR-ORDER-DETAILS] State updated successfully');
+      } else {
+        debugPrint('⚠️ [VENDOR-ORDER-DETAILS] Widget not mounted, skipping state update');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ [VENDOR-ORDER-DETAILS] Error loading order details: $e');
+      debugPrint('❌ [VENDOR-ORDER-DETAILS] Stack trace: $stackTrace');
+
       if (mounted) {
+        debugPrint('🔍 [VENDOR-ORDER-DETAILS] Widget is mounted, setting error state...');
         setState(() {
           _errorMessage = 'Failed to load order details: ${e.toString()}';
           _isLoading = false;
         });
+        debugPrint('🔍 [VENDOR-ORDER-DETAILS] Error state set');
+      } else {
+        debugPrint('⚠️ [VENDOR-ORDER-DETAILS] Widget not mounted, skipping error state update');
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] build() method called');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Current state - isLoading: $_isLoading, hasError: ${_errorMessage != null}, hasOrder: ${_order != null}');
+    if (_order != null) {
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order loaded: ${_order!.orderNumber}');
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] About to render payment info section for order: ${_order!.id}');
+    }
+    if (_errorMessage != null) {
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Error message: $_errorMessage');
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_order != null ? 'Order #${_order!.orderNumber}' : 'Order Details'),
@@ -100,6 +137,27 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
 
                             // Order Items
                             _buildOrderItems(_order!),
+
+                            const SizedBox(height: 24),
+
+                            // Payment Information
+                            Builder(
+                              builder: (context) {
+                                debugPrint('🔍 [VENDOR-ORDER-DETAILS] ===== PAYMENT INFO SECTION BUILDER CALLED =====');
+                                try {
+                                  final paymentWidget = _buildPaymentInfo(_order!);
+                                  debugPrint('🔍 [VENDOR-ORDER-DETAILS] ===== PAYMENT INFO WIDGET CREATED SUCCESSFULLY =====');
+                                  return paymentWidget;
+                                } catch (e, stack) {
+                                  debugPrint('🔍 [VENDOR-ORDER-DETAILS] ===== ERROR BUILDING PAYMENT INFO: $e =====');
+                                  debugPrint('🔍 [VENDOR-ORDER-DETAILS] ===== STACK TRACE: $stack =====');
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text('Error loading payment info: $e'),
+                                  );
+                                }
+                              },
+                            ),
 
                             const SizedBox(height: 24),
 
@@ -912,6 +970,232 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
       }
     });
     return parts.join(', ');
+  }
+
+  Widget _buildPaymentInfo(Order order) {
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Building payment info section');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment method: ${order.paymentMethod}');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment status: ${order.paymentStatus}');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment reference: ${order.paymentReference}');
+
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.payment,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Payment Information',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildPaymentMethodRow(order, theme),
+            if (order.paymentReference != null && order.paymentReference!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildPaymentReferenceRow(order, theme),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodRow(Order order, ThemeData theme) {
+    // Handle cases where payment method might be null or empty
+    if (order.paymentMethod == null || order.paymentMethod!.isEmpty) {
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] No payment method data available');
+      return Row(
+        children: [
+          Icon(
+            Icons.payment,
+            size: 20,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Payment method not specified',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Get display name for payment method
+    String paymentMethodDisplay;
+    try {
+      final paymentMethod = PaymentMethod.fromString(order.paymentMethod!);
+      paymentMethodDisplay = paymentMethod.displayName;
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment method parsed: $paymentMethodDisplay');
+    } catch (e) {
+      // Fallback to raw value if enum parsing fails
+      paymentMethodDisplay = order.paymentMethod!.replaceAll('_', ' ').toUpperCase();
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment method fallback: $paymentMethodDisplay');
+    }
+
+    // Get payment status display
+    String? paymentStatusDisplay;
+    Color? statusColor;
+    if (order.paymentStatus != null && order.paymentStatus!.isNotEmpty) {
+      try {
+        final paymentStatus = PaymentStatus.fromString(order.paymentStatus!);
+        paymentStatusDisplay = paymentStatus.displayName;
+        statusColor = _getPaymentStatusColor(paymentStatus);
+        debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment status parsed: $paymentStatusDisplay');
+      } catch (e) {
+        paymentStatusDisplay = order.paymentStatus!.toUpperCase();
+        statusColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+        debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment status fallback: $paymentStatusDisplay');
+      }
+    }
+
+    return Row(
+      children: [
+        Icon(
+          _getPaymentMethodIcon(order.paymentMethod!),
+          size: 20,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            paymentMethodDisplay,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        if (paymentStatusDisplay != null) ...[
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor?.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: statusColor?.withValues(alpha: 0.3) ?? Colors.transparent,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              paymentStatusDisplay,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPaymentReferenceRow(Order order, ThemeData theme) {
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Building payment reference: ${order.paymentReference}');
+
+    return Row(
+      children: [
+        Icon(
+          Icons.receipt_outlined,
+          size: 20,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Payment Reference',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                order.paymentReference!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: () {
+            // Copy payment reference to clipboard
+            // TODO: Implement clipboard functionality
+            debugPrint('🔍 [VENDOR-ORDER-DETAILS] Copy payment reference: ${order.paymentReference}');
+          },
+          icon: Icon(
+            Icons.copy,
+            size: 16,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+          tooltip: 'Copy Reference',
+        ),
+      ],
+    );
+  }
+
+  Color _getPaymentStatusColor(PaymentStatus status) {
+    switch (status) {
+      case PaymentStatus.pending:
+        return Colors.orange;
+      case PaymentStatus.paid:
+        return Colors.green;
+      case PaymentStatus.failed:
+        return Colors.red;
+      case PaymentStatus.refunded:
+        return Colors.blue;
+    }
+  }
+
+  IconData _getPaymentMethodIcon(String paymentMethod) {
+    switch (paymentMethod.toLowerCase()) {
+      case 'fpx':
+        return Icons.account_balance;
+      case 'grabpay':
+        return Icons.payment;
+      case 'touchngo':
+      case 'touch_n_go':
+        return Icons.contactless;
+      case 'credit_card':
+      case 'card':
+        return Icons.credit_card;
+      case 'wallet':
+        return Icons.account_balance_wallet;
+      case 'cash':
+      case 'cod':
+        return Icons.money;
+      default:
+        return Icons.payment;
+    }
   }
 
   void _showAssignDriverDialog(Order order) {

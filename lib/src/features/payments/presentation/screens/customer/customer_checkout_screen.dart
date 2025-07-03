@@ -1511,12 +1511,23 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error placing order: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // Enhanced error handling for wallet payments
+        if (_selectedPaymentMethod == 'wallet') {
+          _showWalletPaymentErrorDialog(e.toString());
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error placing order: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () => _placeOrder(),
+              ),
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) {
@@ -1584,6 +1595,111 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
   //     return '$dateString, $timeString';
   //   }
   // }
+
+  /// Show enhanced error dialog for wallet payment failures
+  void _showWalletPaymentErrorDialog(String errorMessage) {
+    // Parse error message to extract error code and guidance
+    final lines = errorMessage.split('\n');
+    final mainError = lines.first.replaceFirst('Payment failed: ', '');
+    final guidance = lines.length > 1 ? lines.skip(1).join('\n') : null;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.account_balance_wallet_outlined,
+          color: Colors.red.shade600,
+          size: 48,
+        ),
+        title: const Text(
+          'Wallet Payment Failed',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              mainError,
+              style: const TextStyle(fontSize: 16),
+            ),
+            if (guidance != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline,
+                          color: Colors.blue.shade600,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'How to fix this:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      guidance,
+                      style: TextStyle(color: Colors.blue.shade700),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Navigate to wallet screen for top-up
+              if (mainError.toLowerCase().contains('insufficient')) {
+                context.go('/customer/wallet');
+              }
+            },
+            child: Text(
+              mainError.toLowerCase().contains('insufficient') ? 'Top Up Wallet' : 'OK',
+            ),
+          ),
+          if (errorMessage.contains('retry_allowed'))
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _placeOrder(); // Retry the order
+              },
+              child: const Text('Try Again'),
+            ),
+          if (!mainError.toLowerCase().contains('insufficient'))
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Change payment method
+                setState(() {
+                  _selectedPaymentMethod = 'card';
+                });
+              },
+              child: const Text('Use Card Instead'),
+            ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _changeDeliveryAddress() async {
     final selectedAddressId = await context.push<String>('/customer/addresses/select');

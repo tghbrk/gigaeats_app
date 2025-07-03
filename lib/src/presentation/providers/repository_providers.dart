@@ -143,12 +143,14 @@ final vendorProductsProvider = FutureProvider.family<List<Product>, Map<String, 
 
 // Orders stream provider with delivery proof real-time integration
 final ordersStreamProvider = StreamProvider.family<List<Order>, OrderStatus?>((ref, status) {
+  debugPrint('🔍 [ORDERS-STREAM-PROVIDER] Creating stream for status: $status');
   final orderRepository = ref.watch(orderRepositoryProvider);
 
   // Watch delivery proof real-time updates to trigger order list refresh
   // TEMPORARILY COMMENTED OUT FOR QUICK WIN
   // ref.watch(deliveryProofRealtimeProvider);
 
+  debugPrint('🔍 [ORDERS-STREAM-PROVIDER] Calling orderRepository.getOrdersStream');
   return orderRepository.getOrdersStream(status: status);
 });
 
@@ -180,8 +182,8 @@ final orderSummariesProvider = FutureProvider<List<OrderSummary>>((ref) async {
           status,
           total_amount,
           created_at,
-          vendors(business_name),
-          customers(organization_name, contact_person_name)
+          customer_name,
+          vendors(business_name)
         ''')
         .order('created_at', ascending: false)
         .limit(10);
@@ -306,8 +308,21 @@ final vendorDashboardMetricsProvider = FutureProvider<Map<String, dynamic>>((ref
     };
   }
 
-  final vendorRepository = ref.watch(vendorRepositoryProvider);
-  return await vendorRepository.getVendorDashboardMetrics(vendor.id);
+  try {
+    final vendorRepository = ref.watch(vendorRepositoryProvider);
+    return await vendorRepository.getVendorDashboardMetrics(vendor.id);
+  } catch (e) {
+    debugPrint('⚠️ [VENDOR-DASHBOARD-METRICS] Error fetching metrics: $e');
+    // Return default values if there's an error (e.g., missing tables)
+    return {
+      'today_orders': 0,
+      'today_revenue': 0.0,
+      'pending_orders': 0,
+      'avg_preparation_time': 0,
+      'rating': 0.0,
+      'total_reviews': 0,
+    };
+  }
 });
 
 // Vendor Filtered Metrics Provider for Analytics
@@ -342,8 +357,14 @@ final vendorTotalOrdersProvider = FutureProvider<int>((ref) async {
     return 0;
   }
 
-  final vendorRepository = ref.watch(vendorRepositoryProvider);
-  return await vendorRepository.getVendorTotalOrdersCount(vendor.id);
+  try {
+    final vendorRepository = ref.watch(vendorRepositoryProvider);
+    return await vendorRepository.getVendorTotalOrdersCount(vendor.id);
+  } catch (e) {
+    debugPrint('⚠️ [VENDOR-TOTAL-ORDERS] Error fetching total orders: $e');
+    // Return 0 if there's an error
+    return 0;
+  }
 });
 
 // Vendor Rating Metrics Provider - Real-time calculation based on order performance
@@ -359,8 +380,19 @@ final vendorRatingMetricsProvider = FutureProvider<Map<String, dynamic>>((ref) a
     };
   }
 
-  final vendorRepository = ref.watch(vendorRepositoryProvider);
-  return await vendorRepository.getVendorRatingMetrics(vendor.id);
+  try {
+    final vendorRepository = ref.watch(vendorRepositoryProvider);
+    return await vendorRepository.getVendorRatingMetrics(vendor.id);
+  } catch (e) {
+    debugPrint('⚠️ [VENDOR-RATING-METRICS] Error fetching rating metrics: $e');
+    // Return default values if there's an error (e.g., missing tables)
+    return {
+      'rating': 0.0,
+      'total_reviews': 0,
+      'completion_rate': 0.0,
+      'total_orders': 0,
+    };
+  }
 });
 
 // Vendor Analytics Provider
@@ -676,7 +708,6 @@ final webOrdersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async
         .select('''
           *,
           vendor:vendors!orders_vendor_id_fkey(business_name),
-          customer:customers!orders_customer_id_fkey(organization_name),
           order_items:order_items(*)
         ''');
 

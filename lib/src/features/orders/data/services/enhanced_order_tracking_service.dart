@@ -73,7 +73,6 @@ class EnhancedOrderTrackingService {
           .select('''
             *,
             vendor:vendors!orders_vendor_id_fkey(business_name, phone_number),
-            customer:customers!orders_customer_id_fkey(organization_name, contact_person_name),
             driver:drivers!orders_assigned_driver_id_fkey(
               user:users!drivers_user_id_fkey(full_name, phone_number)
             )

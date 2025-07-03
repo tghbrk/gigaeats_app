@@ -170,7 +170,7 @@ class AppRoutes {
   static const String salesAgentCreateOrder = '/sales-agent/create-order';
 
   // Vendor Routes
-  static const String vendorDashboard = '/vendor';
+  static const String vendorDashboard = '/vendor/dashboard';
   static const String vendorOrders = '/vendor/orders';
   static const String vendorMenu = '/vendor/menu';
   static const String vendorProfile = '/vendor/profile';

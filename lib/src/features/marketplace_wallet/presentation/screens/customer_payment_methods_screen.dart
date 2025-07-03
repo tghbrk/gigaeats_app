@@ -372,6 +372,56 @@ class CustomerPaymentMethodsScreen extends ConsumerWidget {
     String errorMessage,
     ThemeData theme,
   ) {
+    // Check if it's an authentication error
+    final isAuthError = errorMessage.contains('not authenticated') ||
+                        errorMessage.contains('Unauthorized') ||
+                        errorMessage.contains('No active user session') ||
+                        errorMessage.contains('Please sign in');
+
+    if (isAuthError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Authentication Required',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You need to be signed in to view your payment methods. Please sign in and try again.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => context.go('/login'),
+                icon: const Icon(Icons.login),
+                label: const Text('Sign In'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     // Check if it's a function not found error (404)
     final isFunctionNotFound = errorMessage.contains('404') ||
                                errorMessage.contains('NOT_FOUND') ||

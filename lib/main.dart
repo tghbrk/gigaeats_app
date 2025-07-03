@@ -8,11 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'dart:developer' as developer;
 
-import 'core/constants/app_constants.dart';
-import 'core/theme/app_theme.dart';
-import 'core/router/app_router.dart';
-import 'core/config/supabase_config.dart';
-import 'features/auth/presentation/providers/auth_provider.dart';
+import 'src/core/constants/app_constants.dart';
+import 'src/core/theme/app_theme.dart';
+import 'src/core/router/app_router.dart';
+import 'src/core/config/supabase_config.dart';
+import 'src/features/auth/presentation/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

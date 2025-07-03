@@ -1,8 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:gigaeats_app/features/orders/data/models/order.dart';
-import 'package:gigaeats_app/features/orders/data/models/order_status_history.dart';
-import 'package:gigaeats_app/features/orders/data/models/order_notification.dart';
+import 'package:gigaeats_app/src/features/orders/data/models/order.dart' as order_model;
+import 'package:gigaeats_app/src/features/orders/data/models/order_status.dart';
+import 'package:gigaeats_app/src/features/orders/data/models/order_status_history.dart';
+import 'package:gigaeats_app/src/features/orders/data/models/order_notification.dart';
 
 void main() {
   group('Order Management Integration Tests', () {
@@ -31,17 +32,17 @@ void main() {
     group('Order Creation Flow', () {
       test('should create order with automatic order number', () async {
         // Test order creation with automatic order number generation
-        final testOrder = Order(
+        final testOrder = order_model.Order(
           id: 'test-order-id',
           orderNumber: '', // Should be auto-generated
-          status: OrderStatus.pending,
+          status: order_model.OrderStatus.pending,
           items: [],
           vendorId: 'test-vendor-id',
           vendorName: 'Test Vendor',
           customerId: 'test-customer-id',
           customerName: 'Test Customer',
           deliveryDate: DateTime.now().add(const Duration(hours: 2)),
-          deliveryAddress: const Address(
+          deliveryAddress: const order_model.Address(
             street: 'Test Street',
             city: 'Kuala Lumpur',
             state: 'Selangor',
@@ -95,17 +96,17 @@ void main() {
 
       test('should update timestamps based on status', () async {
         // Test automatic timestamp updates
-        final order = Order(
+        final order = order_model.Order(
           id: 'order-1',
           orderNumber: 'GE-20241201-0001',
-          status: OrderStatus.preparing,
+          status: order_model.OrderStatus.preparing,
           items: [],
           vendorId: 'vendor-1',
           vendorName: 'Test Vendor',
           customerId: 'customer-1',
           customerName: 'Test Customer',
           deliveryDate: DateTime.now().add(const Duration(hours: 2)),
-          deliveryAddress: const Address(
+          deliveryAddress: const order_model.Address(
             street: 'Test Street',
             city: 'Test City',
             state: 'Test State',
@@ -162,17 +163,17 @@ void main() {
 
     group('Malaysian Market Features', () {
       test('should handle Malaysian currency and zones', () async {
-        final order = Order(
+        final order = order_model.Order(
           id: 'order-1',
           orderNumber: 'GE-20241201-0001',
-          status: OrderStatus.pending,
+          status: order_model.OrderStatus.pending,
           items: [],
           vendorId: 'vendor-1',
           vendorName: 'Test Vendor',
           customerId: 'customer-1',
           customerName: 'Test Customer',
           deliveryDate: DateTime.now().add(const Duration(hours: 2)),
-          deliveryAddress: const Address(
+          deliveryAddress: const order_model.Address(
             street: 'Jalan Test',
             city: 'Kuala Lumpur',
             state: 'Selangor',

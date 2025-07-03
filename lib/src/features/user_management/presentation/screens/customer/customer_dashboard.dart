@@ -15,6 +15,10 @@ import '../../providers/customer_address_provider.dart' as address_provider;
 // Order-related imports - using the correct path that matches the provider
 import '../../../../orders/data/models/order.dart';
 
+// Wallet-related imports
+import '../../../../marketplace_wallet/presentation/providers/customer_wallet_provider.dart';
+import '../../../../marketplace_wallet/presentation/widgets/customer_wallet_balance_card.dart';
+
 class CustomerDashboard extends ConsumerStatefulWidget {
   const CustomerDashboard({super.key});
 
@@ -33,6 +37,9 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
 
       // Load customer addresses for dashboard display
       ref.read(address_provider.customerAddressesProvider.notifier).loadAddresses();
+
+      // Load customer wallet data
+      ref.read(customerWalletProvider.notifier).loadWallet();
 
       // 🧪 [LOYALTY-TEST] Load loyalty data for testing real-time updates
       print('🧪 [LOYALTY-TEST] Loading loyalty data from dashboard...');
@@ -67,9 +74,15 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
         ],
       ),
       body: RefreshIndicator(
-        // TODO: Restore when customerProfileProvider.notifier is implemented
         onRefresh: () async {
+          // TODO: Restore when customerProfileProvider.notifier is implemented
           // ref.read(customerProfileProvider.notifier).refresh();
+
+          // Refresh wallet data
+          await ref.read(customerWalletProvider.notifier).loadWallet(forceRefresh: true);
+
+          // Refresh addresses
+          ref.read(address_provider.customerAddressesProvider.notifier).loadAddresses();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -81,6 +94,11 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
               // _buildWelcomeSection(context, profileState, authState),
               _buildWelcomeSection(context, <String, dynamic>{}, <String, dynamic>{}),
               const SizedBox(height: 24),
+
+              // Wallet Balance Card
+              const CustomerWalletBalanceCard(compact: true),
+              const SizedBox(height: 24),
+
               _buildQuickActions(context),
               const SizedBox(height: 24),
               _buildStatsSection(context),

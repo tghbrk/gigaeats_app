@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:gigaeats_app/features/drivers/data/models/driver_order.dart';
-import 'package:gigaeats_app/features/drivers/data/models/driver_order_state_machine.dart';
-import 'package:gigaeats_app/features/drivers/data/repositories/driver_order_repository.dart';
-import 'package:gigaeats_app/features/drivers/data/services/driver_realtime_service.dart';
+import 'package:gigaeats_app/src/features/orders/data/models/driver_order.dart';
+import 'package:gigaeats_app/src/features/orders/data/models/driver_order_state_machine.dart';
+import 'package:gigaeats_app/src/features/orders/data/repositories/driver_order_repository.dart';
+import 'package:gigaeats_app/src/features/drivers/data/services/driver_realtime_service.dart';
 
 /// Comprehensive integration test for the complete driver workflow
 /// Tests all 7 steps of the driver order status transition workflow

@@ -3,14 +3,14 @@
 library;
 
 import 'package:dartz/dartz.dart';
-import '../core/errors/failures.dart';
-import '../core/errors/exceptions.dart';
-import '../core/errors/error_handler.dart';
-import '../core/utils/logger.dart';
-import '../core/utils/validators.dart';
-import '../core/services/security_service.dart';
-import '../domain/entities/user_entity.dart';
-import '../domain/usecases/base_usecase.dart';
+import '../src/core/errors/failures.dart';
+import '../src/core/errors/exceptions.dart';
+import '../src/core/errors/error_handler.dart';
+import '../src/core/utils/logger.dart';
+import '../src/core/utils/validators.dart';
+import '../src/core/services/security_service.dart';
+import '../src/domain/entities/user_entity.dart';
+import '../src/domain/usecases/base_usecase.dart';
 
 /// Example class demonstrating audit compliance patterns
 class AuditUsageExamples {

@@ -8,7 +8,8 @@ import '../../providers/customer/customer_cart_provider.dart';
 import '../../../data/models/customer_delivery_method.dart';
 import '../../../../user_management/presentation/providers/customer_address_provider.dart' as address_provider;
 
-import '../widgets/schedule_time_picker.dart';
+import '../../widgets/customer/schedule_time_picker.dart';
+import '../../widgets/customer/scheduled_delivery_display.dart';
 import '../../../../shared/widgets/custom_button.dart';
 
 class CustomerCartScreen extends ConsumerStatefulWidget {
@@ -596,97 +597,17 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
         // Schedule time selection (if scheduled delivery)
         if (cartState.deliveryMethod == CustomerDeliveryMethod.scheduled) ...[
           const SizedBox(height: 16),
-          Card(
-            elevation: cartState.scheduledDeliveryTime == null ? 4 : 1,
-            color: cartState.scheduledDeliveryTime == null
-                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.1)
-                : null,
-            child: InkWell(
-              onTap: () => _showScheduleTimePicker(),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.schedule,
-                          color: cartState.scheduledDeliveryTime == null
-                              ? theme.colorScheme.error
-                              : theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Scheduled Time',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                cartState.scheduledDeliveryTime != null
-                                    ? _formatScheduledTime(cartState.scheduledDeliveryTime!)
-                                    : 'Tap to select delivery time',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: cartState.scheduledDeliveryTime != null
-                                      ? Colors.grey[700]
-                                      : theme.colorScheme.error,
-                                  fontWeight: cartState.scheduledDeliveryTime == null
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: cartState.scheduledDeliveryTime == null
-                              ? theme.colorScheme.error
-                              : Colors.grey[400],
-                        ),
-                      ],
-                    ),
-                    if (cartState.scheduledDeliveryTime == null) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: theme.colorScheme.error.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber,
-                              size: 16,
-                              color: theme.colorScheme.error,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Please select a delivery time to continue',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.error,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+          ScheduledDeliveryDisplay(
+            scheduledTime: cartState.scheduledDeliveryTime,
+            onTap: () => _showScheduleTimePicker(),
+            onEdit: () => _showScheduleTimePicker(),
+            onClear: () => _clearScheduledTime(),
+            showEditButton: cartState.scheduledDeliveryTime != null,
+            showClearButton: cartState.scheduledDeliveryTime != null,
+            showValidationStatus: true,
+            isRequired: true,
+            title: 'Scheduled Delivery Time',
+            emptyStateText: 'Tap to select your preferred delivery time',
           ),
         ],
       ],
@@ -925,36 +846,44 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
   void _showScheduleTimePicker() {
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent dismissing without action
       builder: (context) => ScheduleTimePicker(
         initialDateTime: ref.read(customerCartProvider).scheduledDeliveryTime,
-        onDateTimeChanged: (dateTime) {
-          ref.read(customerCartProvider.notifier).setScheduledDeliveryTime(dateTime);
+        onDateTimeSelected: (dateTime) {
+          if (dateTime != null) {
+            ref.read(customerCartProvider.notifier).setScheduledDeliveryTime(dateTime);
+            debugPrint('🕒 [CART-SCREEN] Scheduled delivery time set: $dateTime');
+          }
         },
+        onCancel: () {
+          debugPrint('🚫 [CART-SCREEN] Schedule delivery cancelled');
+        },
+        title: 'Schedule Your Delivery',
+        subtitle: 'Choose when you\'d like your order to be delivered',
+        showBusinessHours: true,
+        minimumAdvanceHours: 2,
+        maxDaysAhead: 7,
       ),
     );
   }
 
-  String _formatScheduledTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final scheduledDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
+  void _clearScheduledTime() {
+    ref.read(customerCartProvider.notifier).setScheduledDeliveryTime(null);
+    debugPrint('🗑️ [CART-SCREEN] Scheduled delivery time cleared');
 
-    final timeString = TimeOfDay.fromDateTime(dateTime).format(context);
-
-    if (scheduledDay == today) {
-      return 'Today, $timeString';
-    } else if (scheduledDay == tomorrow) {
-      return 'Tomorrow, $timeString';
-    } else {
-      final months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      final dateString = '${dateTime.day} ${months[dateTime.month - 1]}';
-      return '$dateString, $timeString';
+    // Show confirmation
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Scheduled delivery time cleared'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
+
+
 
 
 }

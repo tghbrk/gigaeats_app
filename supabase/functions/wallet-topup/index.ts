@@ -1,70 +1,82 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from "https://esm.sh/stripe@14.5.0?target=deno"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Stripe from "https://esm.sh/stripe@14.5.0?target=deno";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   httpClient: Stripe.createFetchHttpClient(),
-  apiVersion: '2023-10-16',
-})
+  apiVersion: '2023-10-16'
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface WalletTopupRequest {
-  amount: number
-  currency?: string
-  payment_method_id?: string
-  save_payment_method?: boolean
-}
-
-interface WalletTopupResponse {
-  success: boolean
-  client_secret?: string
-  transaction_id?: string
-  error?: string
-  requires_action?: boolean
-}
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
 
 serve(async (req) => {
+  const timestamp = new Date().toISOString();
+  console.log(`🚀 [WALLET-TOPUP-V7-${timestamp}] Function called - Method: ${req.method}`);
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    console.log(`🚀 [WALLET-TOPUP-V7-${timestamp}] OPTIONS request - returning CORS headers`);
+    return new Response('ok', { headers: corsHeaders });
   }
+
+  console.log(`🚀 [WALLET-TOPUP-V7-${timestamp}] Processing ${req.method} request`);
 
   try {
     // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    );
 
     // Get user from request
-    const authHeader = req.headers.get('Authorization')
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Missing authorization header')
+      throw new Error('Missing authorization header');
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
-    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     if (authError || !user) {
-      throw new Error('Invalid authentication token')
+      console.log(`❌ [WALLET-TOPUP-V7-${timestamp}] User authentication failed: ${authError?.message}`);
+      throw new Error('Invalid authentication token');
     }
 
-    const requestBody: WalletTopupRequest = await req.json()
-    const { amount, currency = 'myr', payment_method_id, save_payment_method = false } = requestBody
+    console.log(`✅ [WALLET-TOPUP-V7-${timestamp}] User authenticated: ${user.email}`);
+
+    // Log function call to database for debugging
+    try {
+      await supabaseClient
+        .from('wallet_transactions')
+        .insert({
+          wallet_id: '00000000-0000-0000-0000-000000000000', // Placeholder
+          transaction_type: 'adjustment',
+          amount: 0,
+          currency: 'MYR',
+          description: `Function called V7-${timestamp}`,
+          payment_method: 'debug',
+          payment_reference: `debug-${timestamp}`,
+          status: 'completed',
+          metadata: { debug: true, version: 'V7', timestamp }
+        });
+      console.log(`📝 [WALLET-TOPUP-V7-${timestamp}] Debug log inserted to database`);
+    } catch (debugError) {
+      console.log(`❌ [WALLET-TOPUP-V7-${timestamp}] Failed to insert debug log: ${debugError.message}`);
+    }
+
+    const requestBody = await req.json();
+    const { amount, currency = 'myr', payment_method_id, save_payment_method = false } = requestBody;
 
     // Validate request
     if (!amount || amount <= 0) {
-      throw new Error('Invalid amount. Amount must be greater than 0')
+      throw new Error('Invalid amount. Amount must be greater than 0');
     }
-
     if (amount < 1 || amount > 10000) {
-      throw new Error('Amount must be between RM 1.00 and RM 10,000.00')
+      throw new Error('Amount must be between RM 1.00 and RM 10,000.00');
     }
 
-    console.log(`💰 Processing wallet top-up for user ${user.id}: RM ${amount}`)
+    console.log(`💰 [WALLET-TOPUP-V7-${timestamp}] Processing wallet top-up for user ${user.id}: RM ${amount}`);
 
     // Get or create customer wallet
     let { data: wallet, error: walletError } = await supabaseClient
@@ -72,7 +84,7 @@ serve(async (req) => {
       .select('*')
       .eq('user_id', user.id)
       .eq('user_role', 'customer')
-      .single()
+      .single();
 
     if (walletError && walletError.code === 'PGRST116') {
       // Wallet doesn't exist, create it
@@ -86,140 +98,197 @@ serve(async (req) => {
           is_verified: true
         })
         .select()
-        .single()
+        .single();
 
       if (createError) {
-        throw new Error(`Failed to create wallet: ${createError.message}`)
+        throw new Error(`Failed to create wallet: ${createError.message}`);
       }
-      wallet = newWallet
+      wallet = newWallet;
     } else if (walletError) {
-      throw new Error(`Failed to get wallet: ${walletError.message}`)
+      throw new Error(`Failed to get wallet: ${walletError.message}`);
     }
 
-    // Create wallet transaction record
-    const { data: transaction, error: transactionError } = await supabaseClient
-      .from('wallet_transactions')
-      .insert({
-        wallet_id: wallet.id,
-        transaction_type: 'credit',
-        amount: amount,
-        currency: currency.toUpperCase(),
-        balance_before: wallet.available_balance,
-        balance_after: wallet.available_balance + amount,
-        reference_type: 'wallet_topup',
-        description: `Wallet top-up via Stripe`,
-        metadata: {
-          payment_method: 'stripe',
-          save_payment_method: save_payment_method
-        },
-        processed_by: user.id
-      })
-      .select()
-      .single()
+    console.log(`✅ [WALLET-TOPUP-V5] Wallet found/created for user: ${user.id}`);
 
-    if (transactionError) {
-      throw new Error(`Failed to create transaction: ${transactionError.message}`)
-    }
+    // Get Stripe customer ID - prioritize from payment method if provided
+    console.log(`🔍 [WALLET-TOPUP-V7-${timestamp}] Getting Stripe customer ID for user: ${user.id}`);
+    let stripeCustomerId;
 
-    // Get or create Stripe customer
-    let stripeCustomerId: string
+    if (payment_method_id) {
+      // If using saved payment method, get customer ID directly from Stripe PaymentMethod
+      console.log(`🔍 [WALLET-TOPUP-V7] Getting customer ID from Stripe PaymentMethod: ${payment_method_id}`);
 
-    const { data: userProfile } = await supabaseClient
-      .from('user_profiles')
-      .select('stripe_customer_id, email, full_name')
-      .eq('user_id', user.id)
-      .single()
-
-    if (userProfile?.stripe_customer_id) {
-      stripeCustomerId = userProfile.stripe_customer_id
-    } else {
-      // Create new Stripe customer
-      const stripeCustomer = await stripe.customers.create({
-        email: user.email || userProfile?.email,
-        name: userProfile?.full_name,
-        metadata: {
-          user_id: user.id,
-          role: 'customer'
-        }
-      })
-
-      stripeCustomerId = stripeCustomer.id
-
-      // Update user profile with Stripe customer ID
-      await supabaseClient
-        .from('user_profiles')
-        .update({ stripe_customer_id: stripeCustomerId })
+      // First verify the payment method exists in our database for this user
+      const { data: paymentMethodRecord } = await supabaseClient
+        .from('customer_payment_methods')
+        .select('stripe_customer_id, stripe_payment_method_id')
         .eq('user_id', user.id)
+        .eq('stripe_payment_method_id', payment_method_id)
+        .eq('is_active', true)
+        .single();
+
+      if (!paymentMethodRecord) {
+        throw new Error(`Payment method ${payment_method_id} not found or not active for user`);
+      }
+
+      // Get the actual customer ID from Stripe PaymentMethod
+      const paymentMethod = await stripe.paymentMethods.retrieve(payment_method_id);
+      if (!paymentMethod.customer) {
+        throw new Error(`PaymentMethod ${payment_method_id} is not attached to any customer`);
+      }
+
+      stripeCustomerId = paymentMethod.customer as string;
+      console.log(`✅ [WALLET-TOPUP-V7] Using customer ID from Stripe PaymentMethod: ${stripeCustomerId}`);
+    } else {
+      // For new payment methods, get/create customer from customer_profiles
+      console.log(`🔍 [WALLET-TOPUP-V5] Getting customer profile for new payment method`);
+      const { data: customerProfile } = await supabaseClient
+        .from('customer_profiles')
+        .select('stripe_customer_id, email, full_name')
+        .eq('user_id', user.id)
+        .single();
+
+      if (customerProfile?.stripe_customer_id) {
+        stripeCustomerId = customerProfile.stripe_customer_id;
+        console.log(`✅ [WALLET-TOPUP-V5] Using existing Stripe customer: ${stripeCustomerId}`);
+      } else {
+        // Create new Stripe customer
+        console.log(`🔄 [WALLET-TOPUP-V5] Creating new Stripe customer for user: ${user.id}`);
+        const stripeCustomer = await stripe.customers.create({
+          email: user.email || customerProfile?.email,
+          name: customerProfile?.full_name,
+          metadata: {
+            supabase_user_id: user.id,
+            created_via: 'wallet_topup_v5',
+            created_at: new Date().toISOString(),
+          }
+        });
+        stripeCustomerId = stripeCustomer.id;
+        console.log(`✅ [WALLET-TOPUP-V5] Created Stripe customer: ${stripeCustomerId}`);
+
+        // Update customer profile with Stripe customer ID
+        await supabaseClient
+          .from('customer_profiles')
+          .update({ stripe_customer_id: stripeCustomerId })
+          .eq('user_id', user.id);
+      }
     }
 
-    // Create Stripe PaymentIntent
-    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: currency,
+    // Convert amount to cents for Stripe
+    const amountInCents = Math.round(amount * 100);
+
+    // Create payment intent parameters
+    const paymentIntentParams: any = {
+      amount: amountInCents,
+      currency: currency.toLowerCase(),
       customer: stripeCustomerId,
       metadata: {
         user_id: user.id,
         wallet_id: wallet.id,
-        transaction_id: transaction.id,
-        type: 'wallet_topup'
+        type: 'wallet_topup',
+        created_at: new Date().toISOString(),
       },
-      description: `GigaEats Wallet Top-up - RM ${amount.toFixed(2)}`,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    }
+      description: `Wallet top-up for ${user.email || user.id}`,
+    };
 
-    // Add payment method if provided
+    // Configure payment method handling
     if (payment_method_id) {
-      paymentIntentParams.payment_method = payment_method_id
-      paymentIntentParams.confirmation_method = 'manual'
-      paymentIntentParams.confirm = true
+      // Using saved payment method - specify payment method and provide return_url
+      paymentIntentParams.payment_method = payment_method_id;
+      paymentIntentParams.confirm = true;
+      paymentIntentParams.return_url = 'gigaeats://payment/return';
+      console.log(`💳 [WALLET-TOPUP-V4] Using saved payment method: ${payment_method_id} with return_url`);
+    } else {
+      // New payment method - use automatic payment methods with return_url
+      paymentIntentParams.automatic_payment_methods = {
+        enabled: true
+      };
+      paymentIntentParams.return_url = 'gigaeats://payment/return';
+      console.log(`💳 [WALLET-TOPUP-V4] Using automatic payment methods for new card with return_url`);
     }
 
-    // Setup future usage if saving payment method
-    if (save_payment_method) {
-      paymentIntentParams.setup_future_usage = 'off_session'
+    console.log(`🔄 [WALLET-TOPUP-V4] Creating payment intent with customer: ${stripeCustomerId}`);
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+
+    console.log(`✅ [WALLET-TOPUP-V4] Payment intent created: ${paymentIntent.id}`);
+
+    // If using saved payment method and payment succeeded, update wallet
+    if (payment_method_id && paymentIntent.status === 'succeeded') {
+      console.log(`💰 [WALLET-TOPUP-V5] Payment succeeded, updating wallet balance`);
+
+      // Update wallet balance
+      const { error: updateError } = await supabaseClient
+        .from('stakeholder_wallets')
+        .update({
+          available_balance: wallet.available_balance + amount,
+          last_activity_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', wallet.id);
+
+      if (updateError) {
+        console.error(`❌ [WALLET-TOPUP-V5] Failed to update wallet: ${updateError.message}`);
+        throw new Error(`Failed to update wallet: ${updateError.message}`);
+      }
+
+      // Create transaction record
+      const { error: transactionError } = await supabaseClient
+        .from('customer_wallet_transactions')
+        .insert({
+          wallet_id: wallet.id,
+          user_id: user.id,
+          transaction_type: 'credit',
+          amount: amount,
+          currency: currency.toUpperCase(),
+          description: 'Wallet top-up',
+          payment_method: 'stripe',
+          payment_reference: paymentIntent.id,
+          status: 'completed',
+          metadata: {
+            stripe_payment_intent_id: paymentIntent.id,
+            stripe_payment_method_id: payment_method_id,
+            created_via: 'wallet_topup_v5'
+          }
+        });
+
+      if (transactionError) {
+        console.error(`❌ [WALLET-TOPUP-V4] Failed to create transaction: ${transactionError.message}`);
+        // Don't throw here as the payment succeeded, just log the error
+      }
+
+      console.log(`✅ [WALLET-TOPUP-V4] Wallet top-up completed successfully`);
     }
 
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams)
-
-    // Update transaction with Stripe PaymentIntent ID
-    await supabaseClient
-      .from('wallet_transactions')
-      .update({
-        metadata: {
-          ...transaction.metadata,
-          stripe_payment_intent_id: paymentIntent.id,
-          client_secret: paymentIntent.client_secret
+    return new Response(
+      JSON.stringify({
+        success: true,
+        payment_intent: {
+          id: paymentIntent.id,
+          client_secret: paymentIntent.client_secret,
+          status: paymentIntent.status,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency
         }
-      })
-      .eq('id', transaction.id)
-
-    console.log(`✅ PaymentIntent created: ${paymentIntent.id}`)
-
-    const response: WalletTopupResponse = {
-      success: true,
-      client_secret: paymentIntent.client_secret!,
-      transaction_id: transaction.id,
-      requires_action: paymentIntent.status === 'requires_action'
-    }
-
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
+    );
 
   } catch (error) {
-    console.error('❌ Wallet top-up error:', error)
-    
-    const response: WalletTopupResponse = {
-      success: false,
-      error: error.message
-    }
-
-    return new Response(JSON.stringify(response), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    console.error(`❌ [WALLET-TOPUP-V4] Error:`, error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      }
+    );
   }
-})
+});

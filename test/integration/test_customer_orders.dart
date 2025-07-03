@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gigaeats_app/features/orders/data/repositories/order_repository.dart';
+import 'package:gigaeats_app/src/features/orders/data/repositories/order_repository.dart';
 
 /// Test script to verify customer order access fix
 void main() async {

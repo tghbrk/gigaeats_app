@@ -8,7 +8,8 @@ import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
 // import '../../../../customers/presentation/providers/customer_cart_provider.dart';
 // import '../../../../customers/presentation/providers/customer_profile_provider.dart';
 // import '../../../../customers/presentation/providers/customer_order_provider.dart';
-// import '../../../../customers/presentation/widgets/schedule_time_picker.dart';
+import '../../../../orders/presentation/widgets/customer/schedule_time_picker.dart';
+import '../../../../orders/presentation/widgets/customer/scheduled_delivery_display.dart';
 import '../../../../orders/presentation/providers/customer/customer_cart_provider.dart';
 import '../../../../orders/presentation/providers/customer/customer_order_provider.dart';
 import '../../../../orders/presentation/providers/enhanced_cart_provider.dart';
@@ -869,23 +870,23 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
             ],
             
             // Scheduled delivery time (if applicable)
-            // TODO: Restore when CustomerDeliveryMethod is implemented
-            // if (cartState.deliveryMethod == CustomerDeliveryMethod.scheduled) ...[
-            // TODO: Restore when CustomerDeliveryMethod is implemented
-            // if (false) ...[  // Placeholder - assume no scheduled delivery
-            //   const SizedBox(height: 12),
-            //   const Divider(),
-            //   const SizedBox(height: 12),
-            //   Row(
-            //     children: [
-            //       Icon(Icons.schedule, color: theme.colorScheme.primary),
-            //       const SizedBox(width: 12),
-            //       Expanded(
-            //         child: Column(
-            //           crossAxisAlignment: CrossAxisAlignment.start,
-            //           children: [
-            //             Text(
-            //               'Scheduled Time',
+            if (cartState.deliveryMethod == CustomerDeliveryMethod.scheduled) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 12),
+              ScheduledDeliveryDisplay(
+                scheduledTime: cartState.scheduledDeliveryTime,
+                onTap: () => _showScheduleTimePicker(),
+                onEdit: () => _showScheduleTimePicker(),
+                showEditButton: true,
+                showClearButton: false,
+                showValidationStatus: true,
+                isRequired: true,
+                title: 'Scheduled Delivery',
+                emptyStateText: 'Tap to schedule delivery time',
+                padding: const EdgeInsets.all(12),
+              ),
+            ],
             //               style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             //             ),
             //             Text(
@@ -1306,24 +1307,32 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
     );
   }
 
-  // TODO: Restore unused method _showScheduleTimePicker when ScheduleTimePicker is implemented
-  // void _showScheduleTimePicker() {
-  //   showDialog(
-  //     context: context,
-  //     // TODO: Restore when ScheduleTimePicker is implemented
-  //     // builder: (context) => ScheduleTimePicker(
-  //     builder: (context) => AlertDialog( // Placeholder dialog
-  //       title: const Text('Schedule Delivery'),
-  //       content: const Text('Schedule delivery feature coming soon!'),
-  //       actions: [
-  //         TextButton(
-  //           onPressed: () => Navigator.of(context).pop(),
-  //           child: const Text('OK'),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
+  /// Show enhanced schedule time picker
+  void _showScheduleTimePicker() {
+    final cartState = ref.read(customerCartProvider);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => ScheduleTimePicker(
+        initialDateTime: cartState.scheduledDeliveryTime,
+        onDateTimeSelected: (dateTime) {
+          if (dateTime != null) {
+            ref.read(customerCartProvider.notifier).setScheduledDeliveryTime(dateTime);
+            debugPrint('🕒 [CHECKOUT-SCREEN] Scheduled delivery time set: $dateTime');
+          }
+        },
+        onCancel: () {
+          debugPrint('🚫 [CHECKOUT-SCREEN] Schedule delivery cancelled');
+        },
+        title: 'Schedule Your Delivery',
+        subtitle: 'Choose when you\'d like your order to be delivered',
+        showBusinessHours: true,
+        minimumAdvanceHours: 2,
+        maxDaysAhead: 7,
+      ),
+    );
+  }
 
   void _applyPromoCode() {
     final code = _promoCodeController.text.trim();

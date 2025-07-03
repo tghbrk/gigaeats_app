@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your GigaEats Magic Link</title>
+    <style>
+        /* Reset styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f9fa;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #805ad5, #6b46c1);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .header-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 0;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .cta-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #805ad5, #6b46c1);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: transform 0.2s ease;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .backup-link {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f7fafc;
+            border-radius: 8px;
+            border-left: 4px solid #805ad5;
+        }
+        
+        .backup-link p {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .backup-url {
+            word-break: break-all;
+            color: #805ad5;
+            font-size: 12px;
+            font-family: monospace;
+            background-color: #ffffff;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .magic-info {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #faf5ff;
+            border-radius: 8px;
+            border-left: 4px solid #805ad5;
+        }
+        
+        .magic-info h3 {
+            color: #553c9a;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .magic-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .magic-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #553c9a;
+        }
+        
+        .magic-icon {
+            width: 16px;
+            height: 16px;
+            background-color: #805ad5;
+            border-radius: 50%;
+            margin-right: 10px;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+        
+        .footer-links {
+            margin-top: 20px;
+        }
+        
+        .footer-link {
+            color: #805ad5;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 15px;
+        }
+        
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+        
+        .expiry-notice {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #fef5e7;
+            border-radius: 6px;
+            border-left: 4px solid #f6ad55;
+        }
+        
+        .expiry-notice p {
+            font-size: 14px;
+            color: #744210;
+            margin: 0;
+        }
+        
+        .security-notice {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0fff4;
+            border-radius: 6px;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .security-notice p {
+            font-size: 14px;
+            color: #22543d;
+            margin: 0;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .content {
+                padding: 30px 20px;
+            }
+            
+            .footer {
+                padding: 20px;
+            }
+            
+            .cta-button {
+                padding: 14px 24px;
+                font-size: 15px;
+            }
+            
+            .greeting {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">✨ GigaEats</div>
+            <p class="header-subtitle">Your Magic Link is Ready</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="content">
+            <h1 class="greeting">Sign in with Magic Link</h1>
+            
+            <p class="message">
+                You requested a magic link to sign in to your GigaEats account. 
+                Click the button below to sign in instantly - no password required!
+            </p>
+            
+            <!-- Call to Action -->
+            <div class="cta-container">
+                <a href="{{ .ConfirmationURL }}" class="cta-button">
+                    Sign In to GigaEats
+                </a>
+            </div>
+            
+            <!-- Backup Link -->
+            <div class="backup-link">
+                <p><strong>Button not working?</strong> Copy and paste this link in your browser:</p>
+                <div class="backup-url">{{ .ConfirmationURL }}</div>
+            </div>
+            
+            <!-- Magic Link Information -->
+            <div class="magic-info">
+                <h3>✨ About Magic Links</h3>
+                <ul class="magic-list">
+                    <li class="magic-item">
+                        <span class="magic-icon">🔐</span>
+                        Secure, password-free authentication
+                    </li>
+                    <li class="magic-item">
+                        <span class="magic-icon">⚡</span>
+                        One-click sign in to your account
+                    </li>
+                    <li class="magic-item">
+                        <span class="magic-icon">📱</span>
+                        Works on all your devices
+                    </li>
+                    <li class="magic-item">
+                        <span class="magic-icon">🛡️</span>
+                        More secure than traditional passwords
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Expiry Notice -->
+            <div class="expiry-notice">
+                <p>
+                    <strong>⏰ Time Sensitive:</strong> This magic link will expire in 1 hour for your security. 
+                    If you need a new link, you can request another one from the GigaEats sign-in page.
+                </p>
+            </div>
+            
+            <!-- Security Notice -->
+            <div class="security-notice">
+                <p>
+                    <strong>🔒 Security Note:</strong> If you didn't request this magic link, 
+                    you can safely ignore this email. The link will expire automatically, and your account remains secure.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p class="footer-text">© 2024 GigaEats. All rights reserved.</p>
+            <p class="footer-text">Secure and convenient authentication</p>
+            
+            <div class="footer-links">
+                <a href="https://gigaeats.app/support" class="footer-link">Help Center</a>
+                <a href="https://gigaeats.app/security" class="footer-link">Security</a>
+                <a href="https://gigaeats.app/privacy" class="footer-link">Privacy Policy</a>
+            </div>
+            
+            <p class="footer-text" style="margin-top: 20px;">
+                Need help? Contact us at <a href="mailto:support@gigaeats.app" style="color: #805ad5;">support@gigaeats.app</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gigaeats_app/features/customers/presentation/screens/customer_order_details_screen.dart';
+import 'package:gigaeats_app/src/features/orders/presentation/screens/customer/customer_order_details_screen.dart';
 
 void main() {
   group('Customer Order Details Real-time Updates', () {

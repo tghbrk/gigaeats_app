@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to GigaEats - Verify Your Email</title>
+    <style>
+        /* Reset styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f9fa;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #FF6B35, #F7931E);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .header-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 0;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .cta-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #FF6B35, #F7931E);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: transform 0.2s ease;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .backup-link {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f7fafc;
+            border-radius: 8px;
+            border-left: 4px solid #FF6B35;
+        }
+        
+        .backup-link p {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .backup-url {
+            word-break: break-all;
+            color: #FF6B35;
+            font-size: 12px;
+            font-family: monospace;
+            background-color: #ffffff;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .features {
+            margin: 30px 0;
+        }
+        
+        .features h3 {
+            color: #1a1a1a;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .feature-icon {
+            width: 20px;
+            height: 20px;
+            background-color: #FF6B35;
+            border-radius: 50%;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+        
+        .footer-links {
+            margin-top: 20px;
+        }
+        
+        .footer-link {
+            color: #FF6B35;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 15px;
+        }
+        
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+        
+        .security-notice {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #fff5f5;
+            border-radius: 6px;
+            border-left: 4px solid #f56565;
+        }
+        
+        .security-notice p {
+            font-size: 13px;
+            color: #742a2a;
+            margin: 0;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .content {
+                padding: 30px 20px;
+            }
+            
+            .footer {
+                padding: 20px;
+            }
+            
+            .cta-button {
+                padding: 14px 24px;
+                font-size: 15px;
+            }
+            
+            .greeting {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">🍽️ GigaEats</div>
+            <p class="header-subtitle">Your food delivery journey starts here</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="content">
+            <h1 class="greeting">Welcome to GigaEats!</h1>
+            
+            <p class="message">
+                Thank you for joining GigaEats! We're excited to have you as part of our food delivery community. 
+                To get started and ensure the security of your account, please verify your email address.
+            </p>
+            
+            <!-- Call to Action -->
+            <div class="cta-container">
+                <a href="{{ .ConfirmationURL }}" class="cta-button">
+                    Verify Email Address
+                </a>
+            </div>
+            
+            <!-- Backup Link -->
+            <div class="backup-link">
+                <p><strong>Button not working?</strong> Copy and paste this link in your browser:</p>
+                <div class="backup-url">{{ .ConfirmationURL }}</div>
+            </div>
+            
+            <!-- What's Next -->
+            <div class="features">
+                <h3>What's next?</h3>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <span class="feature-icon">1</span>
+                        Complete your profile setup
+                    </li>
+                    <li class="feature-item">
+                        <span class="feature-icon">2</span>
+                        Explore restaurants in your area
+                    </li>
+                    <li class="feature-item">
+                        <span class="feature-icon">3</span>
+                        Place your first order and enjoy!
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Security Notice -->
+            <div class="security-notice">
+                <p>
+                    <strong>Security Notice:</strong> If you didn't create this account, you can safely ignore this email. 
+                    This verification link will expire in 24 hours for your security.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p class="footer-text">© 2024 GigaEats. All rights reserved.</p>
+            <p class="footer-text">Bringing delicious food to your doorstep</p>
+            
+            <div class="footer-links">
+                <a href="https://gigaeats.app/support" class="footer-link">Help Center</a>
+                <a href="https://gigaeats.app/privacy" class="footer-link">Privacy Policy</a>
+                <a href="https://gigaeats.app/terms" class="footer-link">Terms of Service</a>
+            </div>
+            
+            <p class="footer-text" style="margin-top: 20px;">
+                Need help? Contact us at <a href="mailto:support@gigaeats.app" style="color: #FF6B35;">support@gigaeats.app</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

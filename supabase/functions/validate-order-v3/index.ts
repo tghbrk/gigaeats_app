@@ -353,7 +353,7 @@ async function createOrderInDatabase(
     const { data: customerData, error: customerError } = await supabase
       .from('customer_profiles')
       .select('full_name')
-      .eq('id', orderData.customer_id)
+      .eq('user_id', orderData.customer_id)
       .single()
 
     if (customerError) {

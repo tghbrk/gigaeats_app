@@ -120,9 +120,38 @@ serve(async (req) => {
 
 async function listPaymentMethods(supabaseClient: any, stripe: Stripe, userId: string): Promise<PaymentMethodResponse> {
   try {
-    // Get payment methods from database
+    // Get payment methods from database directly (not using RPC to get proper JSON)
     const { data: paymentMethods, error } = await supabaseClient
-      .rpc('get_user_payment_methods', { p_user_id: userId })
+      .from('customer_payment_methods')
+      .select(`
+        id,
+        user_id,
+        stripe_payment_method_id,
+        stripe_customer_id,
+        type,
+        is_default,
+        is_active,
+        card_brand,
+        card_last4,
+        card_exp_month,
+        card_exp_year,
+        card_funding,
+        card_country,
+        bank_name,
+        bank_account_last4,
+        bank_account_type,
+        wallet_type,
+        nickname,
+        billing_address,
+        metadata,
+        created_at,
+        updated_at,
+        last_used_at
+      `)
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false })
 
     if (error) {
       throw new Error(`Database error: ${error.message}`)
@@ -151,24 +180,20 @@ async function addPaymentMethod(
   nickname?: string
 ): Promise<PaymentMethodResponse> {
   try {
-    // Get user's Stripe customer ID
-    const { data: userProfile } = await supabaseClient
-      .from('user_profiles')
-      .select('stripe_customer_id')
-      .eq('user_id', userId)
-      .single()
+    // Get or create user's Stripe customer ID
+    let stripeCustomerId = await getOrCreateStripeCustomer(supabaseClient, stripe, userId)
 
-    if (!userProfile?.stripe_customer_id) {
-      throw new Error('User does not have a Stripe customer ID')
+    if (!stripeCustomerId) {
+      throw new Error('Failed to get or create Stripe customer')
     }
 
     // Retrieve payment method from Stripe
     const paymentMethod = await stripe.paymentMethods.retrieve(stripePaymentMethodId)
 
     // Attach payment method to customer if not already attached
-    if (paymentMethod.customer !== userProfile.stripe_customer_id) {
+    if (paymentMethod.customer !== stripeCustomerId) {
       await stripe.paymentMethods.attach(stripePaymentMethodId, {
-        customer: userProfile.stripe_customer_id,
+        customer: stripeCustomerId,
       })
     }
 
@@ -185,7 +210,7 @@ async function addPaymentMethod(
     const paymentMethodData: any = {
       user_id: userId,
       stripe_payment_method_id: stripePaymentMethodId,
-      stripe_customer_id: userProfile.stripe_customer_id,
+      stripe_customer_id: stripeCustomerId,
       type: paymentMethod.type,
       is_default: isFirstMethod,
       nickname: nickname || null,
@@ -359,5 +384,70 @@ async function setDefaultPaymentMethod(
       success: false,
       error: error.message,
     }
+  }
+}
+
+async function getOrCreateStripeCustomer(
+  supabaseClient: any,
+  stripe: Stripe,
+  userId: string
+): Promise<string | null> {
+  try {
+    // First, try to get existing Stripe customer ID from customer_profiles
+    const { data: customerProfile } = await supabaseClient
+      .from('customer_profiles')
+      .select('stripe_customer_id, email, full_name')
+      .eq('user_id', userId)
+      .single()
+
+    if (!customerProfile) {
+      throw new Error('Customer profile not found')
+    }
+
+    // If customer already has a Stripe customer ID, return it
+    if (customerProfile.stripe_customer_id) {
+      console.log(`✅ [STRIPE-CUSTOMER] Found existing Stripe customer: ${customerProfile.stripe_customer_id}`)
+      return customerProfile.stripe_customer_id
+    }
+
+    // Create new Stripe customer
+    console.log(`🔄 [STRIPE-CUSTOMER] Creating new Stripe customer for user: ${userId}`)
+
+    const stripeCustomer = await stripe.customers.create({
+      email: customerProfile.email,
+      name: customerProfile.full_name,
+      metadata: {
+        supabase_user_id: userId,
+        created_via: 'payment_method_addition',
+        created_at: new Date().toISOString(),
+      },
+    })
+
+    console.log(`✅ [STRIPE-CUSTOMER] Created Stripe customer: ${stripeCustomer.id}`)
+
+    // Update customer_profiles with the new Stripe customer ID
+    const { error: updateError } = await supabaseClient
+      .from('customer_profiles')
+      .update({ stripe_customer_id: stripeCustomer.id })
+      .eq('user_id', userId)
+
+    if (updateError) {
+      console.error('❌ [STRIPE-CUSTOMER] Failed to update customer profile:', updateError)
+      // Try to delete the Stripe customer if database update fails
+      try {
+        await stripe.customers.del(stripeCustomer.id)
+        console.log(`🗑️ [STRIPE-CUSTOMER] Cleaned up Stripe customer: ${stripeCustomer.id}`)
+      } catch (cleanupError) {
+        console.error('❌ [STRIPE-CUSTOMER] Failed to cleanup Stripe customer:', cleanupError)
+      }
+      throw new Error(`Failed to update customer profile: ${updateError.message}`)
+    }
+
+    console.log(`✅ [STRIPE-CUSTOMER] Updated customer profile with Stripe customer ID: ${stripeCustomer.id}`)
+    return stripeCustomer.id
+
+  } catch (error) {
+    console.error('❌ [STRIPE-CUSTOMER] Error getting or creating Stripe customer:', error)
+    return null
   }
 }

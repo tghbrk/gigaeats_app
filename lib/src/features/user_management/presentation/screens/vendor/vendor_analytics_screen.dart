@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // TODO: Restore when loading_widget is used
 // import '../../../../shared/widgets/loading_widget.dart';
-// TODO: Restore when repository_providers is used
-// import '../../../../presentation/providers/repository_providers.dart';
+import '../../../../../presentation/providers/repository_providers.dart' show vendorDashboardMetricsProvider;
 
 class VendorAnalyticsScreen extends ConsumerStatefulWidget {
   final ValueChanged<int>? onNavigateToTab;
@@ -176,11 +175,9 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
           // Metrics Grid
           Consumer(
             builder: (context, ref, child) {
-              // TODO: Use dateRange when analytics are restored
-              // final dateRange = _getDateRangeForPeriod(_selectedPeriod);
-              // TODO: Restore when vendorFilteredMetricsProvider is implemented
-              // final metricsAsync = ref.watch(vendorFilteredMetricsProvider(dateRange));
-              final metricsAsync = null; // Placeholder
+              debugPrint('📊 [VENDOR-ANALYTICS] Building overview metrics...');
+              // Use existing vendor dashboard metrics provider for now
+              final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
 
               return metricsAsync.when(
                 data: (metrics) {

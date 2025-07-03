@@ -4,9 +4,14 @@ import 'package:go_router/go_router.dart';
 
 // TODO: Restore when app_constants is used
 // import '../../../../core/constants/app_constants.dart';
-import '../../../orders/data/models/order.dart';
-// TODO: Restore when repository_providers is used
-// import '../../../../presentation/providers/repository_providers.dart';
+import '../../../../orders/data/models/order.dart';
+import '../../../../../presentation/providers/repository_providers.dart' show
+    currentVendorProvider,
+    vendorDashboardMetricsProvider,
+    vendorTotalOrdersProvider,
+    vendorRatingMetricsProvider,
+    vendorNotificationsProvider,
+    ordersStreamProvider;
 import '../../../../shared/widgets/dashboard_card.dart';
 import '../../../../shared/widgets/quick_action_button.dart';
 import '../../../orders/presentation/screens/vendor/vendor_orders_screen.dart';
@@ -14,6 +19,7 @@ import '../../../menu/presentation/screens/vendor/vendor_menu_screen.dart';
 import 'driver_management_screen.dart';
 import 'vendor_analytics_screen.dart';
 import 'vendor_profile_screen.dart';
+
 
 class VendorDashboard extends ConsumerStatefulWidget {
   const VendorDashboard({super.key});
@@ -198,22 +204,27 @@ class _VendorDashboardTab extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          // TODO: Restore when vendor providers are implemented
+          debugPrint('🔄 [VENDOR-DASHBOARD] Refreshing vendor data...');
+
           // Refresh all vendor data
-          // ref.invalidate(currentVendorProvider);
-          // ref.invalidate(vendorDashboardMetricsProvider);
-          // ref.invalidate(vendorTotalOrdersProvider);
-          // ref.invalidate(vendorRatingMetricsProvider);
-          // ref.invalidate(vendorOrdersProvider);
-          // ref.invalidate(vendorNotificationsProvider);
+          ref.invalidate(currentVendorProvider);
+          ref.invalidate(vendorDashboardMetricsProvider);
+          ref.invalidate(vendorTotalOrdersProvider);
+          ref.invalidate(vendorRatingMetricsProvider);
+          ref.invalidate(vendorNotificationsProvider);
 
           // Wait for the data to refresh
-          // await Future.wait([
-          //   ref.read(currentVendorProvider.future),
-          //   ref.read(vendorDashboardMetricsProvider.future),
-          //   ref.read(vendorTotalOrdersProvider.future),
-          //   ref.read(vendorRatingMetricsProvider.future),
-          // ]);
+          try {
+            await Future.wait([
+              ref.read(currentVendorProvider.future),
+              ref.read(vendorDashboardMetricsProvider.future),
+              ref.read(vendorTotalOrdersProvider.future),
+              ref.read(vendorRatingMetricsProvider.future),
+            ]);
+            debugPrint('✅ [VENDOR-DASHBOARD] Data refresh completed');
+          } catch (e) {
+            debugPrint('❌ [VENDOR-DASHBOARD] Data refresh failed: $e');
+          }
         },
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -240,11 +251,9 @@ class _VendorDashboardTab extends ConsumerWidget {
                   children: [
                     Consumer(
                       builder: (context, ref, child) {
-                        // TODO: Restore when vendor providers are implemented
-                        // final vendorAsync = ref.watch(currentVendorProvider);
-                        // final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
-                        final vendorAsync = null; // Placeholder
-                        final metricsAsync = null; // Placeholder
+                        debugPrint('🏪 [VENDOR-DASHBOARD] Building header section...');
+                        final vendorAsync = ref.watch(currentVendorProvider);
+                        final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
 
                         return vendorAsync.when(
                           data: (vendor) {
@@ -327,9 +336,8 @@ class _VendorDashboardTab extends ConsumerWidget {
               // Quick Stats
               Consumer(
                 builder: (context, ref, child) {
-                  // TODO: Restore when vendorDashboardMetricsProvider is implemented
-                  // final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
-                  final metricsAsync = null; // Placeholder
+                  debugPrint('📊 [VENDOR-DASHBOARD] Building quick stats section...');
+                  final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
 
                   return Row(
                     children: [
@@ -399,11 +407,9 @@ class _VendorDashboardTab extends ConsumerWidget {
               
               Consumer(
                 builder: (context, ref, child) {
-                  // TODO: Restore when vendor providers are implemented
-                  // final totalOrdersAsync = ref.watch(vendorTotalOrdersProvider);
-                  // final ratingMetricsAsync = ref.watch(vendorRatingMetricsProvider);
-                  final totalOrdersAsync = null; // Placeholder
-                  final ratingMetricsAsync = null; // Placeholder
+                  debugPrint('📈 [VENDOR-DASHBOARD] Building metrics section...');
+                  final totalOrdersAsync = ref.watch(vendorTotalOrdersProvider);
+                  final ratingMetricsAsync = ref.watch(vendorRatingMetricsProvider);
 
                   return Row(
                     children: [
@@ -528,9 +534,8 @@ class _VendorDashboardTab extends ConsumerWidget {
               Consumer(
                 key: const ValueKey('vendor_dashboard_orders_consumer'),
                 builder: (context, ref, child) {
-                  // TODO: Restore when ordersStreamProvider is implemented
-                  // final ordersStream = ref.watch(ordersStreamProvider(null));
-                  final ordersStream = null; // Placeholder
+                  debugPrint('📋 [VENDOR-DASHBOARD] Building orders section...');
+                  final ordersStream = ref.watch(ordersStreamProvider(null));
 
                   return ordersStream.when(
                     data: (orders) {
@@ -595,9 +600,6 @@ class _VendorDashboardTab extends ConsumerWidget {
                             case OrderStatus.cancelled:
                               statusColor = Colors.red;
                               break;
-                            default:
-                              statusColor = Colors.grey; // Default color for unknown status
-                              break;
                           }
 
                           return Card(
@@ -630,8 +632,13 @@ class _VendorDashboardTab extends ConsumerWidget {
                                 ),
                               ),
                               onTap: () {
-                                // Navigate directly to order details screen
-                                context.push('/vendor/order-details/${order.id}');
+                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] Dashboard order card tapped for order: ${order.id}');
+                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] Order number: ${order.orderNumber}');
+                                final route = '/vendor/dashboard/order-details/${order.id}';
+                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] Navigating to route: $route');
+                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] About to call context.push()...');
+                                context.push(route);
+                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] context.push() completed');
                               },
                             ),
                           );
@@ -709,9 +716,8 @@ class _VendorDashboardTab extends ConsumerWidget {
               Expanded(
                 child: Consumer(
                   builder: (context, ref, child) {
-                    // TODO: Restore when vendorNotificationsProvider is implemented
-                    // final notificationsAsync = ref.watch(vendorNotificationsProvider(null)); // all notifications
-                    final notificationsAsync = null; // Placeholder
+                    debugPrint('🔔 [VENDOR-DASHBOARD] Building notifications section...');
+                    final notificationsAsync = ref.watch(vendorNotificationsProvider(null)); // all notifications
 
                     return notificationsAsync.when(
                       data: (notifications) {

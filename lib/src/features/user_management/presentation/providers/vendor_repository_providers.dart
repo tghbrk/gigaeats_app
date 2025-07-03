@@ -12,8 +12,8 @@ final menuItemRepositoryProvider = Provider<MenuItemRepository>((ref) {
   return MenuItemRepository();
 });
 
-/// Provider for current vendor (stub)
-final currentVendorProvider = FutureProvider((ref) async {
+/// Provider for current vendor (stub) - renamed to avoid conflicts with main repository providers
+final currentVendorProviderStub = FutureProvider((ref) async {
   // This is a stub - implement actual vendor fetching logic
   return null;
 });

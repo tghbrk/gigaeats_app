@@ -816,13 +816,6 @@ class VendorRepository extends BaseRepository {
           .from('orders')
           .select('''
             *,
-            customer:customers!orders_customer_id_fkey(
-              id,
-              organization_name,
-              contact_person_name,
-              email,
-              phone_number
-            ),
             order_items:order_items(
               id,
               name,

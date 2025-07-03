@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../domain/vendor.dart';
 import '../../data/repositories/vendor_repository.dart';
 import 'vendor_repository_providers.dart';
-import '../../../../presentation/providers/repository_providers.dart' show vendorDashboardMetricsProvider;
+import '../../../../presentation/providers/repository_providers.dart' show vendorDashboardMetricsProvider, currentVendorProvider;
 import '../../../../core/services/file_upload_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 

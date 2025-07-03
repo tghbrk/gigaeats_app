@@ -23,8 +23,7 @@ class OrderRepository extends BaseRepository {
           .select('''
             *,
             order_items(*),
-            vendors!inner(id, business_name, logo_url),
-            customers!inner(id, name, email)
+            vendors!inner(id, business_name, logo_url)
           ''')
           .eq('customer_id', userId)
           .order('created_at', ascending: false);
@@ -44,8 +43,7 @@ class OrderRepository extends BaseRepository {
           .from('orders')
           .select('''
             *,
-            order_items(*),
-            customers!inner(id, name, email, phone_number)
+            order_items(*)
           ''')
           .eq('vendor_id', vendorId)
           .order('created_at', ascending: false);
@@ -88,8 +86,7 @@ class OrderRepository extends BaseRepository {
           .select('''
             *,
             order_items(*),
-            vendors!inner(id, business_name, logo_url, contact_phone),
-            customers!inner(id, name, email, phone_number)
+            vendors!inner(id, business_name, logo_url, contact_phone)
           ''')
           .eq('id', orderId)
           .maybeSingle();

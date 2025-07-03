@@ -413,7 +413,12 @@ List<RouteBase> _buildRoutes() {
           path: 'order-details/:orderId',
           name: 'vendor-order-details',
           builder: (context, state) {
+            debugPrint('🔍 [ROUTER] Building VendorOrderDetailsScreen route');
+            debugPrint('🔍 [ROUTER] Full path: ${state.fullPath}');
+            debugPrint('🔍 [ROUTER] Path parameters: ${state.pathParameters}');
             final orderId = state.pathParameters['orderId']!;
+            debugPrint('🔍 [ROUTER] Extracted order ID: $orderId');
+            debugPrint('🔍 [ROUTER] Creating VendorOrderDetailsScreen with order ID: $orderId');
             return VendorOrderDetailsScreen(orderId: orderId);
           },
         ),

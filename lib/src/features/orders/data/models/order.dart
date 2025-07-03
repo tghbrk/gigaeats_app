@@ -136,7 +136,19 @@ String _orderStatusToJson(OrderStatus status) => status.value;
 // Helper functions for null-safe String parsing
 String _safeStringFromJson(dynamic value) => value?.toString() ?? '';
 String _vendorNameFromJson(dynamic value) => value?.toString() ?? 'Unknown Vendor';
-String _customerNameFromJson(dynamic value) => value?.toString() ?? 'Unknown Customer';
+String _customerNameFromJson(dynamic value) {
+  // Handle both direct customer_name and nested customers object
+  if (value is String) {
+    return value.isNotEmpty ? value : 'Unknown Customer';
+  }
+  if (value is Map<String, dynamic>) {
+    // Extract from nested customers object
+    return value['organization_name']?.toString() ??
+           value['contact_person_name']?.toString() ??
+           'Unknown Customer';
+  }
+  return 'Unknown Customer';
+}
 OrderStatus _safeOrderStatusFromJson(dynamic value) {
   if (value == null) return OrderStatus.pending;
   return OrderStatus.fromString(value.toString());
@@ -356,7 +368,27 @@ class Order extends Equatable {
     this.contactPhone,
   });
 
-  factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
+  factory Order.fromJson(Map<String, dynamic> json) {
+    // Handle nested customer data from database joins
+    if (json.containsKey('customers') && json['customers'] is List && (json['customers'] as List).isNotEmpty) {
+      final customerData = (json['customers'] as List).first as Map<String, dynamic>;
+      json['customer_name'] = customerData['organization_name'] ?? customerData['contact_person_name'] ?? 'Unknown Customer';
+    } else if (json.containsKey('customers') && json['customers'] is Map) {
+      final customerData = json['customers'] as Map<String, dynamic>;
+      json['customer_name'] = customerData['organization_name'] ?? customerData['contact_person_name'] ?? 'Unknown Customer';
+    }
+
+    // Handle nested vendor data from database joins
+    if (json.containsKey('vendor') && json['vendor'] is Map) {
+      final vendorData = json['vendor'] as Map<String, dynamic>;
+      json['vendor_name'] = vendorData['business_name'] ?? 'Unknown Vendor';
+    } else if (json.containsKey('vendors') && json['vendors'] is List && (json['vendors'] as List).isNotEmpty) {
+      final vendorData = (json['vendors'] as List).first as Map<String, dynamic>;
+      json['vendor_name'] = vendorData['business_name'] ?? 'Unknown Vendor';
+    }
+
+    return _$OrderFromJson(json);
+  }
 
   Map<String, dynamic> toJson() => _$OrderToJson(this);
 

@@ -37,7 +37,6 @@ class OrderRepository extends BaseRepository {
       var query = authenticatedClient.from('orders').select('''
             *,
             vendor:vendors!orders_vendor_id_fkey(business_name),
-            customer:customers!orders_customer_id_fkey(organization_name),
             order_items:order_items(
               *,
               menu_item:menu_items!order_items_menu_item_id_fkey(
@@ -334,6 +333,7 @@ class OrderRepository extends BaseRepository {
 
       // First, get initial data with complete joins
       final authenticatedClient = await getAuthenticatedClient();
+      debugPrint('🔍 [ORDER-STREAM] About to execute query with joins...');
       var initialQuery = authenticatedClient
           .from('orders')
           .select('''
@@ -343,13 +343,6 @@ class OrderRepository extends BaseRepository {
               business_name,
               business_address,
               rating
-            ),
-            customer:customers!orders_customer_id_fkey(
-              id,
-              organization_name,
-              contact_person_name,
-              email,
-              phone_number
             ),
             sales_agent:users!orders_sales_agent_id_fkey(
               id,
@@ -365,6 +358,7 @@ class OrderRepository extends BaseRepository {
               )
             )
           ''');
+      debugPrint('🔍 [ORDER-STREAM] Query built successfully (using customer_name column instead of join)');
 
       // Apply role-based filtering at query level
       switch (currentUser['role']) {
@@ -390,8 +384,16 @@ class OrderRepository extends BaseRepository {
       }
 
       // Get initial data
-      final initialData = await initialQuery.order('created_at', ascending: false);
-      debugPrint('🔍 [ORDER-STREAM] Initial data loaded: ${initialData.length} orders');
+      debugPrint('🔍 [ORDER-STREAM] About to execute query...');
+      List<dynamic> initialData;
+      try {
+        initialData = await initialQuery.order('created_at', ascending: false);
+        debugPrint('🔍 [ORDER-STREAM] Initial data loaded: ${initialData.length} orders');
+      } catch (e, stackTrace) {
+        debugPrint('❌ [ORDER-STREAM] Query execution failed: $e');
+        debugPrint('❌ [ORDER-STREAM] Stack trace: $stackTrace');
+        rethrow;
+      }
 
       // Create a stream that starts with initial data and then listens for real-time updates
       yield* Stream.fromIterable([initialData]).asyncExpand((data) async* {
@@ -419,13 +421,6 @@ class OrderRepository extends BaseRepository {
                       business_name,
                       business_address,
                       rating
-                    ),
-                    customer:customers!orders_customer_id_fkey(
-                      id,
-                      organization_name,
-                      contact_person_name,
-                      email,
-                      phone_number
                     ),
                     sales_agent:users!orders_sales_agent_id_fkey(
                       id,
@@ -594,7 +589,13 @@ class OrderRepository extends BaseRepository {
 
   /// Get order by ID with full joins (may cause schema cache issues)
   Future<Order?> getOrderById(String orderId) async {
+    debugPrint('🔍 [ORDER-REPOSITORY] getOrderById called with ID: $orderId');
+    debugPrint('🔍 [ORDER-REPOSITORY] Order ID length: ${orderId.length}');
+    debugPrint('🔍 [ORDER-REPOSITORY] Order ID format: ${orderId.contains('-') ? 'UUID format' : 'Non-UUID format'}');
+
     return executeQuery(() async {
+      debugPrint('🔍 [ORDER-REPOSITORY] Executing query for order ID: $orderId');
+
       final response = await supabase
           .from('orders')
           .select('''
@@ -604,13 +605,6 @@ class OrderRepository extends BaseRepository {
               business_name,
               business_address,
               rating
-            ),
-            customer:customers!orders_customer_id_fkey(
-              id,
-              organization_name,
-              contact_person_name,
-              email,
-              phone_number
             ),
             sales_agent:users!orders_sales_agent_id_fkey(
               id,
@@ -629,7 +623,19 @@ class OrderRepository extends BaseRepository {
           .eq('id', orderId)
           .single();
 
-      return Order.fromJson(response);
+      debugPrint('🔍 [ORDER-REPOSITORY] Query executed successfully');
+      debugPrint('🔍 [ORDER-REPOSITORY] Response data keys: ${response.keys.toList()}');
+      debugPrint('🔍 [ORDER-REPOSITORY] Order ID in response: ${response['id']}');
+      debugPrint('🔍 [ORDER-REPOSITORY] Order number in response: ${response['order_number']}');
+      debugPrint('🔍 [ORDER-REPOSITORY] Converting response to Order object...');
+
+      final order = Order.fromJson(response);
+      debugPrint('🔍 [ORDER-REPOSITORY] Order object created successfully');
+      debugPrint('🔍 [ORDER-REPOSITORY] Order ID: ${order.id}');
+      debugPrint('🔍 [ORDER-REPOSITORY] Order number: ${order.orderNumber}');
+      debugPrint('🔍 [ORDER-REPOSITORY] Customer name: ${order.customerName}');
+
+      return order;
     });
   }
 
@@ -1158,7 +1164,6 @@ class OrderRepository extends BaseRepository {
       var query = authenticatedClient.from('orders').select('''
             *,
             vendor:vendors!orders_vendor_id_fkey(business_name),
-            customer:customers!orders_customer_id_fkey(organization_name),
             order_items:order_items(*)
           ''');
 
@@ -1577,7 +1582,6 @@ class OrderRepository extends BaseRepository {
           .select('''
             *,
             vendor:vendors!orders_vendor_id_fkey(business_name),
-            customer:customers!orders_customer_id_fkey(organization_name),
             order_items:order_items(
               *,
               menu_item:menu_items!order_items_menu_item_id_fkey(
@@ -1651,7 +1655,6 @@ class OrderRepository extends BaseRepository {
           .select('''
             *,
             vendor:vendors!orders_vendor_id_fkey(business_name),
-            customer:customers!orders_customer_id_fkey(organization_name),
             order_items:order_items(*)
           ''')
           .single();
@@ -1707,7 +1710,6 @@ class OrderRepository extends BaseRepository {
           .select('''
             *,
             vendor:vendors!orders_vendor_id_fkey(business_name),
-            customer:customers!orders_customer_id_fkey(organization_name),
             order_items:order_items(
               *,
               menu_item:menu_items!order_items_menu_item_id_fkey(

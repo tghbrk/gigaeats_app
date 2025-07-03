@@ -69,7 +69,12 @@ CREATE POLICY "Users can view their own payment attempts" ON payment_attempts
     FOR SELECT TO authenticated
     USING (user_id = auth.uid());
 
--- Only the system can insert payment attempts (via service role)
+-- Users can insert their own payment attempts
+CREATE POLICY "Users can insert their own payment attempts" ON payment_attempts
+    FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
+
+-- System can also insert payment attempts (via service role)
 CREATE POLICY "System can insert payment attempts" ON payment_attempts
     FOR INSERT TO service_role
     WITH CHECK (true);
@@ -87,7 +92,12 @@ CREATE POLICY "Admins can view security audit logs" ON security_audit_log
         )
     );
 
--- Only the system can insert security audit logs (via service role)
+-- Users can insert their own security audit logs
+CREATE POLICY "Users can insert their own security audit logs" ON security_audit_log
+    FOR INSERT TO authenticated
+    WITH CHECK (user_id = auth.uid());
+
+-- System can also insert security audit logs (via service role)
 CREATE POLICY "System can insert security audit logs" ON security_audit_log
     FOR INSERT TO service_role
     WITH CHECK (true);

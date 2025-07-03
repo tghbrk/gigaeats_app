@@ -747,6 +747,129 @@ async function getTransactionHistory(
   }
 }
 
+// Enhanced security validation for wallet operations
+async function performEnhancedSecurityValidation(
+  supabase: any,
+  userId: string,
+  orderId: string,
+  transactionData: any
+): Promise<void> {
+  console.log('Performing enhanced security validation for user:', userId)
+
+  // Security Check 1: Rate limiting validation
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  const { count: recentAttempts } = await supabase
+    .from('payment_attempts')
+    .select('id', { count: 'exact' })
+    .eq('user_id', userId)
+    .gte('created_at', fiveMinutesAgo)
+
+  if (recentAttempts >= 5) {
+    await logSecurityEvent(supabase, 'RATE_LIMIT_EXCEEDED_EDGE', userId, {
+      order_id: orderId,
+      recent_attempts: recentAttempts,
+      amount: transactionData.amount,
+    })
+    throw new Error('Rate limit exceeded. Too many payment attempts.')
+  }
+
+  // Security Check 2: Transaction amount validation
+  if (transactionData.amount <= 0) {
+    await logSecurityEvent(supabase, 'INVALID_AMOUNT_EDGE', userId, {
+      order_id: orderId,
+      amount: transactionData.amount,
+    })
+    throw new Error('Invalid transaction amount')
+  }
+
+  if (transactionData.amount > 10000) {
+    await logSecurityEvent(supabase, 'LARGE_AMOUNT_EDGE', userId, {
+      order_id: orderId,
+      amount: transactionData.amount,
+    })
+    throw new Error('Transaction amount exceeds maximum limit')
+  }
+
+  // Security Check 3: Validate transaction metadata
+  if (!transactionData.description || !transactionData.currency) {
+    await logSecurityEvent(supabase, 'INCOMPLETE_TRANSACTION_DATA_EDGE', userId, {
+      order_id: orderId,
+      missing_fields: {
+        description: !transactionData.description,
+        currency: !transactionData.currency,
+      },
+    })
+    throw new Error('Incomplete transaction data')
+  }
+
+  // Security Check 4: Currency validation
+  if (transactionData.currency.toUpperCase() !== 'MYR') {
+    await logSecurityEvent(supabase, 'INVALID_CURRENCY_EDGE', userId, {
+      order_id: orderId,
+      provided_currency: transactionData.currency,
+    })
+    throw new Error('Invalid currency. Only MYR is supported.')
+  }
+
+  // Security Check 5: Check for suspicious patterns
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { count: recentLargeTransactions } = await supabase
+    .from('wallet_transactions')
+    .select('id', { count: 'exact' })
+    .eq('user_id', userId)
+    .gte('created_at', oneDayAgo)
+    .gte('amount', 1000)
+
+  if (recentLargeTransactions >= 3 && transactionData.amount >= 1000) {
+    await logSecurityEvent(supabase, 'SUSPICIOUS_PATTERN_EDGE', userId, {
+      order_id: orderId,
+      amount: transactionData.amount,
+      recent_large_transactions: recentLargeTransactions,
+    })
+    throw new Error('Suspicious transaction pattern detected. Please contact support.')
+  }
+
+  // Log successful validation
+  await logSecurityEvent(supabase, 'SECURITY_VALIDATION_PASSED_EDGE', userId, {
+    order_id: orderId,
+    amount: transactionData.amount,
+    validation_checks: [
+      'rate_limiting',
+      'amount_validation',
+      'metadata_validation',
+      'currency_validation',
+      'pattern_detection',
+    ],
+  })
+
+  console.log('Enhanced security validation passed for user:', userId)
+}
+
+// Log security events for audit trail
+async function logSecurityEvent(
+  supabase: any,
+  eventType: string,
+  userId: string,
+  eventData: any
+): Promise<void> {
+  try {
+    await supabase
+      .from('security_audit_log')
+      .insert({
+        event_type: eventType,
+        user_id: userId,
+        event_data: eventData,
+        severity: eventType.includes('EXCEEDED') || eventType.includes('SUSPICIOUS') ? 'warning' : 'info',
+        created_at: new Date().toISOString(),
+      })
+
+    console.log('Security event logged:', eventType)
+  } catch (error) {
+    console.error('Failed to log security event:', error)
+    // Don't throw - logging failures shouldn't break the payment flow
+  }
+}
+
 async function processOrderPayment(
   supabase: any,
   userId: string,
@@ -769,6 +892,9 @@ async function processOrderPayment(
     if (!ownershipValid) {
       throw new Error('Unauthorized wallet access')
     }
+
+    // Enhanced Security Validation
+    await performEnhancedSecurityValidation(supabase, userId, order_id, transaction_data)
 
     // Get order details
     const { data: order, error: orderError } = await supabase

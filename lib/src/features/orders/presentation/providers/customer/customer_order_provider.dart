@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/order.dart';
 import '../../../payments/data/services/payment_service.dart';
 import '../../../data/services/customer/customer_order_service.dart';
+import '../../../../marketplace_wallet/integration/wallet_checkout_integration_service.dart';
 import 'customer_cart_provider.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/utils/logger.dart';
@@ -18,7 +19,12 @@ final paymentServiceProvider = Provider<PaymentService>((ref) {
 
 /// Provider for CustomerOrderService
 final customerOrderServiceProvider = Provider<CustomerOrderService>((ref) {
-  return CustomerOrderService();
+  final paymentService = ref.watch(paymentServiceProvider);
+  final walletCheckoutService = ref.watch(walletCheckoutIntegrationServiceProvider);
+  return CustomerOrderService(
+    paymentService: paymentService,
+    walletCheckoutService: walletCheckoutService,
+  );
 });
 
 /// State for order creation process
@@ -100,23 +106,51 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
       state = state.copyWith(order: order);
       _logger.info('OrderCreationNotifier: Order created with ID: ${order.id}');
 
-      // Step 2: Process payment (simplified for now)
+      // Step 2: Process payment via CustomerOrderService
       _logger.info('OrderCreationNotifier: Processing payment method: $paymentMethod');
 
-      // For now, we'll consider all payments as successful
-      // In a real implementation, this would integrate with Stripe
-      bool paymentSuccessful = true;
+      // SECURITY FIX: Actually call the payment processing logic
+      final paymentResult = await _orderService.processPayment(
+        orderId: order.id,
+        amount: order.totalAmount,
+        paymentMethod: paymentMethod,
+        currency: 'myr',
+      );
 
-      if (paymentMethod == 'credit_card') {
-        _logger.info('OrderCreationNotifier: Processing credit card payment');
-        // TODO: Integrate with Stripe payment processing
-        paymentSuccessful = true;
-      } else if (paymentMethod == 'cash') {
-        _logger.info('OrderCreationNotifier: Cash on delivery selected');
-        paymentSuccessful = true;
-      } else {
-        _logger.info('OrderCreationNotifier: Other payment method: $paymentMethod');
-        paymentSuccessful = true;
+      // Check payment result
+      bool paymentSuccessful = paymentResult['success'] == true;
+
+      if (!paymentSuccessful) {
+        final errorMessage = paymentResult['error'] ?? 'Payment processing failed';
+        final errorCode = paymentResult['error_code'] ?? 'UNKNOWN_ERROR';
+        final retryAllowed = paymentResult['retry_allowed'] ?? false;
+
+        _logger.error('OrderCreationNotifier: Payment failed: $errorMessage');
+        _logger.error('OrderCreationNotifier: Error code: $errorCode');
+        _logger.error('OrderCreationNotifier: Retry allowed: $retryAllowed');
+
+        // Create enhanced error with retry information
+        final enhancedError = _createEnhancedPaymentError(
+          errorMessage,
+          errorCode,
+          retryAllowed,
+          paymentMethod,
+        );
+
+        throw Exception(enhancedError);
+      }
+
+      _logger.info('OrderCreationNotifier: Payment processed successfully');
+      _logger.info('OrderCreationNotifier: Payment method: ${paymentResult['payment_method']}');
+      _logger.info('OrderCreationNotifier: Payment status: ${paymentResult['status']}');
+
+      // Log additional details for wallet payments
+      if (paymentMethod == 'wallet' && paymentResult['transaction_id'] != null) {
+        _logger.info('OrderCreationNotifier: Wallet transaction ID: ${paymentResult['transaction_id']}');
+        _logger.info('OrderCreationNotifier: Amount paid: RM ${paymentResult['amount_paid']?.toStringAsFixed(2)}');
+        if (paymentResult['new_wallet_balance'] != null) {
+          _logger.info('OrderCreationNotifier: New wallet balance: RM ${paymentResult['new_wallet_balance']?.toStringAsFixed(2)}');
+        }
       }
 
       if (paymentSuccessful) {
@@ -140,11 +174,63 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
       }
     } catch (e) {
       _logger.error('OrderCreationNotifier: Error in order creation process', e);
+
+      // If we have an order but payment failed, we should consider canceling the order
+      // The order creation and payment should be atomic, but since they're separate steps,
+      // we need to handle cleanup if payment fails
+      final currentOrder = state.order;
+      if (currentOrder != null && e.toString().contains('Payment failed')) {
+        _logger.warning('OrderCreationNotifier: Payment failed for order ${currentOrder.id}, order may need manual review');
+        // Note: The secure wallet operations Edge Function handles rollback automatically
+        // For other payment methods, the order remains in pending state for manual review
+      }
+
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
       );
       return false;
+    }
+  }
+
+  /// Create enhanced payment error message with user guidance
+  String _createEnhancedPaymentError(
+    String errorMessage,
+    String errorCode,
+    bool retryAllowed,
+    String paymentMethod,
+  ) {
+    final baseMessage = errorMessage;
+
+    // Add specific guidance based on error type
+    switch (errorCode) {
+      case 'INSUFFICIENT_BALANCE':
+        return '$baseMessage\n\nTo resolve this:\n• Top up your wallet from the Wallet section\n• Or select a different payment method';
+
+      case 'NETWORK_ERROR':
+        return '$baseMessage\n\nTo resolve this:\n• Check your internet connection\n• Try again in a moment\n• Switch to mobile data if using WiFi';
+
+      case 'UNAUTHORIZED_ACCESS':
+        return '$baseMessage\n\nTo resolve this:\n• Log out and log back in\n• Contact support if the issue persists';
+
+      case 'WALLET_NOT_FOUND':
+        return '$baseMessage\n\nTo resolve this:\n• Set up your wallet in the Wallet section\n• Or use a different payment method';
+
+      case 'SERVER_ERROR':
+        return '$baseMessage\n\nOur servers are temporarily busy. Please try again in a few moments.';
+
+      case 'RATE_LIMITED':
+        return '$baseMessage\n\nPlease wait a moment before trying again.';
+
+      case 'VALIDATION_ERROR':
+        return '$baseMessage\n\nPlease refresh the page and try again.';
+
+      default:
+        if (retryAllowed) {
+          return '$baseMessage\n\nYou can try again or contact support if the issue persists.';
+        } else {
+          return '$baseMessage\n\nPlease try a different payment method or contact support.';
+        }
     }
   }
 
@@ -156,6 +242,23 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
   /// Clear error
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  /// Retry order creation and payment processing
+  Future<bool> retryOrderCreation({
+    required String paymentMethod,
+    String? specialInstructions,
+  }) async {
+    _logger.info('OrderCreationNotifier: Retrying order creation');
+
+    // Clear previous error state
+    clearError();
+
+    // Retry the order creation process
+    return await createOrderAndProcessPayment(
+      paymentMethod: paymentMethod,
+      specialInstructions: specialInstructions,
+    );
   }
 }
 

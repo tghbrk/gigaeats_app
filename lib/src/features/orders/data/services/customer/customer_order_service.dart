@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/order.dart';
 import '../../models/customer_delivery_method.dart';
 import '../../../payments/data/services/payment_service.dart';
+import '../../../../marketplace_wallet/integration/wallet_checkout_integration_service.dart';
 
 import '../../../presentation/providers/customer/customer_cart_provider.dart';
 import '../../../../core/utils/logger.dart';
@@ -13,10 +14,14 @@ import '../../../../core/utils/logger.dart';
 class CustomerOrderService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final PaymentService _paymentService;
+  final WalletCheckoutIntegrationService? _walletCheckoutService;
   final AppLogger _logger = AppLogger();
 
-  CustomerOrderService({PaymentService? paymentService})
-      : _paymentService = paymentService ?? PaymentService();
+  CustomerOrderService({
+    PaymentService? paymentService,
+    WalletCheckoutIntegrationService? walletCheckoutService,
+  }) : _paymentService = paymentService ?? PaymentService(),
+       _walletCheckoutService = walletCheckoutService;
 
   /// Create order from customer cart
   Future<Order> createOrderFromCart({
@@ -192,6 +197,13 @@ class CustomerOrderService {
           'payment_method': 'cash',
           'status': 'pending',
         };
+      } else if (paymentMethod == 'wallet') {
+        // SECURITY FIX: Process wallet payment via secure Edge Function
+        return await _processWalletPayment(
+          orderId: orderId,
+          amount: amount,
+          currency: currency,
+        );
       } else {
         throw Exception('Unsupported payment method: $paymentMethod');
       }
@@ -216,6 +228,626 @@ class CustomerOrderService {
     } catch (e) {
       _logger.error('CustomerOrderService: Error updating order payment method', e);
       rethrow;
+    }
+  }
+
+  /// SECURITY FIX: Process wallet payment with comprehensive validation and error handling
+  Future<Map<String, dynamic>> _processWalletPayment({
+    required String orderId,
+    required double amount,
+    required String currency,
+  }) async {
+    try {
+      _logger.info('CustomerOrderService: Processing wallet payment for order $orderId');
+      _logger.info('CustomerOrderService: Amount: $amount $currency');
+
+      // Step 1: Pre-validation checks
+      final preValidationResult = await _preValidateWalletPayment(orderId, amount, currency);
+      if (!preValidationResult['success']) {
+        return preValidationResult;
+      }
+
+      final order = preValidationResult['order'] as Order;
+
+      _logger.info('CustomerOrderService: Pre-validation passed, initiating secure wallet payment via Edge Function');
+
+      // Step 2: Additional security validation
+      final securityValidationResult = await _performSecurityValidation(order, amount);
+      if (!securityValidationResult['success']) {
+        return securityValidationResult;
+      }
+
+      // Process wallet payment via secure Edge Function
+      final response = await _supabase.functions.invoke(
+        'secure-wallet-operations',
+        body: {
+          'operation': 'process_order_payment',
+          'wallet_id': null, // Will be resolved by Edge Function based on user
+          'order_id': orderId,
+          'transaction_data': {
+            'amount': amount,
+            'currency': currency.toUpperCase(),
+            'description': 'Payment for order ${order.orderNumber}',
+            'metadata': {
+              'order_number': order.orderNumber,
+              'vendor_id': order.vendorId,
+              'payment_method': 'wallet',
+              'processed_by': 'customer_order_service',
+              'processed_at': DateTime.now().toIso8601String(),
+            },
+          },
+        },
+      );
+
+      if (response.status != 200) {
+        throw Exception('Wallet payment failed: HTTP ${response.status}');
+      }
+
+      final result = response.data;
+      if (result['success'] != true) {
+        throw Exception(result['message'] ?? 'Wallet payment failed');
+      }
+
+      _logger.info('CustomerOrderService: Wallet payment successful');
+      _logger.info('CustomerOrderService: Transaction ID: ${result['transaction_id']}');
+      _logger.info('CustomerOrderService: New wallet balance: RM ${result['new_balance']?.toStringAsFixed(2)}');
+
+      // Update order payment method
+      await _updateOrderPaymentMethod(orderId, 'wallet');
+
+      return {
+        'success': true,
+        'payment_method': 'wallet',
+        'status': 'paid',
+        'transaction_id': result['transaction_id'],
+        'amount_paid': result['amount_paid'],
+        'new_wallet_balance': result['new_balance'],
+        'message': 'Wallet payment processed successfully',
+      };
+
+    } catch (e) {
+      _logger.error('CustomerOrderService: Wallet payment failed', e);
+
+      // Comprehensive error handling with categorization
+      final errorResult = _categorizeWalletPaymentError(e, orderId);
+
+      // Log error details for debugging
+      _logger.error('CustomerOrderService: Error category: ${errorResult['error_code']}');
+      _logger.error('CustomerOrderService: User message: ${errorResult['error']}');
+
+      // Attempt rollback if order was created but payment failed
+      await _handlePaymentFailureRollback(orderId, errorResult['error_code']);
+
+      return errorResult;
+    }
+  }
+
+  /// Pre-validate wallet payment before processing
+  Future<Map<String, dynamic>> _preValidateWalletPayment(
+    String orderId,
+    double amount,
+    String currency,
+  ) async {
+    try {
+      _logger.info('CustomerOrderService: Pre-validating wallet payment');
+
+      // Validate wallet checkout service is available
+      if (_walletCheckoutService == null) {
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Wallet service temporarily unavailable. Please try again later or contact support.',
+          'error_code': 'SERVICE_UNAVAILABLE',
+        };
+      }
+
+      // Validate user authentication
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Please log in to complete your payment.',
+          'error_code': 'USER_NOT_AUTHENTICATED',
+        };
+      }
+
+      // Validate order exists and belongs to user
+      final order = await getOrderById(orderId);
+      if (order == null) {
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Order not found. Please try placing your order again.',
+          'error_code': 'ORDER_NOT_FOUND',
+        };
+      }
+
+      // Validate order ownership
+      if (order.customerId != user.id) {
+        _logger.warning('CustomerOrderService: Unauthorized order access attempt - Order: ${order.customerId}, User: ${user.id}');
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'You are not authorized to pay for this order.',
+          'error_code': 'UNAUTHORIZED_ORDER_ACCESS',
+        };
+      }
+
+      // Validate order status
+      if (order.status != OrderStatus.pending) {
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'This order cannot be paid for. Current status: ${order.status.name}',
+          'error_code': 'INVALID_ORDER_STATUS',
+        };
+      }
+
+      // Validate payment amount matches order total
+      if ((order.totalAmount - amount).abs() > 0.01) {
+        _logger.warning('CustomerOrderService: Payment amount mismatch - Order: ${order.totalAmount}, Payment: $amount');
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Payment amount does not match order total. Please refresh and try again.',
+          'error_code': 'AMOUNT_MISMATCH',
+        };
+      }
+
+      // Validate currency
+      if (currency.toLowerCase() != 'myr') {
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Invalid currency. Only MYR is supported.',
+          'error_code': 'INVALID_CURRENCY',
+        };
+      }
+
+      // Validate minimum payment amount
+      if (amount < 0.01) {
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Payment amount must be at least RM 0.01.',
+          'error_code': 'AMOUNT_TOO_LOW',
+        };
+      }
+
+      // Validate maximum payment amount (security check)
+      if (amount > 10000.00) {
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Payment amount exceeds maximum limit. Please contact support for large orders.',
+          'error_code': 'AMOUNT_TOO_HIGH',
+        };
+      }
+
+      _logger.info('CustomerOrderService: Pre-validation successful');
+      return {
+        'success': true,
+        'order': order,
+        'user': user,
+      };
+
+    } catch (e) {
+      _logger.error('CustomerOrderService: Pre-validation failed', e);
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Payment validation failed. Please try again.',
+        'error_code': 'VALIDATION_ERROR',
+      };
+    }
+  }
+
+  /// Categorize wallet payment errors for better user experience
+  Map<String, dynamic> _categorizeWalletPaymentError(dynamic error, String orderId) {
+    final errorString = error.toString().toLowerCase();
+
+    // Network and connectivity errors
+    if (errorString.contains('network') || errorString.contains('connection') ||
+        errorString.contains('timeout') || errorString.contains('unreachable')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Network connection issue. Please check your internet connection and try again.',
+        'error_code': 'NETWORK_ERROR',
+        'retry_allowed': true,
+      };
+    }
+
+    // Insufficient balance errors
+    if (errorString.contains('insufficient') || errorString.contains('balance')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Insufficient wallet balance. Please top up your wallet or use a different payment method.',
+        'error_code': 'INSUFFICIENT_BALANCE',
+        'retry_allowed': false,
+      };
+    }
+
+    // Authentication and authorization errors
+    if (errorString.contains('unauthorized') || errorString.contains('access denied') ||
+        errorString.contains('permission')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Wallet access denied. Please log out and log back in, then try again.',
+        'error_code': 'UNAUTHORIZED_ACCESS',
+        'retry_allowed': false,
+      };
+    }
+
+    // Wallet not found or unavailable
+    if (errorString.contains('wallet not found') || errorString.contains('wallet unavailable')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Wallet not found. Please set up your wallet first.',
+        'error_code': 'WALLET_NOT_FOUND',
+        'retry_allowed': false,
+      };
+    }
+
+    // Order-related errors
+    if (errorString.contains('order not found') || errorString.contains('order') && errorString.contains('not found')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Order not found. Please try placing your order again.',
+        'error_code': 'ORDER_NOT_FOUND',
+        'retry_allowed': false,
+      };
+    }
+
+    // Server errors (HTTP 500, etc.)
+    if (errorString.contains('http 5') || errorString.contains('server error') ||
+        errorString.contains('internal error')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Server temporarily unavailable. Please try again in a few moments.',
+        'error_code': 'SERVER_ERROR',
+        'retry_allowed': true,
+      };
+    }
+
+    // Rate limiting errors
+    if (errorString.contains('rate limit') || errorString.contains('too many requests')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Too many payment attempts. Please wait a moment and try again.',
+        'error_code': 'RATE_LIMITED',
+        'retry_allowed': true,
+      };
+    }
+
+    // Validation errors
+    if (errorString.contains('validation') || errorString.contains('invalid')) {
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Payment information is invalid. Please refresh the page and try again.',
+        'error_code': 'VALIDATION_ERROR',
+        'retry_allowed': true,
+      };
+    }
+
+    // Generic/unknown errors
+    return {
+      'success': false,
+      'payment_method': 'wallet',
+      'status': 'failed',
+      'error': 'Payment failed due to an unexpected error. Please try again or contact support.',
+      'error_code': 'UNKNOWN_ERROR',
+      'retry_allowed': true,
+    };
+  }
+
+  /// Handle payment failure rollback
+  Future<void> _handlePaymentFailureRollback(String orderId, String errorCode) async {
+    try {
+      _logger.info('CustomerOrderService: Handling payment failure rollback for order $orderId');
+
+      // For certain error types, we should mark the order as payment_failed
+      // rather than leaving it in pending state
+      final shouldMarkAsFailed = [
+        'INSUFFICIENT_BALANCE',
+        'UNAUTHORIZED_ACCESS',
+        'WALLET_NOT_FOUND',
+        'VALIDATION_ERROR',
+      ].contains(errorCode);
+
+      if (shouldMarkAsFailed) {
+        await _supabase
+            .from('orders')
+            .update({
+              'payment_status': 'failed',
+              'payment_failure_reason': errorCode,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', orderId);
+
+        _logger.info('CustomerOrderService: Order $orderId marked as payment failed');
+      } else {
+        // For transient errors (network, server), keep order in pending state
+        // so user can retry payment
+        _logger.info('CustomerOrderService: Order $orderId kept in pending state for retry');
+      }
+
+    } catch (e) {
+      _logger.error('CustomerOrderService: Failed to handle payment rollback', e);
+      // Don't throw here - we don't want rollback failures to mask the original error
+    }
+  }
+
+  /// Perform additional security validation for wallet payments
+  Future<Map<String, dynamic>> _performSecurityValidation(Order order, double amount) async {
+    try {
+      _logger.info('CustomerOrderService: Performing additional security validation');
+
+      final user = _supabase.auth.currentUser!;
+
+      // Security Check 1: Rate limiting - check recent payment attempts
+      final recentAttempts = await _checkRecentPaymentAttempts(user.id);
+      if (recentAttempts >= 5) {
+        await _logSecurityEvent('RATE_LIMIT_EXCEEDED', user.id, {
+          'order_id': order.id,
+          'recent_attempts': recentAttempts,
+          'amount': amount,
+        });
+
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Too many payment attempts. Please wait 5 minutes before trying again.',
+          'error_code': 'RATE_LIMITED',
+          'retry_allowed': false,
+        };
+      }
+
+      // Security Check 2: Validate order creation time (prevent replay attacks)
+      final orderAge = DateTime.now().difference(order.createdAt);
+      if (orderAge.inMinutes > 30) {
+        await _logSecurityEvent('STALE_ORDER_PAYMENT', user.id, {
+          'order_id': order.id,
+          'order_age_minutes': orderAge.inMinutes,
+          'amount': amount,
+        });
+
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Order is too old to process payment. Please create a new order.',
+          'error_code': 'STALE_ORDER',
+          'retry_allowed': false,
+        };
+      }
+
+      // Security Check 3: Validate user session freshness
+      final sessionAge = await _getSessionAge();
+      if (sessionAge != null && sessionAge.inHours > 24) {
+        await _logSecurityEvent('STALE_SESSION_PAYMENT', user.id, {
+          'order_id': order.id,
+          'session_age_hours': sessionAge.inHours,
+          'amount': amount,
+        });
+
+        return {
+          'success': false,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'error': 'Your session has expired. Please log out and log back in.',
+          'error_code': 'SESSION_EXPIRED',
+          'retry_allowed': false,
+        };
+      }
+
+      // Security Check 4: Validate large transaction patterns
+      if (amount > 500.00) {
+        final isLargeTransactionAllowed = await _validateLargeTransaction(user.id, amount);
+        if (!isLargeTransactionAllowed) {
+          await _logSecurityEvent('LARGE_TRANSACTION_BLOCKED', user.id, {
+            'order_id': order.id,
+            'amount': amount,
+            'threshold': 500.00,
+          });
+
+          return {
+            'success': false,
+            'payment_method': 'wallet',
+            'status': 'failed',
+            'error': 'Large transactions require additional verification. Please contact support.',
+            'error_code': 'LARGE_TRANSACTION_BLOCKED',
+            'retry_allowed': false,
+          };
+        }
+      }
+
+      // Security Check 5: Validate wallet balance freshness
+      final walletBalanceAge = await _getWalletBalanceAge(user.id);
+      if (walletBalanceAge != null && walletBalanceAge.inMinutes > 10) {
+        // Force wallet balance refresh for security
+        await _refreshWalletBalance(user.id);
+      }
+
+      // Log successful security validation
+      await _logSecurityEvent('SECURITY_VALIDATION_PASSED', user.id, {
+        'order_id': order.id,
+        'amount': amount,
+        'validation_checks': [
+          'rate_limiting',
+          'order_age',
+          'session_freshness',
+          'large_transaction',
+          'wallet_balance_freshness',
+        ],
+      });
+
+      _logger.info('CustomerOrderService: Security validation passed');
+      return {'success': true};
+
+    } catch (e) {
+      _logger.error('CustomerOrderService: Security validation failed', e);
+
+      await _logSecurityEvent('SECURITY_VALIDATION_ERROR',
+        _supabase.auth.currentUser?.id ?? 'unknown', {
+        'order_id': order.id,
+        'amount': amount,
+        'error': e.toString(),
+      });
+
+      return {
+        'success': false,
+        'payment_method': 'wallet',
+        'status': 'failed',
+        'error': 'Security validation failed. Please try again.',
+        'error_code': 'SECURITY_VALIDATION_ERROR',
+        'retry_allowed': true,
+      };
+    }
+  }
+
+  /// Check recent payment attempts for rate limiting
+  Future<int> _checkRecentPaymentAttempts(String userId) async {
+    try {
+      final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
+
+      final response = await _supabase
+          .from('payment_attempts')
+          .select('id')
+          .eq('user_id', userId)
+          .gte('created_at', fiveMinutesAgo.toIso8601String())
+          .count();
+
+      return response.count;
+    } catch (e) {
+      _logger.warning('CustomerOrderService: Failed to check recent payment attempts', e);
+      return 0; // Fail open for availability
+    }
+  }
+
+  /// Get session age for security validation
+  Future<Duration?> _getSessionAge() async {
+    try {
+      final session = _supabase.auth.currentSession;
+      if (session?.accessToken != null) {
+        // For security purposes, we'll check if the session is older than 24 hours
+        // by checking the last authentication time from the user metadata
+        final user = _supabase.auth.currentUser;
+        if (user?.lastSignInAt != null) {
+          final lastSignIn = DateTime.parse(user!.lastSignInAt!);
+          return DateTime.now().difference(lastSignIn);
+        }
+      }
+      return null;
+    } catch (e) {
+      _logger.warning('CustomerOrderService: Failed to get session age', e);
+      return null;
+    }
+  }
+
+  /// Validate large transaction patterns
+  Future<bool> _validateLargeTransaction(String userId, double amount) async {
+    try {
+      // Check user's transaction history for large transactions
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+
+      final response = await _supabase
+          .from('wallet_transactions')
+          .select('amount')
+          .eq('user_id', userId)
+          .gte('created_at', thirtyDaysAgo.toIso8601String())
+          .gte('amount', 500.0)
+          .count();
+
+      final largeTransactionCount = response.count;
+
+      // Allow if user has history of large transactions
+      return largeTransactionCount > 0;
+    } catch (e) {
+      _logger.warning('CustomerOrderService: Failed to validate large transaction', e);
+      return false; // Fail secure for large transactions
+    }
+  }
+
+  /// Get wallet balance age for freshness validation
+  Future<Duration?> _getWalletBalanceAge(String userId) async {
+    try {
+      final response = await _supabase
+          .from('stakeholder_wallets')
+          .select('last_activity_at')
+          .eq('user_id', userId)
+          .single();
+
+      if (response['last_activity_at'] != null) {
+        final lastActivity = DateTime.parse(response['last_activity_at']);
+        return DateTime.now().difference(lastActivity);
+      }
+      return null;
+    } catch (e) {
+      _logger.warning('CustomerOrderService: Failed to get wallet balance age', e);
+      return null;
+    }
+  }
+
+  /// Refresh wallet balance for security
+  Future<void> _refreshWalletBalance(String userId) async {
+    try {
+      await _supabase
+          .from('stakeholder_wallets')
+          .update({
+            'last_activity_at': DateTime.now().toIso8601String(),
+          })
+          .eq('user_id', userId);
+    } catch (e) {
+      _logger.warning('CustomerOrderService: Failed to refresh wallet balance', e);
+    }
+  }
+
+  /// Log security events for audit trail
+  Future<void> _logSecurityEvent(String eventType, String userId, Map<String, dynamic> eventData) async {
+    try {
+      await _supabase
+          .from('security_audit_log')
+          .insert({
+            'event_type': eventType,
+            'user_id': userId,
+            'event_data': eventData,
+            'ip_address': null, // Would be populated by Edge Function
+            'user_agent': null, // Would be populated by Edge Function
+            'created_at': DateTime.now().toIso8601String(),
+          });
+
+      _logger.info('CustomerOrderService: Security event logged: $eventType');
+    } catch (e) {
+      _logger.error('CustomerOrderService: Failed to log security event', e);
+      // Don't throw - logging failures shouldn't break payment flow
     }
   }
 

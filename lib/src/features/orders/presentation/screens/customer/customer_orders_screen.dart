@@ -238,7 +238,28 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
+              const SizedBox(height: 8),
+
+              // Payment method information
+              Row(
+                children: [
+                  Icon(
+                    Icons.payment,
+                    size: 16,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _getPaymentMethodDisplay(order.paymentMethod),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 12),
               
               // Order total and actions
@@ -495,13 +516,60 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
   String _getOrderItemsPreview(Order order) {
     if (order.items.isEmpty) return 'No items';
 
-    final firstItem = order.items.first;
-    final itemCount = order.items.length;
+    // Show all items with quantities in comma-separated format
+    final itemDescriptions = order.items.map((item) => '${item.quantity}x ${item.name}').toList();
 
-    if (itemCount == 1) {
-      return '${firstItem.quantity}x ${firstItem.name}';
-    } else {
-      return '${firstItem.quantity}x ${firstItem.name} and ${itemCount - 1} more item${itemCount > 2 ? 's' : ''}';
+    // Join with commas, but limit display to avoid overly long text
+    final preview = itemDescriptions.join(', ');
+
+    // If the preview is too long (more than 80 characters), truncate and show count
+    if (preview.length > 80) {
+      final firstTwo = itemDescriptions.take(2).join(', ');
+      final remainingCount = order.items.length - 2;
+      if (remainingCount > 0) {
+        return '$firstTwo and $remainingCount more item${remainingCount > 1 ? 's' : ''}';
+      }
+      return firstTwo;
+    }
+
+    return preview;
+  }
+
+  /// Converts payment method string to user-friendly display name
+  String _getPaymentMethodDisplay(String? paymentMethod) {
+    if (paymentMethod == null || paymentMethod.isEmpty) {
+      return 'Payment method not specified';
+    }
+
+    switch (paymentMethod.toLowerCase()) {
+      case 'credit_card':
+      case 'card':
+        return 'Credit/Debit Card';
+      case 'wallet':
+        return 'GigaEats Wallet';
+      case 'cash':
+        return 'Cash on Delivery';
+      case 'fpx':
+        return 'FPX Online Banking';
+      case 'grabpay':
+        return 'GrabPay';
+      case 'touchngo':
+      case 'tng':
+        return 'Touch \'n Go eWallet';
+      case 'boost':
+        return 'Boost';
+      case 'shopeepay':
+        return 'ShopeePay';
+      case 'bank_transfer':
+        return 'Bank Transfer';
+      default:
+        // Fallback: capitalize first letter and replace underscores with spaces
+        return paymentMethod
+            .split('_')
+            .map((word) => word.isNotEmpty
+                ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+                : word)
+            .join(' ');
     }
   }
 

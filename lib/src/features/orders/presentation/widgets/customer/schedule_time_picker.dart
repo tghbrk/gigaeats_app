@@ -97,7 +97,6 @@ class _ScheduleTimePickerState extends ConsumerState<ScheduleTimePicker>
         ),
         elevation: 8,
         child: Container(
-          padding: const EdgeInsets.all(24),
           constraints: const BoxConstraints(maxWidth: 420, maxHeight: 600),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
@@ -105,14 +104,21 @@ class _ScheduleTimePickerState extends ConsumerState<ScheduleTimePicker>
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Enhanced Header
-              _buildHeader(theme),
+              // Fixed Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                child: _buildHeader(theme),
+              ),
 
-              const SizedBox(height: 20),
-
-              // Subtitle
+              // Scrollable Content
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Subtitle
               if (widget.subtitle != null) ...[
                 Text(
                   widget.subtitle!,
@@ -123,76 +129,83 @@ class _ScheduleTimePickerState extends ConsumerState<ScheduleTimePicker>
                 const SizedBox(height: 20),
               ],
             
-            // Guidelines
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, 
-                           color: Colors.blue.shade700, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Scheduling Guidelines',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: Colors.blue.shade700,
-                          fontWeight: FontWeight.w600,
+                      // Guidelines
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline,
+                                     color: Colors.blue.shade700, size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Scheduling Guidelines',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    color: Colors.blue.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '• Orders must be scheduled at least 2 hours in advance\n'
+                              '• Delivery hours: 8:00 AM - 10:00 PM daily\n'
+                              '• Subject to vendor business hours',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+
+                      const SizedBox(height: 20),
+
+                      // Date Selection
+                      _buildDateSelector(theme),
+
+                      const SizedBox(height: 16),
+
+                      // Time Selection
+                      _buildTimeSelector(theme),
+
+                      const SizedBox(height: 16),
+
+                      // Vendor Business Hours (if available)
+                      if (widget.showBusinessHours && widget.vendor != null)
+                        _buildBusinessHoursInfo(theme),
+
+                      // Error Message
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        _buildErrorMessage(theme),
+                      ],
+
+                      // Warning Messages
+                      if (_warnings.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildWarningMessages(theme),
+                      ],
+
+                      const SizedBox(height: 16),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '• Orders must be scheduled at least 2 hours in advance\n'
-                    '• Delivery hours: 8:00 AM - 10:00 PM daily\n'
-                    '• Subject to vendor business hours',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 20),
-            
-              // Date Selection
-              _buildDateSelector(theme),
 
-              const SizedBox(height: 16),
-
-              // Time Selection
-              _buildTimeSelector(theme),
-
-              const SizedBox(height: 16),
-
-              // Vendor Business Hours (if available)
-              if (widget.showBusinessHours && widget.vendor != null)
-                _buildBusinessHoursInfo(theme),
-
-              // Error Message
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                _buildErrorMessage(theme),
-              ],
-
-              // Warning Messages
-              if (_warnings.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildWarningMessages(theme),
-              ],
-
-              const SizedBox(height: 24),
-
-              // Enhanced Action Buttons
-              _buildActionButtons(theme),
+              // Fixed Action Buttons at Bottom
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: _buildActionButtons(theme),
+              ),
             ],
           ),
         ),
@@ -471,7 +484,6 @@ class _ScheduleTimePickerState extends ConsumerState<ScheduleTimePicker>
     );
   }
 
-  /// Build enhanced action buttons with Material Design 3 styling
   Widget _buildActionButtons(ThemeData theme) {
     return Row(
       children: [

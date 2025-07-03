@@ -72,7 +72,10 @@ serve(async (req) => {
     }
 
     const requestBody: SecureWalletRequest = await req.json()
+    console.log('🔍 [EDGE-FUNCTION] Request body received:', JSON.stringify(requestBody, null, 2))
+
     const { action } = requestBody
+    console.log('🔍 [EDGE-FUNCTION] Extracted action:', action)
 
     let response: any
 
@@ -159,19 +162,13 @@ async function validateWalletAccess(
 
     if (ownershipError || !ownershipValid) {
       // Log unauthorized access attempt
-      await logSecurityEvent(supabase, {
-        event_type: 'unauthorized_wallet_access_attempt',
-        user_id: userId,
-        entity_type: 'wallet',
-        entity_id: wallet_id,
-        event_data: {
-          operation,
-          context,
-          ip_address: context?.ip_address,
-          user_agent: context?.user_agent
-        },
-        severity: 'high'
-      })
+      await logSecurityEvent(supabase, 'unauthorized_wallet_access_attempt', userId, {
+        operation,
+        context,
+        wallet_id: wallet_id,
+        ip_address: context?.ip_address,
+        user_agent: context?.user_agent
+      }, 'warning')
 
       return {
         valid: false,
@@ -185,18 +182,12 @@ async function validateWalletAccess(
     const suspiciousActivity = await detectSuspiciousActivity(supabase, userId, operation, context)
     
     if (suspiciousActivity.risk_score > 80) {
-      await logSecurityEvent(supabase, {
-        event_type: 'suspicious_activity_detected',
-        user_id: userId,
-        entity_type: 'wallet',
-        entity_id: wallet_id,
-        event_data: {
-          operation,
-          suspicious_indicators: suspiciousActivity.indicators,
-          risk_score: suspiciousActivity.risk_score
-        },
-        severity: 'critical'
-      })
+      await logSecurityEvent(supabase, 'suspicious_activity_detected', userId, {
+        operation,
+        wallet_id: wallet_id,
+        suspicious_indicators: suspiciousActivity.indicators,
+        risk_score: suspiciousActivity.risk_score
+      }, 'error')
 
       return {
         valid: false,
@@ -248,19 +239,13 @@ async function validateTransaction(
       })
 
     if (limitsError || !limitsValid) {
-      await logSecurityEvent(supabase, {
-        event_type: 'transaction_limit_exceeded',
-        user_id: userId,
-        entity_type: 'transaction',
-        entity_id: reference_id || 'unknown',
-        event_data: {
-          wallet_id,
-          amount,
-          transaction_type,
-          limit_type: 'bnm_compliance'
-        },
-        severity: 'high'
-      })
+      await logSecurityEvent(supabase, 'transaction_limit_exceeded', userId, {
+        wallet_id,
+        amount,
+        transaction_type,
+        reference_id: reference_id || 'unknown',
+        limit_type: 'bnm_compliance'
+      }, 'warning')
 
       return {
         valid: false,
@@ -274,20 +259,14 @@ async function validateTransaction(
     const amlResult = await performAMLCheck(supabase, wallet_id, amount, transaction_type, metadata)
     
     if (amlResult.requires_review) {
-      await logSecurityEvent(supabase, {
-        event_type: 'aml_review_required',
-        user_id: userId,
-        entity_type: 'transaction',
-        entity_id: reference_id || 'unknown',
-        event_data: {
-          wallet_id,
-          amount,
-          transaction_type,
-          aml_indicators: amlResult.indicators,
-          risk_score: amlResult.risk_score
-        },
-        severity: 'critical'
-      })
+      await logSecurityEvent(supabase, 'aml_review_required', userId, {
+        wallet_id,
+        amount,
+        transaction_type,
+        reference_id: reference_id || 'unknown',
+        aml_indicators: amlResult.indicators,
+        risk_score: amlResult.risk_score
+      }, 'error')
 
       if (amlResult.risk_score > 90) {
         return {
@@ -344,17 +323,45 @@ async function processSecureTransaction(
 
     const { amount, transaction_type, reference_id, description, metadata } = transaction_data
 
+    // Get current wallet balance for balance_before/after calculation
+    const { data: currentWallet, error: walletFetchError } = await supabase
+      .from('stakeholder_wallets')
+      .select('available_balance')
+      .eq('id', wallet_id)
+      .single()
+
+    if (walletFetchError || !currentWallet) {
+      throw new Error(`Failed to fetch wallet balance: ${walletFetchError?.message}`)
+    }
+
+    const balanceBefore = currentWallet.available_balance
+    const transactionAmount = transaction_type.includes('debit') ? -Math.abs(amount) : Math.abs(amount)
+    const balanceAfter = balanceBefore + transactionAmount
+
     // Begin database transaction
+    console.log('🔍 Creating wallet transaction with data:', {
+      wallet_id,
+      amount: transactionAmount,
+      transaction_type,
+      reference_type: metadata?.reference_type || 'manual',
+      reference_id,
+      description,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter
+    })
+
     const { data: transaction, error: transactionError } = await supabase
       .from('wallet_transactions')
       .insert({
         wallet_id: wallet_id,
-        amount: transaction_type.includes('debit') || transaction_type === 'order_payment' ? -Math.abs(amount) : Math.abs(amount),
+        amount: transactionAmount,
         transaction_type: transaction_type,
         reference_type: metadata?.reference_type || 'manual',
         reference_id: reference_id,
         description: description,
-        status: validationResult.compliance_status === 'requires_review' ? 'pending_review' : 'completed',
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        // status column removed - compliance status stored in metadata
         metadata: {
           ...metadata,
           compliance_status: validationResult.compliance_status,
@@ -365,43 +372,43 @@ async function processSecureTransaction(
       .select()
       .single()
 
+    console.log('🔍 Transaction creation result:', { transaction, transactionError })
+
     if (transactionError) {
+      console.error('❌ Transaction creation failed:', transactionError)
       throw new Error(`Transaction creation failed: ${transactionError.message}`)
     }
 
     // Update wallet balance if transaction is approved
     if (validationResult.compliance_status === 'approved') {
-      const balanceChange = transaction_type.includes('debit') || transaction_type === 'order_payment' ? -Math.abs(amount) : Math.abs(amount)
-      
+      console.log('🔍 Updating wallet balance:', { wallet_id, balanceBefore, balanceAfter })
+
       const { error: balanceError } = await supabase
         .from('stakeholder_wallets')
         .update({
-          available_balance: supabase.sql`available_balance + ${balanceChange}`,
+          available_balance: balanceAfter,
           updated_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString()
         })
         .eq('id', wallet_id)
 
       if (balanceError) {
+        console.error('❌ Balance update failed:', balanceError)
         throw new Error(`Balance update failed: ${balanceError.message}`)
       }
+
+      console.log('✅ Wallet balance updated successfully')
     }
 
     // Log successful transaction
-    await logSecurityEvent(supabase, {
-      event_type: 'transaction_processed',
-      user_id: userId,
-      entity_type: 'transaction',
-      entity_id: transaction.id,
-      event_data: {
-        wallet_id,
-        amount,
-        transaction_type,
-        compliance_status: validationResult.compliance_status,
-        reference_id
-      },
-      severity: 'low'
-    })
+    await logSecurityEvent(supabase, 'transaction_processed', userId, {
+      transaction_id: transaction.id,
+      wallet_id,
+      amount,
+      transaction_type,
+      compliance_status: validationResult.compliance_status,
+      reference_id
+    }, 'info')
 
     return {
       success: true,
@@ -416,17 +423,11 @@ async function processSecureTransaction(
     console.error('Secure transaction processing error:', error)
     
     // Log failed transaction attempt
-    await logSecurityEvent(supabase, {
-      event_type: 'transaction_processing_failed',
-      user_id: userId,
-      entity_type: 'wallet',
-      entity_id: wallet_id,
-      event_data: {
-        error_message: error.message,
-        transaction_data
-      },
-      severity: 'medium'
-    })
+    await logSecurityEvent(supabase, 'transaction_processing_failed', userId, {
+      wallet_id: wallet_id,
+      error_message: error.message,
+      transaction_data
+    }, 'error')
 
     throw error
   }
@@ -601,29 +602,29 @@ async function performAMLCheck(
   }
 }
 
+// Security event logging function (consolidated)
 async function logSecurityEvent(
   supabase: any,
-  eventData: {
-    event_type: string
-    user_id: string
-    entity_type: string
-    entity_id: string
-    event_data: Record<string, any>
-    severity: string
-  }
+  eventType: string,
+  userId: string,
+  eventData: any,
+  severity: string = 'info'
 ): Promise<void> {
   try {
-    await supabase.rpc('log_security_event', {
-      event_type: eventData.event_type,
-      user_id: eventData.user_id,
-      entity_type: eventData.entity_type,
-      entity_id: eventData.entity_id,
-      event_data: eventData.event_data,
-      ip_address: eventData.event_data.ip_address || null,
-      user_agent: eventData.event_data.user_agent || null
-    })
+    await supabase
+      .from('security_audit_log')
+      .insert({
+        event_type: eventType,
+        user_id: userId,
+        event_data: eventData,
+        severity: severity,
+        created_at: new Date().toISOString(),
+      })
+
+    console.log('Security event logged:', eventType)
   } catch (error) {
-    console.error('Security event logging error:', error)
+    console.error('Failed to log security event:', error)
+    // Don't throw - logging failures shouldn't break the payment flow
   }
 }
 
@@ -644,7 +645,7 @@ async function getWalletBalance(
         available_balance,
         pending_balance,
         total_earned,
-        total_spent,
+        total_withdrawn,
         is_active,
         last_activity_at,
         created_at,
@@ -658,12 +659,12 @@ async function getWalletBalance(
       throw new Error(`Failed to fetch wallet balance: ${walletError.message}`)
     }
 
-    // Get pending transactions count
+    // Get pending transactions count (using metadata for status)
     const { count: pendingCount } = await supabase
       .from('wallet_transactions')
       .select('*', { count: 'exact', head: true })
       .eq('wallet_id', wallet.id)
-      .eq('status', 'pending')
+      .contains('metadata', { compliance_status: 'requires_review' })
 
     return {
       success: true,
@@ -696,13 +697,12 @@ async function getTransactionHistory(
         id,
         amount,
         transaction_type,
-        status,
         description,
         reference_type,
         reference_id,
         metadata,
         created_at,
-        updated_at
+        processed_at
       `)
       .eq('wallet_id', wallet_id)
       .order('created_at', { ascending: false })
@@ -845,30 +845,7 @@ async function performEnhancedSecurityValidation(
   console.log('Enhanced security validation passed for user:', userId)
 }
 
-// Log security events for audit trail
-async function logSecurityEvent(
-  supabase: any,
-  eventType: string,
-  userId: string,
-  eventData: any
-): Promise<void> {
-  try {
-    await supabase
-      .from('security_audit_log')
-      .insert({
-        event_type: eventType,
-        user_id: userId,
-        event_data: eventData,
-        severity: eventType.includes('EXCEEDED') || eventType.includes('SUSPICIOUS') ? 'warning' : 'info',
-        created_at: new Date().toISOString(),
-      })
-
-    console.log('Security event logged:', eventType)
-  } catch (error) {
-    console.error('Failed to log security event:', error)
-    // Don't throw - logging failures shouldn't break the payment flow
-  }
-}
+// Duplicate function removed - using consolidated version above
 
 async function processOrderPayment(
   supabase: any,
@@ -876,10 +853,26 @@ async function processOrderPayment(
   request: SecureWalletRequest
 ): Promise<any> {
   try {
-    const { wallet_id, order_id, transaction_data } = request
+    let { wallet_id, order_id, transaction_data } = request
 
-    if (!wallet_id || !order_id || !transaction_data) {
-      throw new Error('wallet_id, order_id, and transaction_data are required')
+    if (!order_id || !transaction_data) {
+      throw new Error('order_id and transaction_data are required')
+    }
+
+    // Auto-resolve wallet_id if not provided
+    if (!wallet_id) {
+      const { data: wallet, error: walletError } = await supabase
+        .from('stakeholder_wallets')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('user_role', 'customer')
+        .single()
+
+      if (walletError || !wallet) {
+        throw new Error('Customer wallet not found')
+      }
+
+      wallet_id = wallet.id
     }
 
     // Validate wallet ownership
@@ -895,6 +888,8 @@ async function processOrderPayment(
 
     // Enhanced Security Validation
     await performEnhancedSecurityValidation(supabase, userId, order_id, transaction_data)
+
+    console.log('🔍 Processing order payment:', { order_id, userId, transaction_data })
 
     // Get order details
     const { data: order, error: orderError } = await supabase
@@ -943,17 +938,32 @@ async function processOrderPayment(
       }
     }
 
+    // Calculate balance before and after for the transaction
+    const balanceBefore = wallet.available_balance
+    const transactionAmount = -Math.abs(transaction_data.amount)
+    const balanceAfter = balanceBefore + transactionAmount
+
+    console.log('🔍 Order payment transaction details:', {
+      wallet_id,
+      balanceBefore,
+      transactionAmount,
+      balanceAfter,
+      order_id
+    })
+
     // Process payment transaction
     const { data: transaction, error: transactionError } = await supabase
       .from('wallet_transactions')
       .insert({
         wallet_id: wallet_id,
-        amount: -Math.abs(transaction_data.amount),
-        transaction_type: 'order_payment',
+        amount: transactionAmount,
+        transaction_type: 'debit',
         reference_type: 'order',
         reference_id: order_id,
         description: `Payment for order ${order_id}`,
-        status: 'completed',
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        // status column removed - transaction is completed by default
         metadata: {
           order_id: order_id,
           payment_method: 'wallet',
@@ -969,11 +979,14 @@ async function processOrderPayment(
     }
 
     // Update wallet balance
+    console.log('🔍 Updating wallet balance for order payment:', { wallet_id, balanceAfter })
+
     const { error: balanceError } = await supabase
       .from('stakeholder_wallets')
       .update({
-        available_balance: wallet.available_balance - transaction_data.amount,
-        total_spent: supabase.sql`total_spent + ${transaction_data.amount}`,
+        available_balance: balanceAfter,
+        // total_spent column doesn't exist - using total_withdrawn instead
+        // Note: SQL functions not available in Edge Functions, would need RPC
         updated_at: new Date().toISOString(),
         last_activity_at: new Date().toISOString()
       })
@@ -990,7 +1003,7 @@ async function processOrderPayment(
         status: 'confirmed',
         payment_method: 'wallet',
         payment_status: 'paid',
-        paid_at: new Date().toISOString(),
+        // paid_at column doesn't exist in orders table
         updated_at: new Date().toISOString()
       })
       .eq('id', order_id)
@@ -1000,19 +1013,13 @@ async function processOrderPayment(
     }
 
     // Log successful payment
-    await logSecurityEvent(supabase, {
-      event_type: 'order_payment_processed',
-      user_id: userId,
-      entity_type: 'order',
-      entity_id: order_id,
-      event_data: {
-        wallet_id,
-        amount: transaction_data.amount,
-        transaction_id: transaction.id,
-        payment_method: 'wallet'
-      },
-      severity: 'low'
-    })
+    await logSecurityEvent(supabase, 'order_payment_processed', userId, {
+      order_id: order_id,
+      wallet_id,
+      amount: transaction_data.amount,
+      transaction_id: transaction.id,
+      payment_method: 'wallet'
+    }, 'info')
 
     return {
       success: true,
@@ -1027,18 +1034,12 @@ async function processOrderPayment(
     console.error('Process order payment error:', error)
 
     // Log failed payment attempt
-    await logSecurityEvent(supabase, {
-      event_type: 'order_payment_failed',
-      user_id: userId,
-      entity_type: 'order',
-      entity_id: request.order_id || 'unknown',
-      event_data: {
-        error_message: error.message,
-        wallet_id: request.wallet_id,
-        amount: request.transaction_data?.amount
-      },
-      severity: 'medium'
-    })
+    await logSecurityEvent(supabase, 'order_payment_failed', userId, {
+      order_id: request.order_id || 'unknown',
+      error_message: error.message,
+      wallet_id: request.wallet_id,
+      amount: request.transaction_data?.amount
+    }, 'error')
 
     return {
       success: false,

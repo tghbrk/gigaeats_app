@@ -261,7 +261,7 @@ class CustomerOrderService {
       final response = await _supabase.functions.invoke(
         'secure-wallet-operations',
         body: {
-          'operation': 'process_order_payment',
+          'action': 'process_order_payment',
           'wallet_id': null, // Will be resolved by Edge Function based on user
           'order_id': orderId,
           'transaction_data': {

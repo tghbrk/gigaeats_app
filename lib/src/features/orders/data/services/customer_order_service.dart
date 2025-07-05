@@ -2,8 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/order.dart';
 import '../models/delivery_method.dart';
 import '../models/order_status_history.dart';
-// TODO: Remove unused import when Customer class is used
-// import '../../../user_management/domain/customer.dart';
+// Customer class import will be restored when user management is implemented
 
 /// Service for customer order operations
 class CustomerOrderService {

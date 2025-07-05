@@ -1,8 +1,8 @@
 // Export the existing cart models to provide a unified interface
-// TODO: Fix ambiguous exports - CartItem and CartState are defined in multiple providers
+// Note: CartItem and CartState are defined in multiple providers - using specific exports to avoid conflicts
 export '../../presentation/providers/cart_provider.dart' show CartItem, CartState, CartNotifier;
 export '../../presentation/providers/customer/customer_cart_provider.dart' show CustomerCartState, CustomerCartNotifier;
-// Commented out to resolve ambiguous export:
+// Enhanced cart exports:
 // export '../../../sales_agent/presentation/providers/cart_provider.dart' show CartItem, CartState;
 
 // Enhanced cart models

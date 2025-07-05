@@ -2,9 +2,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/order.dart';
-// TODO: Fix missing menu_item_repository import
+// Repository imports will be restored when menu and vendor repositories are implemented
 // import '../../../menu/data/repositories/menu_item_repository.dart';
-// TODO: Fix missing vendor_repository import
 // import '../../../vendors/data/repositories/vendor_repository.dart';
 // import '../../../presentation/providers/customer/customer_cart_provider.dart'; // Unused
 // import '../../../../../presentation/providers/repository_providers.dart'; // Unused

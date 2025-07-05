@@ -26,7 +26,13 @@ class EnhancedOrderTrackingService {
     }
 
     // Create new tracking stream
-    final controller = StreamController<OrderTrackingUpdate>.broadcast();
+    final controller = StreamController<OrderTrackingUpdate>.broadcast(
+      onCancel: () {
+        // Clean up when stream is cancelled
+        stopTracking(orderId);
+      },
+    );
+    // Note: Controller is properly closed in stopTracking() and dispose() methods
     _trackingControllers[orderId] = controller;
 
     // Setup real-time subscriptions
@@ -157,6 +163,7 @@ class EnhancedOrderTrackingService {
         .listen((data) => _handleDeliveryTrackingUpdate(orderId, data));
 
     _subscriptions['delivery_$orderId'] = subscription;
+    // Note: Subscription is properly cancelled in stopTracking() and dispose() methods
   }
 
   /// Setup status history subscription
@@ -168,6 +175,7 @@ class EnhancedOrderTrackingService {
         .listen((data) => _handleStatusHistoryUpdate(orderId, data));
 
     _subscriptions['history_$orderId'] = subscription;
+    // Note: Subscription is properly cancelled in stopTracking() and dispose() methods
   }
 
   /// Handle order update

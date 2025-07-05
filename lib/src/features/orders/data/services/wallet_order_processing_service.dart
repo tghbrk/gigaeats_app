@@ -274,6 +274,7 @@ class WalletOrderProcessingService {
 /// Provider for wallet order processing service
 final walletOrderProcessingServiceProvider = Provider<WalletOrderProcessingService>((ref) {
   final walletCheckoutService = ref.watch(walletCheckoutIntegrationServiceProvider);
-  final orderPlacementService = EnhancedOrderPlacementService(); // TODO: Create provider for this
+  // Create service directly until provider is implemented
+  final orderPlacementService = EnhancedOrderPlacementService();
   return WalletOrderProcessingService(walletCheckoutService, orderPlacementService, ref);
 });

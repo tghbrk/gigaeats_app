@@ -6,7 +6,11 @@ import 'dart:developer' as developer;
 import '../../data/repositories/user_repository.dart';
 import '../../features/vendors/data/repositories/vendor_repository.dart';
 import '../../features/orders/data/repositories/order_repository.dart';
+import '../../features/orders/data/services/enhanced_order_service.dart';
 import '../../features/customers/data/repositories/customer_repository.dart';
+import '../../features/menu/data/services/template_integration_service.dart';
+import '../../features/menu/data/repositories/customization_template_repository.dart';
+import '../../features/menu/data/services/template_usage_tracking_service.dart';
 import '../../features/menu/data/repositories/menu_item_repository.dart';
 import '../../features/sales_agent/data/repositories/sales_agent_repository.dart';
 import '../../core/services/file_upload_service.dart';
@@ -50,6 +54,23 @@ final vendorRepositoryProvider = Provider<VendorRepository>((ref) {
 // Order repository provider
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepository();
+});
+
+// Customization template repository provider
+final customizationTemplateRepositoryProvider = Provider<CustomizationTemplateRepository>((ref) {
+  return CustomizationTemplateRepository();
+});
+
+// Template usage tracking service provider
+final templateUsageTrackingServiceProvider = Provider<TemplateUsageTrackingService>((ref) {
+  return TemplateUsageTrackingService();
+});
+
+// Enhanced order service provider
+final enhancedOrderServiceProvider = Provider<EnhancedOrderService>((ref) {
+  final templateRepository = ref.watch(customizationTemplateRepositoryProvider);
+  final templateIntegrationService = TemplateIntegrationService(templateRepository);
+  return EnhancedOrderService(templateIntegrationService);
 });
 
 // Customer repository provider

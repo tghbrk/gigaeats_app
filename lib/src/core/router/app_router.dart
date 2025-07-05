@@ -57,6 +57,7 @@ import '../../features/user_management/data/models/sales_agent_profile.dart';
 import '../../features/user_management/presentation/screens/vendor/vendor_dashboard.dart';
 import '../../features/orders/presentation/screens/vendor/vendor_orders_screen.dart';
 import '../../features/menu/presentation/screens/vendor/vendor_menu_management_screen.dart';
+import '../../features/menu/presentation/screens/vendor/template_analytics_dashboard_screen.dart';
 import '../../features/user_management/presentation/screens/vendor/vendor_profile_screen.dart';
 import '../../features/user_management/presentation/screens/vendor/vendor_analytics_screen.dart';
 import '../../features/orders/presentation/screens/vendor/vendor_order_details_screen.dart';
@@ -408,6 +409,14 @@ List<RouteBase> _buildRoutes() {
           path: 'analytics',
           name: 'vendor-analytics',
           builder: (context, state) => const VendorAnalyticsScreen(),
+        ),
+        GoRoute(
+          path: 'template-analytics/:vendorId',
+          name: 'vendor-template-analytics',
+          builder: (context, state) {
+            final vendorId = state.pathParameters['vendorId']!;
+            return TemplateAnalyticsDashboardScreen(vendorId: vendorId);
+          },
         ),
         GoRoute(
           path: 'order-details/:orderId',

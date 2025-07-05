@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// TODO: Restore when vendor models and utils are implemented
+// Vendor models and utils will be restored when implemented
 // import '../../../vendors/data/models/vendor.dart';
 // import '../../../user_management/application/vendor_utils.dart' as vendor_utils;
 import '../../../../core/utils/logger.dart';

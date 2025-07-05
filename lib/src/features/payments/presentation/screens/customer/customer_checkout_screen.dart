@@ -1198,7 +1198,7 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
             setState(() => _selectedPaymentMethod = value!);
             ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
             // Sync to enhanced cart provider with resilient error handling
-            await _syncPaymentMethodToEnhancedCart(value!);
+            await _syncPaymentMethodToEnhancedCart(value);
           },
           contentPadding: EdgeInsets.zero,
         ),
@@ -1220,7 +1220,7 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
             setState(() => _selectedPaymentMethod = value!);
             ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
             // Sync to enhanced cart provider with resilient error handling
-            await _syncPaymentMethodToEnhancedCart(value!);
+            await _syncPaymentMethodToEnhancedCart(value);
           },
           contentPadding: EdgeInsets.zero,
         ),
@@ -1234,7 +1234,7 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
             setState(() => _selectedPaymentMethod = value!);
             ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
             // Sync to enhanced cart provider with resilient error handling
-            await _syncPaymentMethodToEnhancedCart(value!);
+            await _syncPaymentMethodToEnhancedCart(value);
           },
           contentPadding: EdgeInsets.zero,
         ),

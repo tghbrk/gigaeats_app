@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// TODO: Restore unused import when tracking functionality is implemented
+// Imports will be restored when tracking functionality is implemented
 // import 'package:go_router/go_router.dart';
-// TODO: Restore when customer delivery tracking provider is implemented
 // import '../providers/customer_delivery_tracking_provider.dart';
-// TODO: Restore when order tracking functionality is implemented
 // import '../../../orders/data/models/order.dart';
 
 /// Compact order tracking widget for embedding in order cards

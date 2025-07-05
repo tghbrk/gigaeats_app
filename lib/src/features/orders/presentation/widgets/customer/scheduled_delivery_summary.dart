@@ -235,7 +235,6 @@ class ScheduledDeliveryBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
     final isToday = _isToday(scheduledTime);
     final isTomorrow = _isTomorrow(scheduledTime);
     

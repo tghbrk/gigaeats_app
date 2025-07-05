@@ -357,20 +357,7 @@ class _CustomerRestaurantDetailsScreenState extends ConsumerState<CustomerRestau
     return filtered;
   }
 
-  Widget _buildMenuList(List<Product> products) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return MenuItemCard(
-          product: product,
-          onTap: () => _showMenuItemDetails(product),
-          onAddToCart: () => _addToCart(product),
-        );
-      },
-    );
-  }
+
 
   // TODO: This method is currently unused but preserved for future card-style menu layout
   // ignore: unused_element

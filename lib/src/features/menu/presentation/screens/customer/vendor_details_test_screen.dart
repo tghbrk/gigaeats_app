@@ -1,16 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// TODO: Restore imports when provider issues are fixed
-// import '../../providers/customer/vendor_details_provider.dart';
-// TODO: Fix widget import paths
-// import '../widgets/vendor_gallery_widget.dart';
-// import '../widgets/vendor_reviews_widget.dart';
-// import '../widgets/vendor_business_hours_widget.dart';
-// import '../widgets/vendor_promotions_widget.dart';
-// TODO: Fix vendor utils import paths
-// import '../../../user_management/application/vendor_utils.dart';
-// import '../../../user_management/domain/vendor.dart';
-// import '../../../vendors/presentation/providers/vendor_provider.dart';
 // import '../../../../shared/widgets/custom_button.dart';
 // import '../../../../shared/widgets/loading_widget.dart';
 

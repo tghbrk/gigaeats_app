@@ -4,9 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../data/models/product.dart';
 
-// TODO: Fix vendor provider import path
-// import '../../../../vendors/presentation/providers/vendor_provider.dart';
-// TODO: Fix cart provider import path
+// TODO: Fix cart provider import path - cart provider doesn't exist yet
 // import '../../../../sales_agent/presentation/providers/cart_provider.dart';
 import '../../../../../shared/widgets/custom_button.dart';
 

@@ -5,7 +5,7 @@ import '../../../data/models/product.dart';
 import '../../../../user_management/domain/vendor.dart';
 import '../../providers/customer/customer_product_provider.dart';
 import '../../../../orders/presentation/providers/customer/customer_cart_provider.dart';
-import '../../../../orders/presentation/widgets/customer/customization_selection_widget.dart';
+import '../../../../orders/presentation/widgets/customer/enhanced_customization_selection_widget.dart';
 import '../../../../vendors/presentation/providers/vendor_provider.dart';
 import '../../widgets/customer/feature_chip.dart';
 
@@ -331,9 +331,10 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
           ),
         ),
         const SizedBox(height: 8),
-        CustomizationSelectionWidget(
+        EnhancedCustomizationSelectionWidget(
           key: ValueKey(product.id),
-          customizations: product.customizations,
+          menuItemId: product.id,
+          directCustomizations: product.customizations,
           selectedCustomizations: _selectedCustomizations,
           onSelectionChanged: (customizations, additionalPrice) {
             WidgetsBinding.instance.addPostFrameCallback((_) {

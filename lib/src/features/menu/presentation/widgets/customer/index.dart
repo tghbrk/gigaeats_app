@@ -1,4 +1,3 @@
-// TODO: Restored proper library structure - converted library doc comments to regular comments
 // Export file for customer menu widgets
 // Provides easy access to all reusable customer-facing menu components
 

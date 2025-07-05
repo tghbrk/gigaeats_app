@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/customer/vendor_details_provider.dart';
 import '../../../data/models/customer/vendor_promotion.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-// TODO: Fix missing custom_error_widget import
-// import '../../../../../shared/widgets/custom_error_widget.dart';
 
 class VendorPromotionsWidget extends ConsumerWidget {
   final String vendorId;

@@ -127,22 +127,37 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                       const SizedBox(height: 16),
 
                       // Customization Type
-                      DropdownButtonFormField<String>(
-                        value: _selectedType,
-                        decoration: const InputDecoration(
-                          labelText: 'Selection Type *',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: CustomizationType.values.map((type) {
-                          return DropdownMenuItem(
-                            value: type.value,
-                            child: Text(type.displayName),
+                      Builder(
+                        builder: (context) {
+                          // Debug logging
+                          final items = CustomizationType.values.map((type) {
+                            return DropdownMenuItem(
+                              value: type.value,
+                              child: Text(type.displayName),
+                            );
+                          }).toList();
+
+                          final currentValue = CustomizationType.values.any((type) => type.value == _selectedType)
+                              ? _selectedType
+                              : CustomizationType.single.value;
+
+                          debugPrint('🔧 [CUSTOMIZATION-DIALOG] Dropdown items: ${items.map((item) => item.value).toList()}');
+                          debugPrint('🔧 [CUSTOMIZATION-DIALOG] Current value: $currentValue');
+                          debugPrint('🔧 [CUSTOMIZATION-DIALOG] Selected type: $_selectedType');
+
+                          return DropdownButtonFormField<String>(
+                            value: currentValue,
+                            decoration: const InputDecoration(
+                              labelText: 'Selection Type *',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: items,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedType = value ?? CustomizationType.single.value;
+                              });
+                            },
                           );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedType = value!;
-                          });
                         },
                       ),
 

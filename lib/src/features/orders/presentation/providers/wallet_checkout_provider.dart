@@ -93,7 +93,7 @@ class WalletCheckoutNotifier extends StateNotifier<WalletCheckoutState> {
         specialInstructions: specialInstructions,
         metadata: {
           'checkout_timestamp': DateTime.now().toIso8601String(),
-          'delivery_method': cartState.deliveryMethod?.name,
+          'delivery_method': cartState.deliveryMethod.name,
           'scheduled_delivery': cartState.scheduledDeliveryTime?.toIso8601String(),
           ...?metadata,
         },
@@ -175,7 +175,7 @@ class WalletCheckoutNotifier extends StateNotifier<WalletCheckoutState> {
         id: cartItem.id,
         menuItemId: cartItem.menuItemId,
         name: cartItem.name,
-        description: cartItem.description ?? '',
+        description: cartItem.description,
         quantity: cartItem.quantity,
         unitPrice: cartItem.unitPrice,
         totalPrice: cartItem.totalPrice,

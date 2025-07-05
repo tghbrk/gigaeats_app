@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-// TODO: Restore when CustomerDeliveryTrackingService is implemented
-// import '../../data/services/customer_delivery_tracking_service.dart';
+// Customer delivery tracking service will be restored when implemented
 import '../../../../core/utils/logger.dart';
 
 /// Provider for CustomerDeliveryTrackingService

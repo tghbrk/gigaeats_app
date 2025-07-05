@@ -264,12 +264,13 @@ class EnhancedCartNotifier extends StateNotifier<EnhancedCartState> {
     }
   }
 
-  /// Calculate customization cost for menu item
+  /// Calculate customization cost for menu item including template-based customizations
   double _calculateCustomizationCost(MenuItem menuItem, Map<String, dynamic>? customizations) {
     if (customizations == null || customizations.isEmpty) return 0.0;
 
     double totalCost = 0.0;
 
+    // Calculate cost from direct customizations
     for (final customization in menuItem.customizations) {
       final selectedValue = customizations[customization.id];
       if (selectedValue != null) {
@@ -289,7 +290,40 @@ class EnhancedCartNotifier extends StateNotifier<EnhancedCartState> {
       }
     }
 
+    // Calculate cost from template-based customizations
+    for (final template in menuItem.linkedTemplates) {
+      final selectedValue = customizations[template.id];
+      if (selectedValue != null) {
+        totalCost += _calculateSelectionCost(selectedValue);
+      }
+    }
+
     return totalCost;
+  }
+
+  /// Helper method to calculate cost from a selection value
+  double _calculateSelectionCost(dynamic selectedValue) {
+    double cost = 0.0;
+
+    if (selectedValue is Map<String, dynamic>) {
+      // Single selection
+      final price = selectedValue['price'];
+      if (price is num) {
+        cost += price.toDouble();
+      }
+    } else if (selectedValue is List) {
+      // Multiple selections
+      for (final item in selectedValue) {
+        if (item is Map<String, dynamic>) {
+          final price = item['price'];
+          if (price is num) {
+            cost += price.toDouble();
+          }
+        }
+      }
+    }
+
+    return cost;
   }
 
   /// Generate unique cart item ID

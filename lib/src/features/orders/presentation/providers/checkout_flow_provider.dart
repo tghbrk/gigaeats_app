@@ -459,7 +459,7 @@ class CheckoutFlowNotifier extends StateNotifier<CheckoutFlowState> {
     } else {
       // For other payment methods, basic validation
       state = state.copyWith(isPaymentValid: true);
-      _logger.debug('💳 [CHECKOUT-FLOW] Payment validation: true (${paymentMethod})');
+      _logger.debug('💳 [CHECKOUT-FLOW] Payment validation: true ($paymentMethod)');
     }
   }
 

@@ -5,8 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../data/models/user_role.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/driver_order.dart';
-// TODO: Restore when driver services are implemented
-// import '../../data/models/driver_error.dart';
+// Driver error models will be restored when implemented
 
 import '../../data/repositories/driver_order_repository.dart';
 // import '../../data/services/driver_realtime_service.dart';

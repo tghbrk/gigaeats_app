@@ -5,8 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../data/models/order.dart';
 import '../../data/models/order_status_history.dart';
 import '../../data/models/order_notification.dart';
-// TODO: Remove unused import when Customer class is used
-// import '../../../customers/data/models/customer.dart';
+// Customer class import will be restored when needed
 // Address is defined in order.dart, no separate import needed
 import '../../data/services/order_service.dart';
 import '../../data/repositories/order_repository.dart';

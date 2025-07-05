@@ -4,8 +4,7 @@ import '../../data/models/customer_delivery_method.dart';
 import '../../../user_management/domain/customer_profile.dart';
 import 'enhanced_payment_provider.dart';
 
-// TODO: Restored original imports structure - removed unused riverpod_annotation import
-// and part directive that was causing analyzer error (no @riverpod annotations used)
+// Enhanced checkout flow provider with proper imports structure
 
 /// Enhanced checkout flow state
 class EnhancedCheckoutFlowState {

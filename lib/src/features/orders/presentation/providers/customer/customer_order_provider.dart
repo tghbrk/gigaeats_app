@@ -1,9 +1,5 @@
-// TODO: Remove unused imports when dependencies are restored
-// import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// TODO: Remove unused import when Supabase usage is restored
-// import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/order.dart';
 import '../../../payments/data/services/payment_service.dart';
 import '../../../data/services/customer/customer_order_service.dart';
@@ -62,8 +58,6 @@ class OrderCreationState {
 
 /// Notifier for order creation
 class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
-  // TODO: Remove unused field when service methods are restored
-  // ignore: unused_field
   final CustomerOrderService _orderService;
   final Ref _ref;
   final AppLogger _logger = AppLogger();
@@ -271,8 +265,6 @@ final orderCreationProvider = StateNotifierProvider<OrderCreationNotifier, Order
 /// Provider for customer orders
 final customerOrdersProvider = FutureProvider.family<List<Order>, String>((ref, customerId) async {
   final orderService = ref.watch(customerOrderServiceProvider);
-  // TODO: Restore when getCustomerOrders method signature is fixed
-  // return orderService.getCustomerOrders(customerId);
   return orderService.getCustomerOrders(customerId);
 });
 

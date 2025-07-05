@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../user_management/domain/vendor.dart';
-// TODO: Restore unused import - commented out for analyzer cleanup
-// import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../presentation/providers/repository_providers.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../../presentation/providers/repository_providers.dart' show currentVendorProvider;
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
+import '../../../../core/utils/logger.dart';
 // TEMPORARILY COMMENTED OUT FOR QUICK WIN
 // import 'vendor_edit_profile_screen.dart';
 // import 'vendor_notification_settings_screen.dart';
@@ -20,79 +20,86 @@ class VendorProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
-  bool _isLoading = false;
-  Vendor? _vendor;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVendorProfile();
-  }
-
-  Future<void> _loadVendorProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // TODO: Restore undefined identifier - commented out for analyzer cleanup
-    // final authState = ref.read(authStateProvider);
-    final authState = <String, dynamic>{};
-      // TODO: Restore undefined getter - commented out for analyzer cleanup
-      // final userId = authState.user?.id;
-      final userId = authState['user']?['id'];
-
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
-
-      // Get vendor profile from Supabase
-      final vendorRepository = ref.read(vendorRepositoryProvider);
-      final vendor = await vendorRepository.getVendorByUserId(userId);
-
-      if (vendor == null) {
-        throw Exception('Vendor profile not found');
-      }
-
-      setState(() {
-        _vendor = vendor;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Error loading vendor profile: $e');
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load profile: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+  final AppLogger _logger = AppLogger();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    _logger.info('🏪 [VENDOR-PROFILE] Building vendor profile screen');
 
-    if (_isLoading) {
-      return const Scaffold(
-        body: LoadingWidget(message: 'Loading profile...'),
-      );
-    }
+    // Use the existing currentVendorProvider instead of manual loading
+    final vendorAsync = ref.watch(currentVendorProvider);
 
-    if (_vendor == null) {
-      return Scaffold(
-        body: CustomErrorWidget(
-          message: 'Failed to load vendor profile',
-          onRetry: () => _loadVendorProfile(),
+    return vendorAsync.when(
+      data: (vendor) {
+        if (vendor == null) {
+          _logger.warning('⚠️ [VENDOR-PROFILE] No vendor profile found for current user');
+          return _buildNoProfileFound();
+        }
+
+        _logger.info('✅ [VENDOR-PROFILE] Vendor profile loaded: ${vendor.businessName}');
+        return _buildProfileContent(vendor);
+      },
+      loading: () {
+        _logger.info('🔄 [VENDOR-PROFILE] Loading vendor profile...');
+        return _buildLoadingState();
+      },
+      error: (error, stackTrace) {
+        _logger.error('❌ [VENDOR-PROFILE] Error loading vendor profile: $error');
+        return _buildErrorState(error.toString());
+      },
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return const Scaffold(
+      body: LoadingWidget(message: 'Loading vendor profile...'),
+    );
+  }
+
+  Widget _buildNoProfileFound() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Vendor Profile'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+      ),
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.store_outlined, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No vendor profile found',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Please contact support to set up your vendor profile.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String error) {
+    return Scaffold(
+      body: CustomErrorWidget(
+        message: 'Failed to load vendor profile: $error',
+        onRetry: () {
+          // Refresh the provider
+          ref.invalidate(currentVendorProvider);
+        },
+      ),
+    );
+  }
+
+  Widget _buildProfileContent(Vendor vendor) {
+
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: CustomScrollView(
@@ -103,7 +110,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                _vendor!.businessName,
+                vendor.businessName,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -135,7 +142,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                         radius: 40,
                         backgroundColor: Colors.white.withValues(alpha: 0.2),
                         child: Text(
-                          _vendor!.businessName.substring(0, 1).toUpperCase(),
+                          vendor.businessName.substring(0, 1).toUpperCase(),
                           style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
@@ -147,14 +154,14 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.star,
                             color: Colors.amber,
                             size: 20,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _vendor!.rating.toStringAsFixed(1),
+                            vendor.rating.toStringAsFixed(1),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -192,7 +199,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: _vendor!.isActive
+                          color: vendor.isActive
                               ? Colors.green.withValues(alpha: 0.1)
                               : Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
@@ -201,15 +208,15 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              _vendor!.isActive ? Icons.check_circle : Icons.block,
+                              vendor.isActive ? Icons.check_circle : Icons.block,
                               size: 16,
-                              color: _vendor!.isActive ? Colors.green : Colors.red,
+                              color: vendor.isActive ? Colors.green : Colors.red,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              _vendor!.isActive ? 'Active' : 'Inactive',
+                              vendor.isActive ? 'Active' : 'Inactive',
                               style: TextStyle(
-                                color: _vendor!.isActive ? Colors.green : Colors.red,
+                                color: vendor.isActive ? Colors.green : Colors.red,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -217,7 +224,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      if (_vendor!.isHalalCertified)
+                      if (vendor.isHalalCertified)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -255,7 +262,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                   _buildSectionCard(
                     title: 'Business Information',
                     icon: Icons.business,
-                    child: _buildBusinessInfo(),
+                    child: _buildBusinessInfo(vendor),
                   ),
 
                   const SizedBox(height: 16),
@@ -264,7 +271,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                   _buildSectionCard(
                     title: 'Contact Information',
                     icon: Icons.contact_phone,
-                    child: _buildContactInfo(),
+                    child: _buildContactInfo(vendor),
                   ),
 
                   const SizedBox(height: 16),
@@ -273,7 +280,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                   _buildSectionCard(
                     title: 'Address',
                     icon: Icons.location_on,
-                    child: _buildAddressInfo(),
+                    child: _buildAddressInfo(vendor),
                   ),
 
                   const SizedBox(height: 16),
@@ -282,7 +289,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                   _buildSectionCard(
                     title: 'Operating Hours',
                     icon: Icons.schedule,
-                    child: _buildOperatingHours(),
+                    child: _buildOperatingHours(vendor),
                     action: IconButton(
                       icon: const Icon(Icons.edit, size: 20),
                       onPressed: () => _navigateToEditProfile(),
@@ -296,7 +303,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
                   _buildSectionCard(
                     title: 'Cuisine Types',
                     icon: Icons.restaurant,
-                    child: _buildCuisineTypes(),
+                    child: _buildCuisineTypes(vendor),
                   ),
 
                   const SizedBox(height: 16),
@@ -353,39 +360,39 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
     );
   }
 
-  Widget _buildBusinessInfo() {
+  Widget _buildBusinessInfo(Vendor vendor) {
     return Column(
       children: [
-        _buildInfoRow('Business Name', _vendor!.businessName),
-        _buildInfoRow('Description', _vendor!.description ?? 'No description available'),
-        _buildInfoRow('Business Type', _vendor!.businessType),
-        _buildInfoRow('Rating', '${_vendor!.rating.toStringAsFixed(1)} stars'),
-        _buildInfoRow('Total Reviews', '${_vendor!.totalReviews} reviews'),
-        _buildInfoRow('SSM Number', _vendor!.businessRegistrationNumber),
+        _buildInfoRow('Business Name', vendor.businessName),
+        _buildInfoRow('Description', vendor.description ?? 'No description available'),
+        _buildInfoRow('Business Type', vendor.businessType),
+        _buildInfoRow('Rating', '${vendor.rating.toStringAsFixed(1)} stars'),
+        _buildInfoRow('Total Reviews', '${vendor.totalReviews} reviews'),
+        _buildInfoRow('SSM Number', vendor.businessRegistrationNumber),
       ],
     );
   }
 
-  Widget _buildContactInfo() {
+  Widget _buildContactInfo(Vendor vendor) {
     return Column(
       children: [
-        _buildInfoRow('Email', _vendor!.email),
-        _buildInfoRow('Phone', _vendor!.phoneNumber),
+        _buildInfoRow('Email', vendor.email),
+        _buildInfoRow('Phone', vendor.phoneNumber),
         // Note: Website field not available in current Vendor model
       ],
     );
   }
 
-  Widget _buildAddressInfo() {
+  Widget _buildAddressInfo(Vendor vendor) {
     return Column(
       children: [
-        _buildInfoRow('Business Address', _vendor!.businessAddress),
+        _buildInfoRow('Business Address', vendor.businessAddress),
         // Note: Detailed address breakdown not available in current Vendor model
       ],
     );
   }
 
-  Widget _buildOperatingHours() {
+  Widget _buildOperatingHours(Vendor vendor) {
     final dayNames = {
       'monday': 'Monday',
       'tuesday': 'Tuesday',
@@ -397,7 +404,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
     };
 
     return Column(
-      children: _vendor!.businessInfo.operatingHours.schedule.entries.map((entry) {
+      children: vendor.businessInfo.operatingHours.schedule.entries.map((entry) {
         final dayName = dayNames[entry.key] ?? entry.key;
         return _buildInfoRow(
           dayName,
@@ -409,11 +416,11 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
     );
   }
 
-  Widget _buildCuisineTypes() {
+  Widget _buildCuisineTypes(Vendor vendor) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: _vendor!.cuisineTypes.map((cuisine) {
+      children: vendor.cuisineTypes.map((cuisine) {
         return Chip(
           label: Text(cuisine),
           backgroundColor: Colors.grey.withValues(alpha: 0.1),
@@ -492,21 +499,41 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   }
 
   void _navigateToEditProfile() {
-    if (_vendor == null) return;
+    debugPrint('🔄 [VENDOR-PROFILE] Navigate to edit profile button pressed');
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Edit Profile')),
-          body: const Center(child: Text('Edit Profile - Coming Soon')),
-        ),
-      ),
-    ).then((result) {
-      // If the profile was updated successfully, reload the profile
-      if (result == true) {
-        _loadVendorProfile();
-      }
-    });
+    // Check if vendor is available through the provider
+    final vendorAsync = ref.read(currentVendorProvider);
+
+    vendorAsync.when(
+      data: (vendor) {
+        if (vendor == null) {
+          debugPrint('⚠️ [VENDOR-PROFILE] No vendor data available for editing');
+          return;
+        }
+
+        debugPrint('✅ [VENDOR-PROFILE] Vendor data available, navigating to edit screen');
+        debugPrint('📊 [VENDOR-PROFILE] Vendor: ${vendor.businessName} (ID: ${vendor.id})');
+
+        // Navigate to the vendor profile edit screen
+        context.push('/vendor/dashboard/profile/edit').then((result) {
+          debugPrint('🔙 [VENDOR-PROFILE] Returned from edit screen with result: $result');
+
+          // If the profile was updated successfully, refresh the provider
+          if (result == true) {
+            debugPrint('🔄 [VENDOR-PROFILE] Profile was updated, refreshing currentVendorProvider');
+            ref.invalidate(currentVendorProvider);
+          } else {
+            debugPrint('ℹ️ [VENDOR-PROFILE] No profile update detected');
+          }
+        });
+      },
+      loading: () {
+        debugPrint('⏳ [VENDOR-PROFILE] Vendor data is loading, cannot navigate to edit');
+      },
+      error: (error, stack) {
+        debugPrint('❌ [VENDOR-PROFILE] Error loading vendor data: $error');
+      },
+    );
   }
 
   void _navigateToNotificationSettings() {

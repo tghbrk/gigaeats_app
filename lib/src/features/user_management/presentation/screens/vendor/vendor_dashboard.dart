@@ -16,7 +16,6 @@ import '../../../../shared/widgets/dashboard_card.dart';
 import '../../../../shared/widgets/quick_action_button.dart';
 import '../../../orders/presentation/screens/vendor/vendor_orders_screen.dart';
 import '../../../menu/presentation/screens/vendor/vendor_menu_screen.dart';
-import 'driver_management_screen.dart';
 import 'vendor_analytics_screen.dart';
 import 'vendor_profile_screen.dart';
 
@@ -46,11 +45,6 @@ class _VendorDashboardState extends ConsumerState<VendorDashboard> {
       icon: Icon(Icons.restaurant_menu_outlined),
       selectedIcon: Icon(Icons.restaurant_menu),
       label: 'Menu',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.local_shipping_outlined),
-      selectedIcon: Icon(Icons.local_shipping),
-      label: 'Fleet',
     ),
     const NavigationDestination(
       icon: Icon(Icons.analytics_outlined),
@@ -93,14 +87,12 @@ class _VendorDashboardState extends ConsumerState<VendorDashboard> {
       case 2:
         return const VendorMenuScreen();
       case 3:
-        return const DriverManagementScreen();
-      case 4:
         return VendorAnalyticsScreen(onNavigateToTab: (index) {
           setState(() {
             _selectedIndex = index;
           });
         });
-      case 5:
+      case 4:
         return const VendorProfileScreen();
       default:
         // Fallback to dashboard tab but reset index to 0 to prevent confusion

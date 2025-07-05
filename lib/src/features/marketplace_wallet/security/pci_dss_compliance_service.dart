@@ -3,13 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
-import '../../../core/utils/logger.dart';
+// Logger import will be restored when compliance features are fully implemented
+// import '../../../core/utils/logger.dart';
 import 'audit_logging_service.dart';
 
 /// PCI DSS compliance service for secure payment data handling
 class PCIDSSComplianceService {
   final AuditLoggingService _auditLogging;
-  final AppLogger _logger = AppLogger();
+  // Logger will be used when compliance features are fully implemented
+  // final AppLogger _logger = AppLogger();
 
   PCIDSSComplianceService(this._auditLogging);
 

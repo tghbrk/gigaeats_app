@@ -2,9 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/utils/logger.dart';
-import '../../../core/services/security_service.dart';
-import '../../../presentation/providers/repository_providers.dart';
+// Imports will be restored when security features are fully implemented
+// import '../../../core/utils/logger.dart';
+// import '../../../core/services/security_service.dart';
+// import '../../../presentation/providers/repository_providers.dart';
 import 'financial_security_service.dart';
 import 'audit_logging_service.dart';
 
@@ -13,14 +14,15 @@ class EnhancedWalletSecurityService {
   final SupabaseClient _supabase;
   final FinancialSecurityService _financialSecurity;
   final AuditLoggingService _auditLogging;
-  final SecurityService _securityService;
-  final AppLogger _logger = AppLogger();
+  // Services will be used when security features are fully implemented
+  // final SecurityService _securityService;
+  // final AppLogger _logger = AppLogger();
 
   EnhancedWalletSecurityService(
     this._supabase,
     this._financialSecurity,
     this._auditLogging,
-    this._securityService,
+    // this._securityService,
   );
 
   /// Validates wallet access permissions with comprehensive security checks
@@ -519,7 +521,7 @@ final enhancedWalletSecurityServiceProvider = Provider<EnhancedWalletSecuritySer
   final supabase = Supabase.instance.client;
   final financialSecurity = ref.watch(financialSecurityServiceProvider);
   final auditLogging = ref.watch(auditLoggingServiceProvider);
-  final securityService = ref.watch(securityServiceProvider);
+  // final securityService = ref.watch(securityServiceProvider);
 
-  return EnhancedWalletSecurityService(supabase, financialSecurity, auditLogging, securityService);
+  return EnhancedWalletSecurityService(supabase, financialSecurity, auditLogging);
 });

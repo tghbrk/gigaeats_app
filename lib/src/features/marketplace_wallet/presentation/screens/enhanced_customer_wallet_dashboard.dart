@@ -333,7 +333,7 @@ class _EnhancedCustomerWalletDashboardState extends ConsumerState<EnhancedCustom
   // Navigation methods
   void _navigateToTopUp() => context.push('/customer/wallet/top-up');
   void _navigateToTransfer() => context.push('/customer/wallet/transfer');
-  void _navigateToTransferHistory() => context.push('/customer/wallet/transfer-history');
+  // Transfer history navigation removed (was unused)
   void _navigateToTransactions() => context.push('/customer/wallet/transactions');
 
   void _navigateToPaymentMethods() {

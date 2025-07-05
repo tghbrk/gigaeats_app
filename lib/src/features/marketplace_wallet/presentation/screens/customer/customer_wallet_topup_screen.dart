@@ -437,7 +437,7 @@ class _CustomerWalletTopupScreenState extends ConsumerState<CustomerWalletTopupS
             }
           },
           loading: () => _buildNewCardInput(context),
-          error: (_, __) => _buildNewCardInput(context),
+          error: (error, stackTrace) => _buildNewCardInput(context),
         ),
       ],
     );

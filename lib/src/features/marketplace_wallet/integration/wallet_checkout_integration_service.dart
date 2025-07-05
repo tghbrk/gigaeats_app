@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../orders/data/models/order.dart';
-import '../data/services/enhanced_customer_wallet_service.dart';
-import '../data/services/enhanced_transaction_service.dart';
+// Wallet services will be imported when integration is fully implemented
+// import '../data/services/enhanced_customer_wallet_service.dart';
+// import '../data/services/enhanced_transaction_service.dart';
 import '../data/models/customer_wallet.dart';
-import '../presentation/providers/enhanced_customer_wallet_provider.dart';
-import '../presentation/providers/enhanced_transaction_provider.dart';
+// import '../presentation/providers/enhanced_customer_wallet_provider.dart';
+// import '../presentation/providers/enhanced_transaction_provider.dart';
 import '../presentation/providers/wallet_validation_provider.dart' as validation;
 import '../../orders/data/services/enhanced_payment_service.dart';
 import '../../orders/presentation/providers/enhanced_payment_provider.dart';
@@ -57,13 +58,14 @@ class WalletCheckoutResult {
 
 /// Service for integrating wallet payments with checkout flow
 class WalletCheckoutIntegrationService {
-  final EnhancedCustomerWalletService _walletService;
-  final EnhancedTransactionService _transactionService;
+  // Services will be used when wallet integration is fully implemented
+  // final EnhancedCustomerWalletService _walletService;
+  // final EnhancedTransactionService _transactionService;
   final EnhancedPaymentService _paymentService;
 
   WalletCheckoutIntegrationService(
-    this._walletService,
-    this._transactionService,
+    // this._walletService,
+    // this._transactionService,
     this._paymentService,
   );
 
@@ -303,8 +305,8 @@ class WalletCheckoutIntegrationService {
 
 /// Provider for wallet checkout integration service
 final walletCheckoutIntegrationServiceProvider = Provider<WalletCheckoutIntegrationService>((ref) {
-  final walletService = ref.watch(enhancedCustomerWalletServiceProvider);
-  final transactionService = ref.watch(enhancedTransactionServiceProvider);
+  // final walletService = ref.watch(enhancedCustomerWalletServiceProvider);
+  // final transactionService = ref.watch(enhancedTransactionServiceProvider);
   final paymentService = EnhancedPaymentService(); // TODO: Create provider for this
-  return WalletCheckoutIntegrationService(walletService, transactionService, paymentService);
+  return WalletCheckoutIntegrationService(paymentService);
 });

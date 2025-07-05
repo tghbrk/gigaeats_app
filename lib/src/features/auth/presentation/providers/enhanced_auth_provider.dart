@@ -129,20 +129,7 @@ class EnhancedAuthStateNotifier extends StateNotifier<EnhancedAuthState> {
     _logger.debug('🔄 EnhancedAuthStateNotifier: Auth initialization completed');
   }
 
-  // Start periodic checks for verification and network status
-  void _startPeriodicChecks() {
-    // Check verification status every 30 seconds when pending
-    _verificationCheckTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (state.needsEmailVerification) {
-        _checkVerificationStatus();
-      }
-    });
-
-    // Check network status every 10 seconds
-    _networkCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      _checkNetworkStatus();
-    });
-  }
+  // Periodic checks for verification and network status can be implemented when needed
 
   // Enhanced registration with Phase 3 backend integration
   Future<void> signUpWithRole({
@@ -536,47 +523,7 @@ class EnhancedAuthStateNotifier extends StateNotifier<EnhancedAuthState> {
     }
   }
 
-  // Periodically check verification status
-  Future<void> _checkVerificationStatus() async {
-    if (!state.needsEmailVerification) return;
-
-    try {
-      await _checkAuthStatus();
-      
-      // If user is now authenticated, verification was successful
-      if (state.isAuthenticated) {
-        _logger.info('Verification detected during periodic check');
-      }
-      
-      // Check if verification has expired
-      if (state.isVerificationExpired) {
-        state = state.copyWith(
-          status: EnhancedAuthStatus.emailVerificationExpired,
-          errorMessage: 'Verification link has expired. Please request a new one.',
-        );
-      }
-    } catch (e) {
-      _logger.error('Error during verification status check: $e');
-    }
-  }
-
-  // Check network connectivity
-  Future<void> _checkNetworkStatus() async {
-    try {
-      // Simple network check - try to check if authenticated
-      _authService.isAuthenticated;
-
-      if (!state.isNetworkAvailable) {
-        state = state.copyWith(isNetworkAvailable: true);
-        _logger.info('Network connectivity restored');
-      }
-    } catch (e) {
-      if (state.isNetworkAvailable) {
-        state = state.copyWith(isNetworkAvailable: false);
-        _logger.warning('Network connectivity lost');
-      }
-    }
-  }
+  // Verification and network status checking methods removed (were unused)
 
   // Helper methods
   bool _isProfileComplete(User user) {

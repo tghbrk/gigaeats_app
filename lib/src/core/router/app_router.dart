@@ -59,6 +59,7 @@ import '../../features/orders/presentation/screens/vendor/vendor_orders_screen.d
 import '../../features/menu/presentation/screens/vendor/vendor_menu_management_screen.dart';
 import '../../features/menu/presentation/screens/vendor/template_analytics_dashboard_screen.dart';
 import '../../features/user_management/presentation/screens/vendor/vendor_profile_screen.dart';
+import '../../features/user_management/presentation/screens/vendor/vendor_profile_edit_screen.dart';
 import '../../features/user_management/presentation/screens/vendor/vendor_analytics_screen.dart';
 import '../../features/orders/presentation/screens/vendor/vendor_order_details_screen.dart';
 import '../../features/admin/presentation/screens/vendor_management/vendor_management_screen.dart';
@@ -404,6 +405,13 @@ List<RouteBase> _buildRoutes() {
           path: 'profile',
           name: 'vendor-profile',
           builder: (context, state) => const VendorProfileScreen(),
+          routes: [
+            GoRoute(
+              path: 'edit',
+              name: 'vendor-profile-edit',
+              builder: (context, state) => const VendorProfileEditScreen(),
+            ),
+          ],
         ),
         GoRoute(
           path: 'analytics',

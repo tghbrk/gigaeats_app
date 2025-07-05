@@ -198,22 +198,43 @@ class VendorRepository extends BaseRepository {
   /// Get vendor by User ID (for vendor users)
   Future<Vendor?> getVendorByUserId(String userId) async {
     return executeQuery(() async {
-      final response = await supabase
-          .from('vendors')
-          .select('''
-            *,
-            user:users!vendors_user_id_fkey(
-              id,
-              email,
-              full_name,
-              phone_number,
-              profile_image_url
-            )
-          ''')
-          .eq('user_id', userId)
-          .maybeSingle();
+      debugPrint('🏪 [VENDOR-REPO] getVendorByUserId called with userId: $userId');
 
-      return response != null ? Vendor.fromJson(response) : null;
+      try {
+        debugPrint('🏪 [VENDOR-REPO] Executing Supabase query for vendors table');
+        final response = await supabase
+            .from('vendors')
+            .select('''
+              *,
+              user:users!vendors_user_id_fkey(
+                id,
+                email,
+                full_name,
+                phone_number,
+                profile_image_url
+              )
+            ''')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        debugPrint('🏪 [VENDOR-REPO] Supabase query completed');
+
+        if (response == null) {
+          debugPrint('⚠️ [VENDOR-REPO] No vendor found for user_id: $userId');
+          return null;
+        }
+
+        debugPrint('🏪 [VENDOR-REPO] Raw response data: $response');
+
+        final vendor = Vendor.fromJson(response);
+        debugPrint('✅ [VENDOR-REPO] Successfully parsed vendor: ${vendor.businessName} (ID: ${vendor.id})');
+
+        return vendor;
+      } catch (e, stackTrace) {
+        debugPrint('❌ [VENDOR-REPO] Error in getVendorByUserId: $e');
+        debugPrint('❌ [VENDOR-REPO] Stack trace: $stackTrace');
+        rethrow;
+      }
     });
   }
 
@@ -687,6 +708,34 @@ class VendorRepository extends BaseRepository {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', vendorId);
+    });
+  }
+
+  /// Update vendor profile securely using Edge Function
+  Future<Map<String, dynamic>> updateVendorProfileSecure(
+    Map<String, dynamic> updateData,
+  ) async {
+    return executeQuery(() async {
+      debugPrint('🔐 [VENDOR-REPO] Calling secure vendor profile update Edge Function');
+      debugPrint('📝 [VENDOR-REPO] Update data: ${updateData.keys.join(', ')}');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      final response = await authenticatedClient.functions.invoke(
+        'vendor-profile-update',
+        body: updateData,
+      );
+
+      // Check if the response data indicates an error
+      final responseData = response.data as Map<String, dynamic>?;
+      if (responseData == null || responseData['success'] != true) {
+        final errorMessage = responseData?['error'] ?? 'Unknown error occurred';
+        debugPrint('❌ [VENDOR-REPO] Edge Function error: $errorMessage');
+        throw Exception('Failed to update vendor profile: $errorMessage');
+      }
+      debugPrint('✅ [VENDOR-REPO] Secure update completed successfully');
+
+      return responseData;
     });
   }
 

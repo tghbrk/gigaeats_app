@@ -303,15 +303,52 @@ final orderDetailsStreamProvider = StreamProvider.family<Order?, String>((ref, o
 
 // Current Vendor Provider - gets vendor data for the logged-in user
 final currentVendorProvider = FutureProvider<Vendor?>((ref) async {
+  debugPrint('🏪 [CURRENT-VENDOR-PROVIDER] Starting vendor profile fetch');
+
   final authState = ref.watch(authStateProvider);
   final userId = authState.user?.id;
 
+  debugPrint('🏪 [CURRENT-VENDOR-PROVIDER] Auth state: ${authState.status}');
+  debugPrint('🏪 [CURRENT-VENDOR-PROVIDER] User ID: $userId');
+
   if (userId == null) {
+    debugPrint('⚠️ [CURRENT-VENDOR-PROVIDER] No user ID found, returning null');
     return null;
   }
 
-  final vendorRepository = ref.watch(vendorRepositoryProvider);
-  return await vendorRepository.getVendorByUserId(userId);
+  try {
+    final vendorRepository = ref.watch(vendorRepositoryProvider);
+    debugPrint('🏪 [CURRENT-VENDOR-PROVIDER] Calling vendorRepository.getVendorByUserId($userId)');
+
+    final vendor = await vendorRepository.getVendorByUserId(userId);
+
+    if (vendor != null) {
+      debugPrint('✅ [CURRENT-VENDOR-PROVIDER] Vendor found: ${vendor.businessName} (ID: ${vendor.id})');
+
+      // Debug business hours data specifically
+      debugPrint('🕒 [CURRENT-VENDOR-PROVIDER] Raw business hours from DB: ${vendor.businessHours}');
+      if (vendor.businessHours != null && vendor.businessHours!.isNotEmpty) {
+        debugPrint('🕒 [CURRENT-VENDOR-PROVIDER] Business hours keys: ${vendor.businessHours!.keys.join(', ')}');
+        for (final entry in vendor.businessHours!.entries) {
+          debugPrint('🕒 [CURRENT-VENDOR-PROVIDER] ${entry.key}: ${entry.value}');
+        }
+      } else {
+        debugPrint('🕒 [CURRENT-VENDOR-PROVIDER] No business hours data in vendor');
+      }
+
+      // Debug parsed business hours
+      final parsedHours = vendor.businessInfo.operatingHours.schedule;
+      debugPrint('🕒 [CURRENT-VENDOR-PROVIDER] Parsed operating hours: ${parsedHours.map((k, v) => MapEntry(k, '${v.safeIsOpen ? "${v.openTime}-${v.closeTime}" : "Closed"}'))}');
+    } else {
+      debugPrint('⚠️ [CURRENT-VENDOR-PROVIDER] No vendor found for user ID: $userId');
+    }
+
+    return vendor;
+  } catch (e, stackTrace) {
+    debugPrint('❌ [CURRENT-VENDOR-PROVIDER] Error fetching vendor: $e');
+    debugPrint('❌ [CURRENT-VENDOR-PROVIDER] Stack trace: $stackTrace');
+    rethrow;
+  }
 });
 
 // Vendor Dashboard Metrics Provider

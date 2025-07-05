@@ -243,7 +243,7 @@ class SpendingTrendsChart extends StatelessWidget {
             Container(
               height: 200,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Center(
@@ -420,7 +420,7 @@ class CategorySpendingChart extends StatelessWidget {
             Container(
               height: 200,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Center(
@@ -524,7 +524,7 @@ class CategoryTrendsWidget extends StatelessWidget {
             Container(
               height: 150,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Center(

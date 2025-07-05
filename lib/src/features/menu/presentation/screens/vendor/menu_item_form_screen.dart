@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/models/menu_item.dart';
 import '../../../data/models/product.dart' as product_model;
+import '../../../data/models/customization_template.dart';
 import '../../../data/services/menu_service.dart';
+import '../../widgets/vendor/enhanced_customization_section.dart';
 import '../../../../../shared/widgets/custom_button.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
@@ -48,6 +50,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   List<BulkPricingTier> _bulkPricingTiers = [];
   List<String> _imageUrls = [];
   final List<product_model.MenuItemCustomization> _customizations = []; // Add state for customizations
+  final List<CustomizationTemplate> _linkedTemplates = []; // Add state for linked templates
 
   // Loading states
   bool _isLoading = false;
@@ -167,8 +170,8 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
                           const SizedBox(height: 24),
                           _buildDietarySection(),
                           const SizedBox(height: 24),
-                          // New section for customizations
-                          _buildCustomizationSection(),
+                          // Enhanced customization section with templates
+                          _buildEnhancedCustomizationSection(),
                           const SizedBox(height: 24),
                           _buildAdditionalInfoSection(),
                           const SizedBox(height: 24),
@@ -598,138 +601,71 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     );
   }
 
-  // New method to build the customization section
-  Widget _buildCustomizationSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Customizations',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _addCustomizationGroup,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Group'),
-                ),
-              ],
+  // Enhanced customization section with template support
+  Widget _buildEnhancedCustomizationSection() {
+    return FutureBuilder<String?>(
+      future: _getVendorId(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
             ),
-            const SizedBox(height: 8),
-            if (_customizations.isEmpty)
-              const Text(
-                'No customization options added yet.',
-                style: TextStyle(color: Colors.grey),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _customizations.length,
-                itemBuilder: (context, index) {
-                  return _buildCustomizationGroupCard(_customizations[index] as MenuItemCustomization, index);
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+          );
+        }
 
-  Widget _buildCustomizationGroupCard(MenuItemCustomization customization, int index) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ExpansionTile(
-        title: Text(customization.name),
-        subtitle: Text('${customization.type}, ${customization.isRequired ? "Required" : "Optional"}'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              onPressed: () => _editCustomizationGroup(index),
-              icon: const Icon(Icons.edit),
-              tooltip: 'Edit group',
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Error loading vendor information: ${snapshot.error}'),
             ),
-            IconButton(
-              onPressed: () => _deleteCustomizationGroup(index),
-              icon: const Icon(Icons.delete),
-              tooltip: 'Delete group',
-            ),
-            const Icon(Icons.expand_more),
-          ],
-        ),
-        children: [
-          ...customization.options.map((opt) => ListTile(
-            title: Text(opt.name),
-            trailing: Text('+ RM ${(opt as dynamic).additionalCost?.toStringAsFixed(2) ?? (opt as dynamic).additionalPrice?.toStringAsFixed(2) ?? "0.00"}'),
-          )),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextButton.icon(
-              onPressed: () => _addOptionToGroup(index),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Option'),
-            ),
-          ),
-        ],
-      ),
+          );
+        }
+
+        return EnhancedCustomizationSection(
+          vendorId: snapshot.data!,
+          customizations: _customizations,
+          linkedTemplates: _linkedTemplates,
+          onCustomizationsChanged: (customizations) {
+            setState(() {
+              _customizations.clear();
+              _customizations.addAll(customizations);
+            });
+          },
+          onTemplatesChanged: (templates) {
+            setState(() {
+              _linkedTemplates.clear();
+              _linkedTemplates.addAll(templates);
+            });
+          },
+        );
+      },
     );
   }
 
-  void _addOptionToGroup(int groupIndex) {
-    showDialog(
-      context: context,
-      builder: (context) => _CustomizationOptionDialog(
-        onSave: (option) {
-          setState(() {
-            final updatedOptions = List<product_model.CustomizationOption>.from(_customizations[groupIndex].options);
-            updatedOptions.add(option);
-            _customizations[groupIndex] = _customizations[groupIndex].copyWith(options: updatedOptions);
-          });
-        },
-      ),
-    );
+  Future<String?> _getVendorId() async {
+    try {
+      final authState = ref.read(authStateProvider);
+      final userId = authState.user?.id;
+
+      if (userId == null) return null;
+
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(userId);
+
+      return vendor?.id;
+    } catch (e) {
+      return null;
+    }
   }
 
-  void _addCustomizationGroup() {
-    showDialog(
-      context: context,
-      builder: (context) => _CustomizationGroupDialog(
-        onSave: (customization) {
-          setState(() {
-            _customizations.add(customization);
-          });
-        },
-      ),
-    );
-  }
 
-  void _editCustomizationGroup(int index) {
-    showDialog(
-      context: context,
-      builder: (context) => _CustomizationGroupDialog(
-        customization: _customizations[index],
-        onSave: (customization) {
-          setState(() {
-            _customizations[index] = customization;
-          });
-        },
-      ),
-    );
-  }
 
-  void _deleteCustomizationGroup(int index) {
-    setState(() {
-      _customizations.removeAt(index);
-    });
-  }
+  // TODO: Remove old customization methods - replaced by enhanced template system
+
+
 
   Widget _buildAdditionalInfoSection() {
     return Card(
@@ -1342,6 +1278,8 @@ class _BulkPricingTierDialogState extends State<_BulkPricingTierDialog> {
   }
 }
 
+// TODO: Remove old customization dialog classes - replaced by enhanced template system
+/*
 // Customization Group Dialog Widget
 class _CustomizationGroupDialog extends StatefulWidget {
   final product_model.MenuItemCustomization? customization;
@@ -1605,3 +1543,4 @@ class _CustomizationOptionDialogState extends State<_CustomizationOptionDialog> 
     Navigator.of(context).pop();
   }
 }
+*/

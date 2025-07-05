@@ -7,9 +7,9 @@ import '../../../data/services/menu_service.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 import '../../../../../shared/widgets/custom_button.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-// TODO: Fix missing custom_error_widget import
-// import '../../../../vendors/widgets/custom_error_widget.dart';
 import '../../../../vendors/presentation/screens/product_form_screen.dart';
+import 'bulk_template_application_screen.dart';
+import 'template_management_screen.dart';
 
 // Provider for menu service (keeping for categories)
 final menuServiceProvider = Provider<MenuService>((ref) => MenuService());
@@ -86,9 +86,47 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddMenuDialog(),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'add_item':
+                  _showAddMenuDialog();
+                  break;
+                case 'bulk_templates':
+                  _navigateToBulkTemplateApplication();
+                  break;
+                case 'template_management':
+                  _navigateToTemplateManagement();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'add_item',
+                child: ListTile(
+                  leading: Icon(Icons.add),
+                  title: Text('Add Menu Item'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'bulk_templates',
+                child: ListTile(
+                  leading: Icon(Icons.layers),
+                  title: Text('Bulk Apply Templates'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'template_management',
+                child: ListTile(
+                  leading: Icon(Icons.tune),
+                  title: Text('Manage Templates'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -631,5 +669,21 @@ class _MenuManagementScreenState extends ConsumerState<MenuManagementScreen>
         );
       }
     }
+  }
+
+  void _navigateToBulkTemplateApplication() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BulkTemplateApplicationScreen(vendorId: widget.vendorId),
+      ),
+    );
+  }
+
+  void _navigateToTemplateManagement() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => TemplateManagementScreen(vendorId: widget.vendorId),
+      ),
+    );
   }
 }

@@ -4,14 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/product.dart';
-// TODO: Fix missing repository_providers import
-// import '../providers/repository_providers.dart';
+import '../../../../../presentation/providers/repository_providers.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
+import '../../../../auth/presentation/providers/auth_provider.dart';
 // TODO: Fix missing camera_permission_service import
 // import '../../../../core/services/camera_permission_service.dart';
-// TODO: Fix missing customization_dialog import
-// import '../widgets/customization_dialog.dart';
-import '../../../../../presentation/providers/repository_providers.dart';
+import '../../widgets/customization_dialog.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId; // null for create, non-null for edit
@@ -28,6 +26,10 @@ class ProductFormScreen extends ConsumerStatefulWidget {
 class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
+
+  _ProductFormScreenState() {
+    print('🔧 [PRODUCT-FORM-DEBUG] _ProductFormScreenState constructor called');
+  }
   
   // Form controllers
   final _nameController = TextEditingController();
@@ -67,6 +69,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   @override
   void initState() {
+    print('🔧 [PRODUCT-FORM-DEBUG] initState called');
+    print('🔧 [PRODUCT-FORM-DEBUG] Widget product ID: ${widget.productId}');
+    print('🔧 [PRODUCT-FORM-DEBUG] Is editing mode: ${widget.productId != null}');
     super.initState();
     _loadData();
   }
@@ -87,19 +92,37 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   Future<void> _loadData() async {
+    print('🔧 [PRODUCT-FORM-DEBUG] Starting _loadData...');
+    print('🔧 [PRODUCT-FORM-DEBUG] Product ID: ${widget.productId}');
+    print('🔧 [PRODUCT-FORM-DEBUG] Is editing: ${widget.productId != null}');
+
     setState(() => _isLoading = true);
-    
+
     try {
       if (widget.productId != null) {
+        print('🔧 [PRODUCT-FORM-DEBUG] Loading existing product data...');
         final menuItemRepository = ref.read(menuItemRepositoryProvider);
+        print('🔧 [PRODUCT-FORM-DEBUG] Repository obtained: $menuItemRepository');
+
         _existingProduct = await menuItemRepository.getMenuItemById(widget.productId!);
+        print('🔧 [PRODUCT-FORM-DEBUG] Product loaded: ${_existingProduct?.name ?? 'NULL'}');
+
         if (_existingProduct != null) {
+          print('🔧 [PRODUCT-FORM-DEBUG] Populating form with existing data...');
           _populateFormWithExistingData();
+          print('🔧 [PRODUCT-FORM-DEBUG] Form populated successfully');
+        } else {
+          print('🔧 [PRODUCT-FORM-DEBUG] ❌ No product found with ID: ${widget.productId}');
         }
+      } else {
+        print('🔧 [PRODUCT-FORM-DEBUG] Creating new product (no ID provided)');
       }
-      
+
       setState(() => _isLoading = false);
-    } catch (e) {
+      print('🔧 [PRODUCT-FORM-DEBUG] _loadData completed successfully');
+    } catch (e, stackTrace) {
+      print('🔧 [PRODUCT-FORM-DEBUG] ❌ Error in _loadData: $e');
+      print('🔧 [PRODUCT-FORM-DEBUG] ❌ Stack trace: $stackTrace');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -114,6 +137,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   void _populateFormWithExistingData() {
     final product = _existingProduct!;
+    print('🔧 [PRODUCT-FORM-DEBUG] Populating form with product: ${product.name}');
+    print('🔧 [PRODUCT-FORM-DEBUG] Product ID: ${product.id}');
+    print('🔧 [PRODUCT-FORM-DEBUG] Product description: ${product.description}');
+    print('🔧 [PRODUCT-FORM-DEBUG] Product price: ${product.basePrice}');
+    print('🔧 [PRODUCT-FORM-DEBUG] Product category: ${product.category}');
+
     _nameController.text = product.name;
     _descriptionController.text = product.description ?? '';
     _basePriceController.text = product.basePrice.toString();
@@ -123,7 +152,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _maxQuantityController.text = product.maxOrderQuantity?.toString() ?? '';
     _prepTimeController.text = product.preparationTimeMinutes?.toString() ?? '30';
     _tagsController.text = product.tags.join(', ');
-    
+
     _selectedCategory = product.category;
     _currency = product.currency ?? 'MYR';
     _includesSst = product.includesSst ?? false;
@@ -140,6 +169,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _customizations = List.from(product.customizations);
     _imageUrl = product.imageUrl;
     _galleryImages = List.from(product.galleryImages);
+
+    print('🔧 [PRODUCT-FORM-DEBUG] Form controllers populated:');
+    print('🔧 [PRODUCT-FORM-DEBUG] - Name: ${_nameController.text}');
+    print('🔧 [PRODUCT-FORM-DEBUG] - Description: ${_descriptionController.text}');
+    print('🔧 [PRODUCT-FORM-DEBUG] - Price: ${_basePriceController.text}');
+    print('🔧 [PRODUCT-FORM-DEBUG] - Category: $_selectedCategory');
+    print('🔧 [PRODUCT-FORM-DEBUG] - Available: $_isAvailable');
   }
 
   @override
@@ -199,26 +235,70 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   Widget _buildBasicInfoSection() {
     return Card(
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Basic Information',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Basic Information',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             
             // Name
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Item Name *',
                 hintText: 'e.g., Nasi Lemak Set',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                prefixIcon: Icon(
+                  Icons.restaurant_menu,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -228,29 +308,71 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               },
             ),
             
-            const SizedBox(height: 16),
-            
+            const SizedBox(height: 20),
+
             // Description
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Description',
                 hintText: 'Describe your menu item...',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                prefixIcon: Icon(
+                  Icons.description,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
               maxLines: 3,
             ),
             
-            const SizedBox(height: 16),
-            
+            const SizedBox(height: 20),
+
             // Category
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              decoration: const InputDecoration(
+              value: ProductCategories.all.contains(_selectedCategory) ? _selectedCategory : null,
+              decoration: InputDecoration(
                 labelText: 'Category *',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                prefixIcon: Icon(
+                  Icons.category,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
-              items: ProductCategories.all.map((category) {
+              items: ProductCategories.all.where((category) => category.isNotEmpty).map((category) {
                 return DropdownMenuItem(
                   value: category,
                   child: Text(category),
@@ -357,7 +479,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _currency,
+                    value: ['MYR', 'USD', 'SGD'].contains(_currency) ? _currency : 'MYR',
                     decoration: const InputDecoration(
                       labelText: 'Currency',
                       border: OutlineInputBorder(),
@@ -369,7 +491,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     ],
                     onChanged: (value) {
                       setState(() {
-                        _currency = value!;
+                        _currency = value ?? 'MYR';
                       });
                     },
                   ),
@@ -686,50 +808,164 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   Widget _buildCustomizationSection() {
     return Card(
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Customizations',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.tune,
+                        color: Theme.of(context).colorScheme.secondary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Customizations',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
                 ),
-                TextButton.icon(
+                ElevatedButton.icon(
                   onPressed: _addCustomization,
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(Icons.add, size: 18),
                   label: const Text('Add'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                    elevation: 1,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             if (_customizations.isEmpty)
-              const Text('No customizations added yet.')
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.tune,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No customizations added yet',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Add customizations like size options, add-ons, or spice levels',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
             else
               ..._customizations.asMap().entries.map((entry) {
                 final index = entry.key;
                 final customization = entry.value;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                    ),
+                  ),
                   child: ListTile(
-                    title: Text(customization.name),
-                    subtitle: Text('${customization.type} • ${customization.options.length} options'),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.settings,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      customization.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${customization.type} • ${customization.options.length} options',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           onPressed: () => _editCustomization(index),
-                          icon: const Icon(Icons.edit),
+                          icon: Icon(
+                            Icons.edit,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         IconButton(
                           onPressed: () => _removeCustomization(index),
-                          icon: const Icon(Icons.delete, color: Colors.red),
+                          icon: Icon(
+                            Icons.delete,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -793,40 +1029,87 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   Widget _buildBottomActions() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed: _isSaving ? null : _saveProduct,
-              child: _isSaving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(widget.productId == null ? 'Create Item' : 'Update Item'),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveProduct,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                child: _isSaving
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Saving...',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        widget.productId == null ? 'Create Item' : 'Update Item',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -890,18 +1173,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   void _addCustomization() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        // TODO: Fix CustomizationDialog import
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Customization Dialog')),
-          body: const Center(child: Text('Customization dialog temporarily disabled')),
-        ), // CustomizationDialog(
-          // onSave: (customization) {
-          //   setState(() {
-          //     _customizations.add(customization);
-          //   });
-          //   Navigator.of(context).pop();
-          // },
-        // ),
+        builder: (context) => CustomizationDialog(
+          onSave: (customization) {
+            setState(() {
+              _customizations.add(customization);
+            });
+            Navigator.of(context).pop();
+          },
+        ),
       ),
     );
   }
@@ -909,19 +1188,15 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   void _editCustomization(int index) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        // TODO: Fix CustomizationDialog import
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Edit Customization')),
-          body: const Center(child: Text('Customization dialog temporarily disabled')),
-        ), // CustomizationDialog(
-          // customization: _customizations[index],
-          // onSave: (customization) {
-          //   setState(() {
-          //     _customizations[index] = customization;
-          //   });
-          //   Navigator.of(context).pop();
-          // },
-        // ),
+        builder: (context) => CustomizationDialog(
+          customization: _customizations[index],
+          onSave: (customization) {
+            setState(() {
+              _customizations[index] = customization;
+            });
+            Navigator.of(context).pop();
+          },
+        ),
       ),
     );
   }
@@ -943,9 +1218,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       final menuItemRepository = ref.read(menuItemRepositoryProvider);
 
       // Get current vendor
-      // TODO: Fix currentVendorProvider reference
-      // final vendor = await ref.read(currentVendorProvider.future);
-      final vendor = null; // Temporary placeholder
+      final authState = ref.read(authStateProvider);
+      final userId = authState.user?.id;
+
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get vendor ID from user ID
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(userId);
 
       if (vendor == null) {
         throw Exception('Vendor not found for current user');

@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
+import 'customization_template.dart';
 
 part 'menu_item.g.dart';
 
@@ -112,6 +113,8 @@ class MenuItem extends Equatable {
   final List<DietaryType> dietaryTypes;
   final List<String> allergens;
   final List<MenuItemCustomization> customizations;
+  final List<CustomizationTemplate> linkedTemplates; // Templates linked to this menu item
+  final List<MenuItemTemplateLink> templateLinks; // Link metadata for templates
   final int preparationTimeMinutes;
   final int? availableQuantity;
   final String? unit; // 'pax', 'kg', 'pieces', etc.
@@ -123,6 +126,10 @@ class MenuItem extends Equatable {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+
+  // Additional properties for validation service compatibility
+  final int? stockQuantity; // Alias for availableQuantity for validation compatibility
+  final bool isAvailable; // Computed from status for validation compatibility
 
   const MenuItem({
     required this.id,
@@ -139,6 +146,8 @@ class MenuItem extends Equatable {
     this.dietaryTypes = const [],
     this.allergens = const [],
     this.customizations = const [],
+    this.linkedTemplates = const [],
+    this.templateLinks = const [],
     this.preparationTimeMinutes = 30,
     this.availableQuantity,
     this.unit = 'pax',
@@ -150,7 +159,8 @@ class MenuItem extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
-  });
+  }) : stockQuantity = availableQuantity,
+       isAvailable = status == MenuItemStatus.available;
 
   factory MenuItem.fromJson(Map<String, dynamic> json) => _$MenuItemFromJson(json);
   Map<String, dynamic> toJson() => _$MenuItemToJson(this);
@@ -171,6 +181,8 @@ class MenuItem extends Equatable {
         dietaryTypes,
         allergens,
         customizations,
+        linkedTemplates,
+        templateLinks,
         preparationTimeMinutes,
         availableQuantity,
         unit,
@@ -182,6 +194,8 @@ class MenuItem extends Equatable {
         createdAt,
         updatedAt,
         isActive,
+        stockQuantity,
+        isAvailable,
       ];
 
   MenuItem copyWith({
@@ -199,6 +213,8 @@ class MenuItem extends Equatable {
     List<DietaryType>? dietaryTypes,
     List<String>? allergens,
     List<MenuItemCustomization>? customizations,
+    List<CustomizationTemplate>? linkedTemplates,
+    List<MenuItemTemplateLink>? templateLinks,
     int? preparationTimeMinutes,
     int? availableQuantity,
     String? unit,
@@ -210,6 +226,7 @@ class MenuItem extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    // Note: stockQuantity and isAvailable are computed properties, not directly settable
   }) {
     return MenuItem(
       id: id ?? this.id,
@@ -226,6 +243,8 @@ class MenuItem extends Equatable {
       dietaryTypes: dietaryTypes ?? this.dietaryTypes,
       allergens: allergens ?? this.allergens,
       customizations: customizations ?? this.customizations,
+      linkedTemplates: linkedTemplates ?? this.linkedTemplates,
+      templateLinks: templateLinks ?? this.templateLinks,
       preparationTimeMinutes: preparationTimeMinutes ?? this.preparationTimeMinutes,
       availableQuantity: availableQuantity ?? this.availableQuantity,
       unit: unit ?? this.unit,
@@ -282,6 +301,104 @@ class MenuItem extends Equatable {
       }
     }
     return null;
+  }
+
+  // Template-related helper methods
+
+  /// Gets all customizations including both direct and template-based ones
+  List<MenuItemCustomization> get allCustomizations {
+    final List<MenuItemCustomization> all = List.from(customizations);
+
+    // Convert linked templates to MenuItemCustomization format
+    for (final template in linkedTemplates) {
+      final templateCustomization = MenuItemCustomization(
+        id: template.id,
+        name: template.name,
+        type: template.type,
+        isRequired: template.isRequired,
+        options: template.options.map((option) => CustomizationOption(
+          id: option.id,
+          name: option.name,
+          additionalCost: option.additionalPrice,
+          isDefault: option.isDefault,
+        )).toList(),
+      );
+      all.add(templateCustomization);
+    }
+
+    return all;
+  }
+
+  /// Checks if this menu item uses any templates
+  bool get hasLinkedTemplates => linkedTemplates.isNotEmpty;
+
+  /// Gets the number of active template links
+  int get activeTemplateLinksCount =>
+      templateLinks.where((link) => link.isActive).length;
+
+  /// Gets templates sorted by display order
+  List<CustomizationTemplate> get sortedLinkedTemplates {
+    final List<CustomizationTemplate> sorted = List.from(linkedTemplates);
+    sorted.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    return sorted;
+  }
+
+  /// Checks if a specific template is linked to this menu item
+  bool isTemplateLinked(String templateId) {
+    return linkedTemplates.any((template) => template.id == templateId);
+  }
+
+  /// Gets the minimum additional cost from all customizations (direct + templates)
+  double get minimumCustomizationCost {
+    double minCost = 0.0;
+
+    // Add minimum cost from direct customizations
+    for (final customization in customizations) {
+      if (customization.isRequired && customization.options.isNotEmpty) {
+        final minOptionCost = customization.options
+            .map((o) => o.additionalCost)
+            .reduce((a, b) => a < b ? a : b);
+        minCost += minOptionCost;
+      }
+    }
+
+    // Add minimum cost from template-based customizations
+    for (final template in linkedTemplates) {
+      if (template.isRequired) {
+        minCost += template.minimumAdditionalCost;
+      }
+    }
+
+    return minCost;
+  }
+
+  /// Gets the maximum additional cost from all customizations (direct + templates)
+  double get maximumCustomizationCost {
+    double maxCost = 0.0;
+
+    // Add maximum cost from direct customizations
+    for (final customization in customizations) {
+      if (customization.options.isNotEmpty) {
+        if (customization.type == 'single') {
+          final maxOptionCost = customization.options
+              .map((o) => o.additionalCost)
+              .reduce((a, b) => a > b ? a : b);
+          maxCost += maxOptionCost;
+        } else {
+          // For multiple selection, sum all options
+          maxCost += customization.options
+              .map((o) => o.additionalCost)
+              .reduce((a, b) => a + b);
+        }
+      }
+    }
+
+    // Add maximum cost from template-based customizations
+    for (final template in linkedTemplates) {
+      maxCost += template.maximumAdditionalCost;
+    }
+
+    return maxCost;
   }
 }
 

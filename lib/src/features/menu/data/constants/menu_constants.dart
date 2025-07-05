@@ -67,10 +67,10 @@ enum SpicyLevel {
 
 // Customization Type Enum
 enum CustomizationType {
-  single('single', 'Single Selection'),
-  multiple('multiple', 'Multiple Selection'),
-  text('text', 'Text Input'),
-  number('number', 'Number Input');
+  single('single_select', 'Single Selection'),
+  multiple('multiple_select', 'Multiple Selection'),
+  text('text_input', 'Text Input'),
+  number('number_input', 'Number Input');
 
   const CustomizationType(this.value, this.displayName);
   final String value;

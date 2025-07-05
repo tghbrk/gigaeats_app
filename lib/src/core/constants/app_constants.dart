@@ -142,6 +142,23 @@ class AppConstants {
   static const int minPhoneLength = 10;
   static const int maxPhoneLength = 15;
 
+  // Cuisine Types
+  static const List<String> availableCuisineTypes = [
+    'Malaysian',
+    'Chinese',
+    'Indian',
+    'Western',
+    'Japanese',
+    'Korean',
+    'Thai',
+    'Italian',
+    'Middle Eastern',
+    'Fusion',
+    'Vegetarian',
+    'Halal',
+    'Other',
+  ];
+
   // Error Messages
   static const String errorNetworkConnection = 'No internet connection';
   static const String errorServerError = 'Server error occurred';

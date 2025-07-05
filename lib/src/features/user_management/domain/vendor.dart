@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
 part 'vendor.g.dart';
 
@@ -203,7 +204,11 @@ class Vendor extends Equatable {
 
   // Parse business hours from database JSON
   Map<String, DaySchedule> _parseBusinessHours() {
+    debugPrint('🕒 [BUSINESS-HOURS-PARSE] Starting business hours parsing');
+    debugPrint('🕒 [BUSINESS-HOURS-PARSE] Raw businessHours: $businessHours');
+
     if (businessHours == null || businessHours!.isEmpty) {
+      debugPrint('🕒 [BUSINESS-HOURS-PARSE] No business hours data, using defaults');
       // Return default hours if no data
       return {
         'monday': const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00'),
@@ -218,12 +223,22 @@ class Vendor extends Equatable {
 
     // Parse actual business hours from database
     final Map<String, DaySchedule> schedule = {};
+    debugPrint('🕒 [BUSINESS-HOURS-PARSE] Parsing ${businessHours!.length} day entries');
+
     for (final entry in businessHours!.entries) {
       try {
+        debugPrint('🕒 [BUSINESS-HOURS-PARSE] Processing day: ${entry.key}');
+        debugPrint('🕒 [BUSINESS-HOURS-PARSE] Day data: ${entry.value}');
+
         if (entry.value is Map<String, dynamic>) {
-          schedule[entry.key] = DaySchedule.fromJson(entry.value as Map<String, dynamic>);
+          final daySchedule = DaySchedule.fromJson(entry.value as Map<String, dynamic>);
+          schedule[entry.key] = daySchedule;
+          debugPrint('🕒 [BUSINESS-HOURS-PARSE] Successfully parsed ${entry.key}: isOpen=${daySchedule.isOpen}, open=${daySchedule.openTime}, close=${daySchedule.closeTime}');
+        } else {
+          debugPrint('⚠️ [BUSINESS-HOURS-PARSE] Invalid data type for ${entry.key}: ${entry.value.runtimeType}');
         }
       } catch (e) {
+        debugPrint('❌ [BUSINESS-HOURS-PARSE] Failed to parse ${entry.key}: $e');
         // If parsing fails, use default for this day
         schedule[entry.key] = const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00');
       }
@@ -233,10 +248,12 @@ class Vendor extends Equatable {
     final allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     for (final day in allDays) {
       if (!schedule.containsKey(day)) {
+        debugPrint('🕒 [BUSINESS-HOURS-PARSE] Adding missing day: $day with defaults');
         schedule[day] = const DaySchedule(isOpen: true, openTime: '09:00', closeTime: '18:00');
       }
     }
 
+    debugPrint('🕒 [BUSINESS-HOURS-PARSE] Final parsed schedule: ${schedule.map((k, v) => MapEntry(k, '${v.safeIsOpen ? "${v.openTime}-${v.closeTime}" : "Closed"}'))}');
     return schedule;
   }
 
@@ -354,10 +371,15 @@ class DaySchedule extends Equatable {
   bool get safeIsOpen => isOpen ?? false;
 
   factory DaySchedule.fromJson(Map<String, dynamic> json) {
+    // Support both field naming conventions for backward compatibility
+    final isOpen = json['isOpen'] as bool? ?? json['is_open'] as bool?;
+    final openTime = json['openTime'] as String? ?? json['open'] as String?;
+    final closeTime = json['closeTime'] as String? ?? json['close'] as String?;
+
     return DaySchedule(
-      isOpen: json['isOpen'] as bool?,
-      openTime: json['openTime'] as String?,
-      closeTime: json['closeTime'] as String?,
+      isOpen: isOpen,
+      openTime: openTime,
+      closeTime: closeTime,
       breakStart: json['breakStart'] as String?,
       breakEnd: json['breakEnd'] as String?,
     );

@@ -98,15 +98,15 @@ Future<void> testDriverOrderAcceptance() async {
     }
     print('   ✅ Order is available for acceptance\n');
 
-    // Step 5: Test the critical operation - driver accepting order
+    // Step 5: Test the critical operation - driver accepting order using enhanced workflow
     print('🎯 Step 5: Testing driver order acceptance...');
-    print('   Attempting to update order status from ready → out_for_delivery');
-    
+    print('   Attempting to update order status from ready → assigned (enhanced workflow)');
+
     final acceptanceResponse = await supabase
         .from('orders')
         .update({
           'assigned_driver_id': driverId,
-          'status': 'out_for_delivery',
+          'status': 'assigned', // Enhanced workflow: ready → assigned
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', testOrderId)
@@ -154,11 +154,11 @@ Future<void> testDriverOrderAcceptance() async {
 
     print('🎉 ALL TESTS PASSED! Driver order acceptance is working correctly.\n');
     
-    print('📊 Summary of Fix:');
+    print('📊 Summary of Enhanced Workflow:');
     print('   ✅ RLS Policy: Updated to allow drivers to assign themselves to orders');
-    print('   ✅ Permission Function: Added driver permission for out_for_delivery status');
-    print('   ✅ Order Assignment: Drivers can now accept ready orders');
-    print('   ✅ Status Updates: Order status transitions work correctly');
+    print('   ✅ Permission Function: Added driver permission for assigned status');
+    print('   ✅ Order Assignment: Drivers can now accept ready orders using enhanced workflow');
+    print('   ✅ Status Updates: Order status transitions work correctly (ready → assigned)');
     print('   ✅ Driver Status: Driver status updates to on_delivery automatically');
     print('   ✅ Audit Trail: Order status history is properly recorded');
 

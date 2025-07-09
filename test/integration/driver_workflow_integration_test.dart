@@ -1,9 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:gigaeats_app/src/features/orders/data/models/driver_order.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/driver_order.dart';
 import 'package:gigaeats_app/src/features/orders/data/models/driver_order_state_machine.dart';
 import 'package:gigaeats_app/src/features/orders/data/repositories/driver_order_repository.dart';
 import 'package:gigaeats_app/src/features/drivers/data/services/driver_realtime_service.dart';
+import 'package:gigaeats_app/src/features/drivers/presentation/providers/enhanced_driver_workflow_providers.dart';
+import 'package:gigaeats_app/src/features/drivers/data/services/enhanced_workflow_integration_service.dart';
+import 'package:gigaeats_app/src/features/drivers/data/services/driver_workflow_notification_service.dart';
+import 'package:gigaeats_app/src/features/drivers/data/services/notification_template_initialization_service.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/pickup_confirmation.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/delivery_confirmation.dart';
+import 'package:gigaeats_app/src/core/services/location_service.dart';
 
 /// Comprehensive integration test for the complete driver workflow
 /// Tests all 7 steps of the driver order status transition workflow
@@ -150,11 +158,11 @@ void main() {
 
     group('Phase 3: Driver Order State Machine Testing', () {
       test('should validate all status transitions', () {
-        // Test valid transitions
+        // Test valid transitions - start from assigned status
         expect(
           DriverOrderStateMachine.isValidTransition(
-            DriverOrderStatus.available,
             DriverOrderStatus.assigned,
+            DriverOrderStatus.onRouteToVendor,
           ),
           isTrue,
         );
@@ -209,10 +217,10 @@ void main() {
       });
 
       test('should reject invalid transitions', () {
-        // Test invalid transitions
+        // Test invalid transitions - cannot skip from assigned to delivered
         expect(
           DriverOrderStateMachine.isValidTransition(
-            DriverOrderStatus.available,
+            DriverOrderStatus.assigned,
             DriverOrderStatus.delivered,
           ),
           isFalse,
@@ -236,17 +244,17 @@ void main() {
       });
 
       test('should provide correct available actions for each status', () {
-        final availableActions = DriverOrderStateMachine.getAvailableActions(
-          DriverOrderStatus.available,
-        );
-        expect(availableActions, contains(DriverOrderAction.accept));
-        expect(availableActions, contains(DriverOrderAction.reject));
-
         final assignedActions = DriverOrderStateMachine.getAvailableActions(
           DriverOrderStatus.assigned,
         );
         expect(assignedActions, contains(DriverOrderAction.navigateToVendor));
         expect(assignedActions, contains(DriverOrderAction.cancel));
+
+        final pickedUpActions = DriverOrderStateMachine.getAvailableActions(
+          DriverOrderStatus.pickedUp,
+        );
+        expect(pickedUpActions, contains(DriverOrderAction.navigateToCustomer));
+        expect(pickedUpActions, contains(DriverOrderAction.reportIssue));
 
         final deliveredActions = DriverOrderStateMachine.getAvailableActions(
           DriverOrderStatus.delivered,
@@ -401,7 +409,151 @@ void main() {
       });
     });
 
-    group('Phase 6: Error Handling Testing', () {
+    group('Phase 6: Enhanced Driver Workflow Testing', () {
+      late ProviderContainer container;
+
+      setUp(() {
+        container = ProviderContainer();
+      });
+
+      tearDown(() {
+        container.dispose();
+      });
+
+      test('should initialize notification templates', () async {
+        await NotificationTemplateInitializationService.initializeOnStartup();
+
+        final templateService = NotificationTemplateInitializationService();
+        final templatesExist = await templateService.validateTemplatesExist();
+        expect(templatesExist, true, reason: 'All required templates should exist');
+      });
+
+      test('should complete enhanced 7-step workflow', () async {
+        // Create test order
+        final orderResponse = await supabase
+            .from('orders')
+            .insert({
+              'customer_id': testCustomerId,
+              'vendor_id': testVendorId,
+              'total_amount': 35.00,
+              'status': 'assigned',
+              'assigned_driver_id': testDriverId,
+              'delivery_method': 'own_fleet',
+              'delivery_address': 'Enhanced Workflow Test Address',
+              'contact_phone': '+60123456789',
+              'order_number': 'ENHANCED-${DateTime.now().millisecondsSinceEpoch}',
+              'vendor_name': 'Test Vendor',
+              'customer_name': 'Test Customer',
+            })
+            .select('id')
+            .single();
+
+        final orderId = orderResponse['id'];
+
+        try {
+          final workflowService = EnhancedWorkflowIntegrationService();
+
+          // Test each status transition with enhanced workflow
+          final transitions = [
+            (DriverOrderStatus.assigned, DriverOrderStatus.onRouteToVendor),
+            (DriverOrderStatus.onRouteToVendor, DriverOrderStatus.arrivedAtVendor),
+            (DriverOrderStatus.arrivedAtVendor, DriverOrderStatus.pickedUp),
+            (DriverOrderStatus.pickedUp, DriverOrderStatus.onRouteToCustomer),
+            (DriverOrderStatus.onRouteToCustomer, DriverOrderStatus.arrivedAtCustomer),
+            (DriverOrderStatus.arrivedAtCustomer, DriverOrderStatus.delivered),
+          ];
+
+          for (final (fromStatus, toStatus) in transitions) {
+            // Update order status first
+            await supabase
+                .from('orders')
+                .update({'status': fromStatus.value})
+                .eq('id', orderId);
+
+            // Process workflow integration
+            final result = await workflowService.processOrderStatusChange(
+              orderId: orderId,
+              fromStatus: fromStatus,
+              toStatus: toStatus,
+              driverId: testDriverId,
+            );
+
+            expect(result.isSuccess, true,
+                   reason: 'Workflow transition $fromStatus → $toStatus should succeed');
+          }
+
+          // Verify final status
+          final finalOrder = await supabase
+              .from('orders')
+              .select('status')
+              .eq('id', orderId)
+              .single();
+
+          expect(finalOrder['status'], equals('delivered'));
+
+        } finally {
+          // Clean up
+          await supabase.from('orders').delete().eq('id', orderId);
+        }
+      });
+
+      test('should validate pickup confirmation requirements', () {
+        final validConfirmation = PickupConfirmation(
+          orderId: 'test-order-id',
+          confirmedAt: DateTime.now(),
+          verificationChecklist: {
+            'Order number matches': true,
+            'All items are present': true,
+            'Items are properly packaged': true,
+            'Special instructions noted': true,
+            'Temperature requirements met': true,
+          },
+          notes: 'All items verified and ready for delivery',
+          confirmedBy: testDriverId,
+        );
+
+        expect(validConfirmation.verificationChecklist.length, equals(5));
+        expect(validConfirmation.verificationChecklist.values.every((v) => v), true);
+        expect(validConfirmation.notes, isNotEmpty);
+      });
+
+      test('should validate delivery confirmation requirements', () {
+        final validConfirmation = DeliveryConfirmation(
+          orderId: 'test-order-id',
+          deliveredAt: DateTime.now(),
+          photoUrl: 'https://example.com/delivery-photo.jpg',
+          location: LocationData(
+            latitude: 3.1390,
+            longitude: 101.6869,
+            accuracy: 15.0,
+            timestamp: DateTime.now(),
+          ),
+          recipientName: 'Test Customer',
+          notes: 'Delivered successfully to customer',
+          confirmedBy: testDriverId,
+        );
+
+        expect(validConfirmation.photoUrl, isNotEmpty);
+        expect(validConfirmation.location.accuracy, lessThan(50.0));
+        expect(validConfirmation.recipientName, isNotEmpty);
+      });
+
+      test('should send workflow notifications', () async {
+        final notificationService = DriverWorkflowNotificationService();
+
+        // Test notification sending (should not throw)
+        expect(() async {
+          await notificationService.notifyWorkflowStatusChange(
+            orderId: 'test-order-id',
+            fromStatus: DriverOrderStatus.assigned,
+            toStatus: DriverOrderStatus.onRouteToVendor,
+            driverId: testDriverId,
+          );
+        }, returnsNormally);
+      });
+    });
+
+    group('Phase 7: Error Handling Testing', () {
       test('should handle invalid status transitions gracefully', () async {
         // Create test order in 'ready' state
         final orderResponse = await supabase
@@ -483,3 +635,5 @@ void main() {
     });
   });
 }
+
+// Helper function removed - now using unified DriverOrderStatus from drivers module

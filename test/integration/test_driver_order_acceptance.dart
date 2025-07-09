@@ -94,13 +94,12 @@ void main() async {
 
     print('✅ Driver status validation passed');
 
-    // Update order with driver assignment and status
+    // Update order with driver assignment and status using enhanced workflow
     final response = await supabase
         .from('orders')
         .update({
           'assigned_driver_id': driverId,
-          'status': 'out_for_delivery',
-          'out_for_delivery_at': DateTime.now().toIso8601String(),
+          'status': 'assigned', // Enhanced workflow: ready → assigned
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', testOrderId)

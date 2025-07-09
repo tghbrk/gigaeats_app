@@ -102,6 +102,7 @@ dependencies:
   timezone: ^0.10.1
   image: ^4.3.0
   rxdart: ^0.28.0
+  connectivity_plus: ^6.1.4
 
 dev_dependencies:
   flutter_test:

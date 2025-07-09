@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/models/user_role.dart';
 import '../../../../shared/widgets/auth_guard.dart';
 import 'driver_map_screen.dart';
-import 'driver_profile_screen.dart';
+// Import the enhanced driver profile screen with debug logging
+import '../../../user_management/presentation/screens/driver/driver_profile_screen.dart';
 import '../../../payments/presentation/screens/driver/driver_earnings_screen.dart';
 import 'driver_orders_screen.dart';
+import 'driver_orders_management_screen.dart';
 
 /// Main driver dashboard with bottom navigation
 class DriverDashboard extends ConsumerStatefulWidget {
@@ -20,6 +22,11 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
   int _selectedIndex = 0;
 
   final List<NavigationDestination> _destinations = [
+    const NavigationDestination(
+      icon: Icon(Icons.dashboard_outlined),
+      selectedIcon: Icon(Icons.dashboard),
+      label: 'Dashboard',
+    ),
     const NavigationDestination(
       icon: Icon(Icons.assignment_outlined),
       selectedIcon: Icon(Icons.assignment),
@@ -50,7 +57,8 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
         body: IndexedStack(
           index: _selectedIndex,
           children: [
-            const DriverOrdersScreen(key: ValueKey('driver_orders_tab')),
+            const DriverOrdersScreen(key: ValueKey('driver_dashboard_tab')),
+            const DriverOrdersManagementScreen(key: ValueKey('driver_orders_management_tab')),
             const DriverMapScreen(key: ValueKey('driver_map_tab')),
             // Use the static earnings screen to prevent infinite loops
             const DriverEarningsScreen(key: ValueKey('driver_earnings_tab')),

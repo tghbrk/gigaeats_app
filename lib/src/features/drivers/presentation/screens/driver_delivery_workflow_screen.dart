@@ -5,10 +5,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
-import '../../../orders/data/models/driver_order.dart';
+import '../../../drivers/data/models/driver_order.dart';
+import '../../../drivers/data/models/pickup_confirmation.dart';
+import '../../../drivers/data/models/delivery_confirmation.dart';
+import '../../../drivers/data/services/pickup_confirmation_service.dart';
+import '../../../drivers/data/services/delivery_confirmation_service.dart';
 import '../../data/models/driver_error.dart';
 import '../providers/driver_realtime_providers.dart';
-import '../../../orders/presentation/widgets/delivery_confirmation_dialog.dart';
+import '../widgets/driver_delivery_confirmation_dialog.dart';
+import '../widgets/vendor_pickup_confirmation_dialog.dart';
 
 /// Driver delivery workflow screen with step-by-step process
 class DriverDeliveryWorkflowScreen extends ConsumerWidget {
@@ -136,49 +141,67 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
   int _determineCurrentStep(DriverOrder order) {
     switch (order.status) {
       case DriverOrderStatus.assigned:
-        return 0; // Navigate to pickup
+        return 0; // Start journey to vendor
       case DriverOrderStatus.onRouteToVendor:
-        return 0; // Navigate to pickup
+        return 1; // En route to vendor
       case DriverOrderStatus.arrivedAtVendor:
-        return 1; // Confirm pickup
+        return 2; // Arrived at vendor
       case DriverOrderStatus.pickedUp:
-        return 2; // Navigate to customer
+        return 3; // Order picked up
       case DriverOrderStatus.onRouteToCustomer:
-        return 2; // Navigate to customer
+        return 4; // En route to customer
       case DriverOrderStatus.arrivedAtCustomer:
-        return 3; // Confirm delivery
+        return 5; // Arrived at customer
       case DriverOrderStatus.delivered:
-        return 4; // Completed
+        return 6; // Delivery completed
       default:
         return 0;
     }
   }
 
-  // Delivery workflow steps
+  // Enhanced 7-step delivery workflow
   static const List<DeliveryStep> _deliverySteps = [
     DeliveryStep(
-      title: 'Navigate to Pickup',
-      description: 'Drive to the vendor location to collect the order',
-      icon: Icons.restaurant,
-      color: Colors.orange,
-    ),
-    DeliveryStep(
-      title: 'Confirm Pickup',
-      description: 'Confirm you have collected the order from the vendor',
-      icon: Icons.check_circle_outline,
+      title: 'Start Journey',
+      description: 'Begin navigation to the restaurant',
+      icon: Icons.play_arrow,
       color: Colors.blue,
     ),
     DeliveryStep(
-      title: 'Navigate to Customer',
-      description: 'Drive to the customer delivery location',
+      title: 'En Route to Restaurant',
+      description: 'Driving to the vendor location',
+      icon: Icons.directions_car,
+      color: Colors.orange,
+    ),
+    DeliveryStep(
+      title: 'Arrived at Restaurant',
+      description: 'Mark arrival and prepare for pickup',
+      icon: Icons.restaurant,
+      color: Colors.amber,
+    ),
+    DeliveryStep(
+      title: 'Order Picked Up',
+      description: 'Confirm order collection from vendor',
+      icon: Icons.check_circle,
+      color: Colors.green,
+    ),
+    DeliveryStep(
+      title: 'En Route to Customer',
+      description: 'Driving to customer delivery location',
       icon: Icons.navigation,
       color: Colors.purple,
     ),
     DeliveryStep(
-      title: 'Confirm Delivery',
-      description: 'Confirm delivery and capture proof of delivery',
+      title: 'Arrived at Customer',
+      description: 'Mark arrival at delivery location',
+      icon: Icons.location_on,
+      color: Colors.indigo,
+    ),
+    DeliveryStep(
+      title: 'Delivery Complete',
+      description: 'Confirm delivery with photo proof',
       icon: Icons.camera_alt,
-      color: Colors.green,
+      color: Colors.teal,
     ),
   ];
 
@@ -401,20 +424,27 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
 
   Widget _buildCurrentStepActions(BuildContext context, WidgetRef ref, DriverOrder order, int currentStepIndex) {
     switch (currentStepIndex) {
-      case 0: // Navigate to pickup
-        return _buildNavigateToPickupActions(context, ref, order);
-      case 1: // Confirm pickup
-        return _buildConfirmPickupActions(context, ref, order);
-      case 2: // Navigate to customer
-        return _buildNavigateToCustomerActions(context, ref, order);
-      case 3: // Confirm delivery
-        return _buildConfirmDeliveryActions(context, ref, order);
+      case 0: // Start journey (assigned)
+        return _buildStartJourneyActions(context, ref, order);
+      case 1: // En route to vendor (on_route_to_vendor)
+        return _buildEnRouteToVendorActions(context, ref, order);
+      case 2: // Arrived at vendor (arrived_at_vendor)
+        return _buildArrivedAtVendorActions(context, ref, order);
+      case 3: // Order picked up (picked_up)
+        return _buildOrderPickedUpActions(context, ref, order);
+      case 4: // En route to customer (on_route_to_customer)
+        return _buildEnRouteToCustomerActions(context, ref, order);
+      case 5: // Arrived at customer (arrived_at_customer)
+        return _buildArrivedAtCustomerActions(context, ref, order);
+      case 6: // Delivery complete (delivered)
+        return _buildDeliveryCompleteActions(context, ref, order);
       default:
         return const SizedBox.shrink();
     }
   }
 
-  Widget _buildNavigateToPickupActions(BuildContext context, WidgetRef ref, DriverOrder order) {
+  // Step 0: Start journey (assigned)
+  Widget _buildStartJourneyActions(BuildContext context, WidgetRef ref, DriverOrder order) {
     return Column(
       children: [
         SizedBox(
@@ -422,9 +452,10 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
           child: ElevatedButton.icon(
             onPressed: () => _startNavigationToVendor(context, ref, order),
             icon: const Icon(Icons.directions),
-            label: const Text('Start Navigation to Vendor'),
+            label: const Text('Start Navigation to Restaurant'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.blue,
             ),
           ),
         ),
@@ -435,15 +466,15 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: () => _callVendor(context),
                 icon: const Icon(Icons.phone),
-                label: const Text('Call Vendor'),
+                label: const Text('Call Restaurant'),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => _markArrivedAtPickup(context, ref, order),
-                icon: const Icon(Icons.location_on),
-                label: const Text('Arrived'),
+                onPressed: () => _reportIssue(context, ref, order),
+                icon: const Icon(Icons.report_problem),
+                label: const Text('Report Issue'),
               ),
             ),
           ],
@@ -452,43 +483,223 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildConfirmPickupActions(BuildContext context, WidgetRef ref, DriverOrder order) {
+  // Step 1: En route to vendor (on_route_to_vendor)
+  Widget _buildEnRouteToVendorActions(BuildContext context, WidgetRef ref, DriverOrder order) {
     return Column(
       children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.directions_car, color: Colors.orange),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'En route to restaurant. Mark arrival when you reach the location.',
+                  style: TextStyle(color: Colors.orange[800]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () => _confirmPickup(context, ref, order),
-            icon: const Icon(Icons.check_circle),
-            label: const Text('Confirm Pickup'),
+            onPressed: () => _markArrivedAtPickup(context, ref, order),
+            icon: const Icon(Icons.location_on),
+            label: const Text('Mark Arrived at Restaurant'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+              backgroundColor: Colors.orange,
             ),
           ),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => _reportPickupIssue(context),
-          icon: const Icon(Icons.report_problem),
-          label: const Text('Report Issue'),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _callVendor(context),
+                icon: const Icon(Icons.phone),
+                label: const Text('Call Restaurant'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _reportIssue(context, ref, order),
+                icon: const Icon(Icons.report_problem),
+                label: const Text('Report Issue'),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildNavigateToCustomerActions(BuildContext context, WidgetRef ref, DriverOrder order) {
+  // Step 2: Arrived at vendor (arrived_at_vendor)
+  Widget _buildArrivedAtVendorActions(BuildContext context, WidgetRef ref, DriverOrder order) {
     return Column(
       children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.amber),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.restaurant, color: Colors.amber[800]),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'You have arrived at the restaurant. Confirm pickup when you receive the order.',
+                  style: TextStyle(color: Colors.amber[800]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _confirmPickup(context, ref, order),
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Confirm Order Pickup'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.green,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _callVendor(context),
+                icon: const Icon(Icons.phone),
+                label: const Text('Call Restaurant'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _reportIssue(context, ref, order),
+                icon: const Icon(Icons.report_problem),
+                label: const Text('Report Issue'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Step 3: Order picked up (picked_up)
+  Widget _buildOrderPickedUpActions(BuildContext context, WidgetRef ref, DriverOrder order) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Order picked up successfully! Start navigation to customer.',
+                  style: TextStyle(color: Colors.green[800]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () => _startNavigationToCustomer(context, ref, order),
-            icon: const Icon(Icons.directions),
+            icon: const Icon(Icons.navigation),
             label: const Text('Start Navigation to Customer'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.purple,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _callCustomer(order.customerPhone ?? ''),
+                icon: const Icon(Icons.phone),
+                label: const Text('Call Customer'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _reportIssue(context, ref, order),
+                icon: const Icon(Icons.report_problem),
+                label: const Text('Report Issue'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Step 4: En route to customer (on_route_to_customer)
+  Widget _buildEnRouteToCustomerActions(BuildContext context, WidgetRef ref, DriverOrder order) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.purple.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.purple),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.navigation, color: Colors.purple),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'En route to customer. Mark arrival when you reach the delivery location.',
+                  style: TextStyle(color: Colors.purple[800]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _markArrivedAtCustomer(context, ref, order),
+            icon: const Icon(Icons.location_on),
+            label: const Text('Mark Arrived at Customer'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.indigo,
             ),
           ),
         ),
@@ -505,9 +716,9 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => _markArrivedAtDelivery(context, ref, order),
-                icon: const Icon(Icons.location_on),
-                label: const Text('Arrived'),
+                onPressed: () => _reportIssue(context, ref, order),
+                icon: const Icon(Icons.report_problem),
+                label: const Text('Report Issue'),
               ),
             ),
           ],
@@ -516,27 +727,112 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildConfirmDeliveryActions(BuildContext context, WidgetRef ref, DriverOrder order) {
+  // Step 5: Arrived at customer (arrived_at_customer)
+  Widget _buildArrivedAtCustomerActions(BuildContext context, WidgetRef ref, DriverOrder order) {
     return Column(
       children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.indigo.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.indigo),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.location_on, color: Colors.indigo),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'You have arrived at the customer location. Complete delivery with photo proof.',
+                  style: TextStyle(color: Colors.indigo[800]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () => _confirmDelivery(context, ref, order),
             icon: const Icon(Icons.camera_alt),
-            label: const Text('Confirm Delivery & Take Photo'),
+            label: const Text('Complete Delivery with Photo'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+              backgroundColor: Colors.teal,
             ),
           ),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => _reportDeliveryIssue(context),
-          icon: const Icon(Icons.report_problem),
-          label: const Text('Report Delivery Issue'),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: order.customerPhone != null ? () => _callCustomer(order.customerPhone!) : null,
+                icon: const Icon(Icons.phone),
+                label: const Text('Call Customer'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _reportIssue(context, ref, order),
+                icon: const Icon(Icons.report_problem),
+                label: const Text('Report Issue'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Step 6: Delivery complete (delivered)
+  Widget _buildDeliveryCompleteActions(BuildContext context, WidgetRef ref, DriverOrder order) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green, width: 2),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 48),
+              const SizedBox(height: 12),
+              Text(
+                'Delivery Completed Successfully!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[800],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Thank you for completing this delivery. You can now accept new orders.',
+                style: TextStyle(color: Colors.green[700]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => context.pop(),
+            icon: const Icon(Icons.home),
+            label: const Text('Return to Dashboard'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.blue,
+            ),
+          ),
         ),
       ],
     );
@@ -673,12 +969,8 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
 
   Color _getStatusColor(DriverOrderStatus status) {
     switch (status) {
-      case DriverOrderStatus.available:
-        return Colors.blue;
       case DriverOrderStatus.assigned:
         return Colors.orange;
-      case DriverOrderStatus.ready:
-        return Colors.green;
       case DriverOrderStatus.onRouteToVendor:
         return Colors.orange;
       case DriverOrderStatus.arrivedAtVendor:
@@ -693,6 +985,8 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
         return Colors.green;
       case DriverOrderStatus.cancelled:
         return Colors.red;
+      case DriverOrderStatus.failed:
+        return Colors.red.shade800;
     }
   }
 
@@ -722,7 +1016,7 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
       result.when(
         success: (success) async {
           // Open maps for navigation
-          await _openMaps(order.vendorAddress ?? order.vendorName);
+          await _openMaps(order.vendorAddress);
 
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -902,40 +1196,34 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
     }
   }
 
+  /// Mandatory pickup confirmation with verification checklist
+  /// This method cannot be bypassed and enforces order verification
   Future<void> _confirmPickup(BuildContext context, WidgetRef ref, DriverOrder order) async {
     try {
-      // Use the realtime driver order actions provider
-      final actions = ref.read(realtimeDriverOrderActionsProvider);
+      debugPrint('DriverDeliveryWorkflow: Starting mandatory pickup confirmation for order ${order.id}');
 
-      debugPrint('DriverDeliveryWorkflow: Confirming pickup for order ${order.id}');
-
-      // Update order status to picked up using the actions provider
-      final result = await actions.updateOrderStatus(order.id, DriverOrderStatus.pickedUp);
-
-      if (result.isSuccess) {
-        debugPrint('DriverDeliveryWorkflow: Pickup confirmed successfully');
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Pickup confirmed successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-
-        // Refresh the order details
-        ref.invalidate(realtimeOrderDetailsProvider(order.id));
-      } else {
-        debugPrint('DriverDeliveryWorkflow: Failed to confirm pickup: ${result.error?.message}');
-        throw Exception(result.error?.message ?? 'Failed to confirm pickup');
-      }
+      // Show mandatory pickup confirmation dialog
+      // This dialog cannot be dismissed without completing the verification checklist
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false, // Cannot be dismissed by tapping outside
+        builder: (context) => VendorPickupConfirmationDialog(
+          order: order,
+          onConfirmed: (confirmation) async {
+            await _processPickupConfirmation(context, ref, confirmation);
+          },
+          onCancelled: () {
+            // User cancelled pickup confirmation - no action taken
+            debugPrint('DriverDeliveryWorkflow: Pickup confirmation cancelled by user');
+          },
+        ),
+      );
     } catch (e) {
-      debugPrint('DriverDeliveryWorkflow: Error confirming pickup: $e');
+      debugPrint('DriverDeliveryWorkflow: Error showing pickup confirmation dialog: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error confirming pickup: $e'),
+            content: Text('Error showing pickup confirmation: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -943,31 +1231,244 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
     }
   }
 
-  void _reportPickupIssue(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pickup issue reporting - Coming soon!')),
+  /// Process the pickup confirmation after verification checklist is completed
+  Future<void> _processPickupConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    PickupConfirmation confirmation
+  ) async {
+    try {
+      debugPrint('DriverDeliveryWorkflow: Processing pickup confirmation for order ${confirmation.orderId}');
+
+      // Submit pickup confirmation through the service
+      final pickupService = ref.read(pickupConfirmationServiceProvider);
+      final result = await pickupService.submitPickupConfirmation(confirmation);
+
+      if (result.isSuccess) {
+        debugPrint('DriverDeliveryWorkflow: Pickup confirmation submitted successfully');
+
+        // Update order status using the enhanced workflow provider
+        final actions = ref.read(realtimeDriverOrderActionsProvider);
+        final statusResult = await actions.confirmPickup(confirmation.orderId);
+
+        statusResult.when(
+          success: (success) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Pickup confirmed successfully! Order verification completed.'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+
+            // Refresh the order details to show updated status
+            ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
+          },
+          error: (error) {
+            debugPrint('DriverDeliveryWorkflow: Failed to update order status: ${error.userFriendlyMessage}');
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Pickup confirmed but status update failed: ${error.userFriendlyMessage}'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
+          },
+        );
+      } else {
+        debugPrint('DriverDeliveryWorkflow: Failed to submit pickup confirmation: ${result.errorMessage}');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to confirm pickup: ${result.errorMessage}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('DriverDeliveryWorkflow: Error processing pickup confirmation: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error processing pickup confirmation: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+
+
+  /// Mandatory delivery confirmation with photo capture and GPS verification
+  /// This method enforces delivery proof requirements and cannot be bypassed
+  Future<void> _confirmDelivery(BuildContext context, WidgetRef ref, DriverOrder order) async {
+    try {
+      debugPrint('DriverDeliveryWorkflow: Starting mandatory delivery confirmation for order ${order.id}');
+
+      // Show mandatory delivery confirmation dialog with photo capture and GPS verification
+      // This dialog cannot be dismissed without completing all requirements
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false, // Cannot be dismissed by tapping outside
+        builder: (context) => DriverDeliveryConfirmationDialog(
+          order: order,
+          onConfirmed: (confirmation) async {
+            await _processDeliveryConfirmation(context, ref, confirmation);
+          },
+          onCancelled: () {
+            // User cancelled delivery confirmation - no action taken
+            debugPrint('DriverDeliveryWorkflow: Delivery confirmation cancelled by user');
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('DriverDeliveryWorkflow: Error showing delivery confirmation dialog: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error showing delivery confirmation: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Process the delivery confirmation after photo capture and GPS verification
+  Future<void> _processDeliveryConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    DeliveryConfirmation confirmation
+  ) async {
+    try {
+      debugPrint('DriverDeliveryWorkflow: Processing delivery confirmation for order ${confirmation.orderId}');
+      debugPrint('DriverDeliveryWorkflow: Photo URL: ${confirmation.photoUrl}');
+      debugPrint('DriverDeliveryWorkflow: GPS Location: ${confirmation.location.latitude}, ${confirmation.location.longitude}');
+
+      // Submit delivery confirmation through the service
+      final deliveryService = ref.read(deliveryConfirmationServiceProvider);
+      final result = await deliveryService.submitDeliveryConfirmation(confirmation);
+
+      if (result.isSuccess) {
+        debugPrint('DriverDeliveryWorkflow: Delivery confirmation submitted successfully');
+
+        // Complete delivery using the enhanced workflow provider with photo proof
+        final actions = ref.read(realtimeDriverOrderActionsProvider);
+        final statusResult = await actions.completeDeliveryWithPhoto(
+          confirmation.orderId,
+          confirmation.photoUrl
+        );
+
+        statusResult.when(
+          success: (success) {
+            debugPrint('DriverDeliveryWorkflow: Delivery completed successfully with photo proof');
+
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🎉 Delivery completed successfully! Photo proof uploaded.'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
+
+            // Refresh the order details to show updated status
+            ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
+
+            // Navigate back to dashboard after successful delivery
+            if (context.mounted) {
+              context.go('/driver');
+            }
+          },
+          error: (error) {
+            debugPrint('DriverDeliveryWorkflow: Failed to update order status: ${error.userFriendlyMessage}');
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Delivery confirmed but status update failed: ${error.userFriendlyMessage}'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
+          },
+        );
+      } else {
+        debugPrint('DriverDeliveryWorkflow: Failed to submit delivery confirmation: ${result.errorMessage}');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to confirm delivery: ${result.errorMessage}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('DriverDeliveryWorkflow: Error processing delivery confirmation: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error processing delivery confirmation: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+
+
+  /// Report issue with order (generic method for all workflow steps)
+  Future<void> _reportIssue(BuildContext context, WidgetRef ref, DriverOrder order) async {
+    // Show issue reporting dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Issue'),
+        content: const Text('Issue reporting functionality will be implemented in a future update.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> _markArrivedAtDelivery(BuildContext context, WidgetRef ref, DriverOrder order) async {
+  /// Mark arrived at customer (on_route_to_customer → arrived_at_customer)
+  Future<void> _markArrivedAtCustomer(BuildContext context, WidgetRef ref, DriverOrder order) async {
     try {
       final actions = ref.read(realtimeDriverOrderActionsProvider);
 
-      debugPrint('DriverDeliveryWorkflow: Marking arrived at delivery for order ${order.id}');
+      debugPrint('DriverDeliveryWorkflow: Marking arrived at customer for order ${order.id}');
 
       // Update order status to arrived at customer
-      final result = await actions.updateOrderStatus(order.id, DriverOrderStatus.arrivedAtCustomer);
+      final result = await actions.markArrivedAtCustomer(order.id);
 
       result.when(
         success: (success) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Marked as arrived at delivery location'),
-                backgroundColor: Colors.blue,
+                content: Text('Marked as arrived at customer'),
+                backgroundColor: Colors.indigo,
               ),
             );
           }
+
           // Refresh the order details
           ref.invalidate(realtimeOrderDetailsProvider(order.id));
         },
@@ -983,7 +1484,7 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
         },
       );
     } catch (e) {
-      debugPrint('DriverDeliveryWorkflow: Error marking arrived at delivery: $e');
+      debugPrint('DriverDeliveryWorkflow: Error marking arrived at customer: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -993,75 +1494,6 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
         );
       }
     }
-  }
-
-  Future<void> _confirmDelivery(BuildContext context, WidgetRef ref, DriverOrder order) async {
-    try {
-      // Show delivery confirmation dialog
-      final confirmed = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => DeliveryConfirmationDialog(
-          order: order,
-          onConfirm: (notes) async {
-            // Use the realtime driver order actions provider
-            final actions = ref.read(realtimeDriverOrderActionsProvider);
-
-            debugPrint('DriverDeliveryWorkflow: Confirming delivery for order ${order.id}');
-
-            // Update order status to delivered
-            final result = await actions.updateOrderStatus(order.id, DriverOrderStatus.delivered);
-
-            return result.when(
-              success: (success) {
-                debugPrint('DriverDeliveryWorkflow: Delivery confirmed successfully');
-                return true;
-              },
-              error: (error) {
-                debugPrint('DriverDeliveryWorkflow: Failed to confirm delivery: ${error.message}');
-                throw Exception(error.userFriendlyMessage);
-              },
-            );
-          },
-        ),
-      );
-
-      if (confirmed == true) {
-        // Show success message
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Delivery confirmed successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-
-        // Refresh the order details - realtime subscriptions will handle the rest
-        ref.invalidate(realtimeOrderDetailsProvider(order.id));
-
-        // Navigate back to dashboard after successful delivery
-        if (context.mounted) {
-          context.go('/driver');
-        }
-      }
-    } catch (e) {
-      debugPrint('DriverDeliveryWorkflow: Error confirming delivery: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error confirming delivery: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _reportDeliveryIssue(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Delivery issue reporting - Coming soon!')),
-    );
   }
 }
 

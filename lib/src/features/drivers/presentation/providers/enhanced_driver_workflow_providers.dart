@@ -1,0 +1,702 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../drivers/data/models/driver_order.dart';
+import '../../../../data/models/user_role.dart';
+import '../../data/services/enhanced_workflow_integration_service.dart';
+import '../../data/services/pickup_confirmation_service.dart';
+import '../../data/services/delivery_confirmation_service.dart';
+
+/// Enhanced workflow integration service provider
+final enhancedWorkflowIntegrationServiceProvider = Provider<EnhancedWorkflowIntegrationService>((ref) {
+  return EnhancedWorkflowIntegrationService();
+});
+
+/// Service providers for testing compatibility
+final pickupConfirmationServiceProvider = Provider<PickupConfirmationService>((ref) {
+  return PickupConfirmationService();
+});
+
+final deliveryConfirmationServiceProvider = Provider<DeliveryConfirmationService>((ref) {
+  return DeliveryConfirmationService();
+});
+
+/// Enhanced current driver order provider with granular workflow support
+/// Fixed to ensure proper execution and avoid caching issues
+final enhancedCurrentDriverOrderProvider = StreamProvider.autoDispose<DriverOrder?>((ref) async* {
+  final timestamp = DateTime.now().millisecondsSinceEpoch;
+  debugPrint('🚗 [ENHANCED-WORKFLOW] [$timestamp] Provider called - starting enhanced current driver order provider');
+
+  // Watch auth state to ensure provider rebuilds when auth changes
+  final authState = ref.watch(authStateProvider);
+
+  if (authState.user?.role != UserRole.driver) {
+    debugPrint('🚗 [ENHANCED-WORKFLOW] [$timestamp] User is not a driver, role: ${authState.user?.role}');
+    yield null;
+    return;
+  }
+
+  final userId = authState.user?.id;
+  if (userId == null) {
+    debugPrint('🚗 [ENHANCED-WORKFLOW] [$timestamp] User ID is null');
+    yield null;
+    return;
+  }
+
+  debugPrint('🚗 [ENHANCED-WORKFLOW] [$timestamp] Starting provider for user: $userId');
+
+  try {
+    final supabase = Supabase.instance.client;
+
+    // Force provider to always execute by adding a unique identifier
+    debugPrint('🚗 [ENHANCED-WORKFLOW] [$timestamp] Provider execution ID: ${DateTime.now().microsecondsSinceEpoch}');
+    debugPrint('🚗 [ENHANCED-WORKFLOW] [$timestamp] Streaming current driver order with granular status');
+
+    // First get the driver ID from the user ID
+    final driverProfile = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (driverProfile == null) {
+      debugPrint('🚗 [ENHANCED-WORKFLOW] No driver profile found for user $userId');
+      yield null;
+      return;
+    }
+
+    final driverId = driverProfile['id'] as String?;
+    if (driverId == null) {
+      debugPrint('🚗 [ENHANCED-WORKFLOW] Driver profile found but ID is null');
+      yield null;
+      return;
+    }
+
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Found driver ID: $driverId for user: $userId');
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Searching for orders assigned to driver: $driverId');
+
+    // Get initial current order using driver ID
+    // For granular workflow, we need to get orders assigned to this driver
+    // regardless of order status, since granular status is tracked in drivers table
+    final initialResponse = await supabase
+        .from('orders')
+        .select('''
+          id,
+          order_id:id,
+          order_number,
+          status,
+          vendor_id,
+          customer_id,
+          sales_agent_id,
+          delivery_date,
+          delivery_address,
+          subtotal,
+          delivery_fee,
+          sst_amount,
+          total_amount,
+          commission_amount,
+          payment_status,
+          payment_method,
+          payment_reference,
+          notes,
+          metadata,
+          created_at,
+          updated_at,
+          estimated_delivery_time,
+          actual_delivery_time,
+          preparation_started_at,
+          ready_at,
+          out_for_delivery_at,
+          delivery_zone,
+          special_instructions,
+          contact_phone,
+          delivery_proof_id,
+          assigned_driver_id,
+          order_items:order_items(
+            id,
+            quantity,
+            unit_price,
+            total_price,
+            customizations,
+            notes,
+            menu_item:menu_items!order_items_menu_item_id_fkey(
+              id,
+              name,
+              image_url,
+              base_price
+            )
+          ),
+          vendors:vendors!orders_vendor_id_fkey(
+            business_name,
+            business_address
+          ),
+          drivers:drivers!orders_assigned_driver_id_fkey(
+            id,
+            current_delivery_status
+          )
+        ''')
+        .eq('assigned_driver_id', driverId)
+        .inFilter('status', [
+          'assigned',
+          'on_route_to_vendor',
+          'arrived_at_vendor',
+          'picked_up',
+          'on_route_to_customer',
+          'arrived_at_customer',
+          'out_for_delivery', // Include legacy status for real-time updates
+          'ready' // Include ready status for order pickup
+        ])
+        .order('created_at', ascending: false)
+        .limit(1);
+
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Initial query returned ${initialResponse.length} orders');
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Query filter: assigned_driver_id = $driverId, status in [ready, out_for_delivery, on_route_to_customer, ...]');
+
+    if (initialResponse.isNotEmpty) {
+      debugPrint('🚗 [ENHANCED-WORKFLOW] Raw order data: ${initialResponse.first}');
+
+      // Get the raw order data
+      final orderData = Map<String, dynamic>.from(initialResponse.first);
+
+      // Check if driver has granular delivery status
+      final driverDeliveryStatus = orderData['drivers']?['current_delivery_status'];
+      debugPrint('🚗 [ENHANCED-WORKFLOW] Order status: ${orderData['status']}, Driver delivery status: $driverDeliveryStatus');
+
+      // Use driver delivery status for granular workflow if available
+      if (driverDeliveryStatus != null && driverDeliveryStatus.toString().isNotEmpty) {
+        debugPrint('🚗 [ENHANCED-WORKFLOW] Using driver delivery status: $driverDeliveryStatus');
+        orderData['status'] = driverDeliveryStatus;
+      }
+
+      final initialOrder = _transformToDriverOrder(orderData, orderData['status']);
+      debugPrint('🚗 [ENHANCED-WORKFLOW] Current order ${initialOrder.orderNumber}: ${initialOrder.status.displayName}');
+      debugPrint('🚗 [ENHANCED-WORKFLOW] Order ID: ${initialOrder.id}, Status: ${initialOrder.status.value}');
+      yield initialOrder;
+    } else {
+      debugPrint('🚗 [ENHANCED-WORKFLOW] No current orders found for driver $driverId');
+      debugPrint('🚗 [ENHANCED-WORKFLOW] This could mean:');
+      debugPrint('🚗 [ENHANCED-WORKFLOW] 1. No orders assigned to this driver');
+      debugPrint('🚗 [ENHANCED-WORKFLOW] 2. Orders exist but status not in filter list');
+      debugPrint('🚗 [ENHANCED-WORKFLOW] 3. Driver ID mismatch in database');
+      yield null;
+    }
+
+    // Stream real-time updates with enhanced status tracking
+    yield* supabase
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('assigned_driver_id', driverId)
+        .asyncMap((data) async {
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Order stream update: ${data.length} orders');
+          
+          // Filter for active granular statuses
+          final activeStatuses = [
+            'assigned',
+            'on_route_to_vendor',
+            'arrived_at_vendor',
+            'picked_up',
+            'on_route_to_customer',
+            'arrived_at_customer',
+            'out_for_delivery' // Include legacy status for real-time updates
+          ];
+          
+          final activeOrders = data.where((json) =>
+            activeStatuses.contains(json['status'])
+          ).toList();
+          
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Filtered active orders: ${activeOrders.length} orders');
+
+          if (activeOrders.isEmpty) return null;
+
+          final orderId = activeOrders.first['id'] as String;
+
+          // Fetch full order data with all relationships
+          final fullResponse = await supabase
+              .from('orders')
+              .select('''
+                id,
+                order_id:id,
+                order_number,
+                status,
+                vendor_id,
+                customer_id,
+                sales_agent_id,
+                delivery_date,
+                delivery_address,
+                subtotal,
+                delivery_fee,
+                sst_amount,
+                total_amount,
+                commission_amount,
+                payment_status,
+                payment_method,
+                payment_reference,
+                notes,
+                metadata,
+                created_at,
+                updated_at,
+                estimated_delivery_time,
+                actual_delivery_time,
+                preparation_started_at,
+                ready_at,
+                out_for_delivery_at,
+                delivery_zone,
+                special_instructions,
+                contact_phone,
+                delivery_proof_id,
+                assigned_driver_id,
+                order_items:order_items(
+                  id,
+                  quantity,
+                  unit_price,
+                  total_price,
+                  customizations,
+                  notes,
+                  menu_item:menu_items!order_items_menu_item_id_fkey(
+                    id,
+                    name,
+                    image_url,
+                    base_price
+                  )
+                ),
+                vendors:vendors!orders_vendor_id_fkey(
+                  business_name,
+                  business_address
+                ),
+                drivers:drivers!orders_assigned_driver_id_fkey(
+                  id,
+                  current_delivery_status
+                )
+              ''')
+              .eq('id', orderId)
+              .single();
+
+          // Get the raw order data and apply driver delivery status
+          final orderData = Map<String, dynamic>.from(fullResponse);
+
+          // Check if driver has granular delivery status
+          final driverDeliveryStatus = orderData['drivers']?['current_delivery_status'];
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Stream - Order status: ${orderData['status']}, Driver delivery status: $driverDeliveryStatus');
+
+          // Use driver delivery status for granular workflow if available
+          if (driverDeliveryStatus != null && driverDeliveryStatus.toString().isNotEmpty) {
+            debugPrint('🚗 [ENHANCED-WORKFLOW] Stream - Using driver delivery status: $driverDeliveryStatus');
+            orderData['status'] = driverDeliveryStatus;
+          }
+
+          final order = _transformToDriverOrder(orderData, orderData['status']);
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Current order ${order.orderNumber}: ${order.status.displayName}');
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Raw database status: ${fullResponse['status']}');
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Mapped driver status: ${order.status.value}');
+          return order;
+        });
+  } catch (e, stackTrace) {
+    debugPrint('❌ [ENHANCED-WORKFLOW] Error streaming current driver order: $e');
+    debugPrint('❌ [ENHANCED-WORKFLOW] Stack trace: $stackTrace');
+    yield null;
+  }
+});
+
+/// Enhanced available orders provider with better filtering
+final enhancedAvailableOrdersProvider = StreamProvider.autoDispose<List<DriverOrder>>((ref) async* {
+  final authState = ref.read(authStateProvider);
+  
+  if (authState.user?.role != UserRole.driver) {
+    yield [];
+    return;
+  }
+
+  try {
+    final supabase = Supabase.instance.client;
+    
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Streaming available orders');
+    
+    // Get initial available orders
+    final initialResponse = await supabase
+        .from('orders')
+        .select('''
+          *,
+          order_items:order_items(
+            *,
+            menu_item:menu_items!order_items_menu_item_id_fkey(
+              id,
+              name,
+              image_url,
+              base_price
+            )
+          ),
+          vendors:vendors!orders_vendor_id_fkey(
+            business_name,
+            business_address
+          )
+        ''')
+        .eq('status', 'ready')
+        .isFilter('assigned_driver_id', null)
+        .order('created_at', ascending: true);
+
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Initial available orders: ${initialResponse.length} orders');
+    final initialOrders = initialResponse.map((json) => _transformToDriverOrder(json, json['status'])).toList();
+    yield initialOrders;
+
+    // Stream real-time updates for available orders
+    yield* supabase
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('status', 'ready')
+        .asyncMap((data) async {
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Available orders stream update: ${data.length} orders');
+          
+          // Filter for unassigned orders
+          final availableOrders = data.where((json) => json['assigned_driver_id'] == null).toList();
+          
+          // Fetch full order data for each available order
+          final List<DriverOrder> orders = [];
+          for (final orderJson in availableOrders) {
+            try {
+              final orderId = orderJson['id'] as String;
+              final fullResponse = await supabase
+                  .from('orders')
+                  .select('''
+                    *,
+                    order_items:order_items(
+                      *,
+                      menu_item:menu_items!order_items_menu_item_id_fkey(
+                        id,
+                        name,
+                        image_url,
+                        base_price
+                      )
+                    ),
+                    vendors:vendors!orders_vendor_id_fkey(
+                      business_name,
+                      business_address
+                    )
+                  ''')
+                  .eq('id', orderId)
+                  .single();
+
+              orders.add(_transformToDriverOrder(fullResponse, fullResponse['status']));
+            } catch (e) {
+              debugPrint('❌ [ENHANCED-WORKFLOW] Error fetching order details: $e');
+            }
+          }
+          
+          debugPrint('🚗 [ENHANCED-WORKFLOW] Available orders: ${orders.length} orders');
+          return orders;
+        });
+  } catch (e) {
+    debugPrint('❌ [ENHANCED-WORKFLOW] Error streaming available orders: $e');
+    yield [];
+  }
+});
+
+/// Enhanced earnings provider with granular workflow integration
+final enhancedTodayEarningsProvider = FutureProvider.autoDispose<EnhancedEarningsData>((ref) async {
+  final authState = ref.read(authStateProvider);
+  
+  if (authState.user?.role != UserRole.driver) {
+    return EnhancedEarningsData.empty();
+  }
+
+  final userId = authState.user?.id;
+  if (userId == null) {
+    return EnhancedEarningsData.empty();
+  }
+
+  try {
+    final supabase = Supabase.instance.client;
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Fetching enhanced today\'s earnings');
+    
+    // Get driver ID
+    final driverResponse = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+    
+    final driverId = driverResponse['id'] as String;
+    
+    // Get today's earnings from enhanced earnings table
+    final earningsResponse = await supabase
+        .from('driver_earnings')
+        .select('*')
+        .eq('driver_id', driverId)
+        .gte('created_at', startOfDay.toIso8601String())
+        .lt('created_at', endOfDay.toIso8601String());
+
+    // Get today's completed orders with granular status tracking
+    final ordersResponse = await supabase
+        .from('orders')
+        .select('id, total_amount, status, delivered_at')
+        .eq('assigned_driver_id', userId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', startOfDay.toIso8601String())
+        .lt('delivered_at', endOfDay.toIso8601String());
+
+    // Calculate enhanced earnings data
+    double totalGrossEarnings = 0.0;
+    double totalNetEarnings = 0.0;
+    double totalBonuses = 0.0;
+    double totalDeductions = 0.0;
+    
+    for (final earning in earningsResponse) {
+      totalGrossEarnings += (earning['gross_earnings'] as num?)?.toDouble() ?? 0.0;
+      totalNetEarnings += (earning['net_earnings'] as num?)?.toDouble() ?? 0.0;
+      totalBonuses += (earning['completion_bonus'] as num?)?.toDouble() ?? 0.0;
+      totalBonuses += (earning['peak_hour_bonus'] as num?)?.toDouble() ?? 0.0;
+      totalBonuses += (earning['rating_bonus'] as num?)?.toDouble() ?? 0.0;
+      totalBonuses += (earning['other_bonuses'] as num?)?.toDouble() ?? 0.0;
+      totalDeductions += (earning['deductions'] as num?)?.toDouble() ?? 0.0;
+    }
+
+    return EnhancedEarningsData(
+      totalGrossEarnings: totalGrossEarnings,
+      totalNetEarnings: totalNetEarnings,
+      totalBonuses: totalBonuses,
+      totalDeductions: totalDeductions,
+      orderCount: ordersResponse.length,
+      averageOrderValue: ordersResponse.isNotEmpty 
+          ? ordersResponse.fold<double>(0.0, (sum, order) => sum + ((order['total_amount'] as num?)?.toDouble() ?? 0.0)) / ordersResponse.length
+          : 0.0,
+    );
+
+  } catch (e) {
+    debugPrint('❌ [ENHANCED-WORKFLOW] Error fetching enhanced earnings: $e');
+    return EnhancedEarningsData.empty();
+  }
+});
+
+/// Provider for order workflow status tracking
+final orderWorkflowStatusProvider = FutureProvider.family<WorkflowStatusData, String>((ref, orderId) async {
+  try {
+    final supabase = Supabase.instance.client;
+    
+    // Get pickup confirmation status
+    final pickupConfirmation = await supabase
+        .from('pickup_confirmations')
+        .select('*')
+        .eq('order_id', orderId)
+        .limit(1);
+
+    // Get delivery confirmation status
+    final deliveryConfirmation = await supabase
+        .from('delivery_confirmations')
+        .select('*')
+        .eq('order_id', orderId)
+        .limit(1);
+
+    // Get order tracking events
+    final trackingEvents = await supabase
+        .from('order_tracking')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('updated_at', ascending: true);
+
+    return WorkflowStatusData(
+      hasPickupConfirmation: pickupConfirmation.isNotEmpty,
+      hasDeliveryConfirmation: deliveryConfirmation.isNotEmpty,
+      trackingEvents: trackingEvents,
+    );
+
+  } catch (e) {
+    debugPrint('❌ [ENHANCED-WORKFLOW] Error fetching workflow status: $e');
+    return WorkflowStatusData.empty();
+  }
+});
+
+/// Enhanced earnings data model
+class EnhancedEarningsData {
+  final double totalGrossEarnings;
+  final double totalNetEarnings;
+  final double totalBonuses;
+  final double totalDeductions;
+  final int orderCount;
+  final double averageOrderValue;
+
+  const EnhancedEarningsData({
+    required this.totalGrossEarnings,
+    required this.totalNetEarnings,
+    required this.totalBonuses,
+    required this.totalDeductions,
+    required this.orderCount,
+    required this.averageOrderValue,
+  });
+
+  factory EnhancedEarningsData.empty() => const EnhancedEarningsData(
+    totalGrossEarnings: 0.0,
+    totalNetEarnings: 0.0,
+    totalBonuses: 0.0,
+    totalDeductions: 0.0,
+    orderCount: 0,
+    averageOrderValue: 0.0,
+  );
+}
+
+/// Workflow status data model
+class WorkflowStatusData {
+  final bool hasPickupConfirmation;
+  final bool hasDeliveryConfirmation;
+  final List<Map<String, dynamic>> trackingEvents;
+
+  const WorkflowStatusData({
+    required this.hasPickupConfirmation,
+    required this.hasDeliveryConfirmation,
+    required this.trackingEvents,
+  });
+
+  factory WorkflowStatusData.empty() => const WorkflowStatusData(
+    hasPickupConfirmation: false,
+    hasDeliveryConfirmation: false,
+    trackingEvents: [],
+  );
+}
+
+/// Backward compatibility provider aliases - REMOVED TO FIX PROVIDER CONFLICT
+/// Use enhancedCurrentDriverOrderProvider directly instead
+
+/// Enhanced driver workflow provider for comprehensive state management
+final enhancedDriverWorkflowProvider = StateNotifierProvider<EnhancedDriverWorkflowNotifier, AsyncValue<EnhancedDriverWorkflowState>>((ref) {
+  return EnhancedDriverWorkflowNotifier(ref);
+});
+
+/// Enhanced driver workflow state
+class EnhancedDriverWorkflowState {
+  final DriverOrder? currentOrder;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const EnhancedDriverWorkflowState({
+    this.currentOrder,
+    required this.isLoading,
+    this.errorMessage,
+  });
+
+  EnhancedDriverWorkflowState copyWith({
+    DriverOrder? currentOrder,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return EnhancedDriverWorkflowState(
+      currentOrder: currentOrder ?? this.currentOrder,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+/// Enhanced driver workflow notifier
+class EnhancedDriverWorkflowNotifier extends StateNotifier<AsyncValue<EnhancedDriverWorkflowState>> {
+  final Ref ref;
+
+  EnhancedDriverWorkflowNotifier(this.ref) : super(const AsyncValue.loading()) {
+    _initialize();
+  }
+
+  void _initialize() {
+    state = const AsyncValue.data(EnhancedDriverWorkflowState(isLoading: false));
+  }
+
+  void updateCurrentOrder(DriverOrder? order) {
+    state.whenData((currentState) {
+      state = AsyncValue.data(currentState.copyWith(currentOrder: order));
+    });
+  }
+
+  void setLoading(bool isLoading) {
+    state.whenData((currentState) {
+      state = AsyncValue.data(currentState.copyWith(isLoading: isLoading));
+    });
+  }
+
+  void setError(String errorMessage) {
+    state.whenData((currentState) {
+      state = AsyncValue.data(currentState.copyWith(errorMessage: errorMessage));
+    });
+  }
+}
+
+/// Transform raw database response to DriverOrder model
+DriverOrder _transformToDriverOrder(Map<String, dynamic> response, String effectiveStatus) {
+  // Parse delivery address safely
+  String deliveryAddressStr = '';
+  if (response['delivery_address'] != null) {
+    final addr = response['delivery_address'];
+    if (addr is Map) {
+      final parts = <String>[];
+      if (addr['street'] != null) parts.add(addr['street'].toString());
+      if (addr['city'] != null) parts.add(addr['city'].toString());
+      if (addr['state'] != null) parts.add(addr['state'].toString());
+      if (addr['postal_code'] != null) parts.add(addr['postal_code'].toString());
+      deliveryAddressStr = parts.join(', ');
+    } else {
+      deliveryAddressStr = addr.toString();
+    }
+  }
+
+  // Get vendor name from vendors join
+  String vendorName = 'Unknown Vendor';
+  if (response['vendors'] != null && response['vendors'] is Map) {
+    vendorName = response['vendors']['business_name']?.toString() ?? 'Unknown Vendor';
+  }
+
+  // Get driver ID from drivers join
+  String driverId = '';
+  if (response['drivers'] != null && response['drivers'] is Map) {
+    driverId = response['drivers']['id']?.toString() ?? '';
+  }
+
+  return DriverOrder.fromJson({
+    'id': response['id']?.toString() ?? '',
+    'order_id': response['id']?.toString() ?? '',
+    'order_number': response['order_number']?.toString() ?? '',
+    'driver_id': driverId,
+    'vendor_id': response['vendor_id']?.toString() ?? '',
+    'vendor_name': vendorName,
+    'customer_id': response['customer_id']?.toString() ?? '',
+    'customer_name': 'Unknown Customer', // Not available in current query
+    'status': effectiveStatus,
+    'priority': 'normal',
+    'delivery_details': {
+      'pickup_address': response['vendors']?['business_address']?.toString() ?? '',
+      'delivery_address': deliveryAddressStr,
+      'contact_phone': response['contact_phone']?.toString(),
+    },
+    'order_earnings': {
+      'base_fee': _safeToDouble(response['delivery_fee']),
+      'distance_fee': 0.0,
+      'time_bonus': 0.0,
+      'tip_amount': 0.0,
+      'total_earnings': _safeToDouble(response['delivery_fee']),
+    },
+    'order_items_count': (response['order_items'] as List?)?.length ?? 0,
+    'order_total': _safeToDouble(response['total_amount']),
+    'payment_method': response['payment_method']?.toString(),
+    'requires_cash_collection': false,
+    'assigned_at': response['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+    'accepted_at': null,
+    'started_route_at': null,
+    'arrived_at_vendor_at': null,
+    'picked_up_at': response['out_for_delivery_at']?.toString(),
+    'arrived_at_customer_at': null,
+    'delivered_at': response['actual_delivery_time']?.toString(),
+    'created_at': response['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+    'updated_at': response['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
+  });
+}
+
+/// Safely convert a value to double
+double _safeToDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) {
+    return double.tryParse(value) ?? 0.0;
+  }
+  return 0.0;
+}

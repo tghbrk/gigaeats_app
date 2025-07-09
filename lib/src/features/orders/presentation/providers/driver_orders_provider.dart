@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../data/models/user_role.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../data/models/driver_order.dart';
+import '../../../drivers/data/models/driver_order.dart';
 // Driver error models will be restored when implemented
 
 import '../../data/repositories/driver_order_repository.dart';

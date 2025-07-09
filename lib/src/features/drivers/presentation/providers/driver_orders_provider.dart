@@ -21,13 +21,33 @@ final activeDriverOrdersProvider = FutureProvider<List<Order>>((ref) async {
     // Get orders assigned to this driver that are active
     final response = await supabase
         .from('orders')
-        .select('*, order_items(*), vendors(name, image_url)')
+        .select('''
+          *,
+          order_items:order_items(
+            *,
+            menu_item:menu_items!order_items_menu_item_id_fkey(
+              id,
+              name,
+              image_url
+            )
+          ),
+          vendors:vendors!orders_vendor_id_fkey(
+            business_name,
+            business_address
+          )
+        ''')
         .eq('assigned_driver_id', user.id)
         .inFilter('status', [
+          'assigned',
           'confirmed',
           'preparing',
           'ready',
-          'out_for_delivery'
+          'out_for_delivery',
+          'on_route_to_vendor',
+          'arrived_at_vendor',
+          'picked_up',
+          'on_route_to_customer',
+          'arrived_at_customer'
         ])
         .order('created_at', ascending: false);
 
@@ -45,7 +65,21 @@ final availableOrdersProvider = FutureProvider<List<Order>>((ref) async {
     // Get orders that are ready and have no assigned driver
     final response = await supabase
         .from('orders')
-        .select('*, order_items(*), vendors(name, image_url)')
+        .select('''
+          *,
+          order_items:order_items(
+            *,
+            menu_item:menu_items!order_items_menu_item_id_fkey(
+              id,
+              name,
+              image_url
+            )
+          ),
+          vendors:vendors!orders_vendor_id_fkey(
+            business_name,
+            business_address
+          )
+        ''')
         .eq('status', 'ready')
         .isFilter('assigned_driver_id', null)
         .eq('delivery_method', 'own_fleet')
@@ -147,23 +181,40 @@ class DriverOrderNotifier extends StateNotifier<AsyncValue<void>> {
   /// Accept an available order
   Future<void> acceptOrder(String orderId) async {
     state = const AsyncValue.loading();
-    
+
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
-      
+
       if (user == null) {
         throw Exception('User not authenticated');
       }
 
+      // Get the driver ID for the current user
+      final driverResponse = await supabase
+          .from('drivers')
+          .select('id, is_active')
+          .eq('user_id', user.id)
+          .single();
+
+      final driverId = driverResponse['id'] as String;
+      final isActive = driverResponse['is_active'] as bool;
+
+      if (!isActive) {
+        throw Exception('Driver account is not active');
+      }
+
+      // Update order with proper driver ID and status
       await supabase
           .from('orders')
           .update({
-            'assigned_driver_id': user.id,
-            'status': 'confirmed',
+            'assigned_driver_id': driverId,
+            'status': 'assigned', // Use enhanced workflow status (ready → assigned)
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', orderId);
+          .eq('id', orderId)
+          .eq('status', 'ready') // Only accept if still ready
+          .isFilter('assigned_driver_id', null); // Only if no driver assigned
 
       state = const AsyncValue.data(null);
     } catch (e) {
@@ -180,7 +231,7 @@ class DriverOrderNotifier extends StateNotifier<AsyncValue<void>> {
       final supabase = Supabase.instance.client;
       
       final updateData = {
-        'status': newStatus.name,
+        'status': newStatus.value, // Use .value instead of .name for proper database values
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -241,10 +292,21 @@ final driverOrdersStreamProvider = StreamProvider<List<Order>>((ref) {
       .stream(primaryKey: ['id'])
       .eq('assigned_driver_id', user.id)
       .map((data) {
-        // Filter in memory for stream compatibility
+        // Filter in memory for stream compatibility - include all active driver workflow statuses
         final filteredData = data.where((json) {
           final status = json['status'] as String?;
-          return status != null && ['confirmed', 'preparing', 'ready', 'out_for_delivery'].contains(status);
+          return status != null && [
+            'assigned',
+            'confirmed',
+            'preparing',
+            'ready',
+            'out_for_delivery',
+            'on_route_to_vendor',
+            'arrived_at_vendor',
+            'picked_up',
+            'on_route_to_customer',
+            'arrived_at_customer'
+          ].contains(status);
         }).toList();
         return filteredData.map((json) => Order.fromJson(json)).toList();
       });

@@ -4,25 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/models/user_role.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../user_management/domain/driver.dart';
-import '../../../orders/data/models/driver_order.dart';
+import '../../../drivers/data/models/driver_order.dart';
 import '../../data/models/driver_error.dart';
 import '../../../orders/data/repositories/driver_order_repository.dart';
+import '../../../orders/presentation/providers/driver_orders_provider.dart'; // Import validation-enabled service
 import '../../data/services/driver_realtime_service.dart';
-import '../../data/services/driver_order_service.dart';
 
 
 import 'driver_dashboard_provider.dart';
 import '../../../user_management/presentation/providers/driver_profile_provider.dart';
+import 'enhanced_driver_workflow_providers.dart';
 
 /// Driver Realtime Service Provider
 final driverRealtimeServiceProvider = Provider<DriverRealtimeService>((ref) {
   return DriverRealtimeService();
-});
-
-/// Driver Order Service Provider
-final driverOrderServiceProvider = Provider<DriverOrderService>((ref) {
-  final repository = ref.watch(driverOrderRepositoryProvider);
-  return DriverOrderService(repository: repository);
 });
 
 /// Current Driver ID Provider
@@ -305,17 +300,18 @@ class RealtimeDriverOrderActions {
       }
 
       final driverId = await _getDriverIdFromProvider(_ref);
-      final success = await orderService.acceptOrder(orderId, driverId);
+      final result = await orderService.acceptOrder(orderId, driverId);
 
-      if (success) {
-        debugPrint('Order accepted successfully, realtime subscriptions will update UI automatically');
-        // No manual invalidation needed - realtime providers will update automatically
-        return DriverResult.success(true);
-      } else {
-        return DriverResult.error(
-          DriverException('Failed to accept order', DriverErrorType.orderAcceptance),
-        );
-      }
+      return result.when(
+        success: (success) {
+          debugPrint('Order accepted successfully, realtime subscriptions will update UI automatically');
+          // No manual invalidation needed - realtime providers will update automatically
+          return DriverResult.success(true);
+        },
+        error: (error) {
+          return DriverResult.error(error);
+        },
+      );
     } catch (e) {
       debugPrint('Error accepting order: $e');
       return DriverResult.fromException(e);
@@ -363,19 +359,86 @@ class RealtimeDriverOrderActions {
         );
       }
 
-      // Note: Driver ID validation is handled by the auth check above
-      final success = await orderService.updateOrderStatus(orderId, status);
+      // Get driver ID for validation
+      final driverId = await _getDriverIdFromProvider(_ref);
+      final result = await orderService.updateOrderStatus(orderId, status, driverId);
+
+      return result.when(
+        success: (success) {
+          debugPrint('Order status updated successfully, realtime subscriptions will update UI automatically');
+          // Force refresh of enhanced driver workflow providers to ensure UI updates
+          _ref.invalidate(enhancedCurrentDriverOrderProvider);
+          _ref.invalidate(enhancedAvailableOrdersProvider);
+          debugPrint('🔄 [REALTIME] Invalidated enhanced driver workflow providers for immediate UI refresh');
+          return DriverResult.success(true);
+        },
+        error: (error) {
+          return DriverResult.error(error);
+        },
+      );
+    } catch (e) {
+      debugPrint('Error updating order status: $e');
+      return DriverResult.fromException(e);
+    }
+  }
+
+  /// Navigate to vendor (assigned → on_route_to_vendor)
+  Future<DriverResult<bool>> navigateToVendor(String orderId) async {
+    return updateOrderStatus(orderId, DriverOrderStatus.onRouteToVendor);
+  }
+
+  /// Mark arrived at vendor (on_route_to_vendor → arrived_at_vendor)
+  Future<DriverResult<bool>> markArrivedAtVendor(String orderId) async {
+    return updateOrderStatus(orderId, DriverOrderStatus.arrivedAtVendor);
+  }
+
+  /// Confirm pickup (arrived_at_vendor → picked_up)
+  Future<DriverResult<bool>> confirmPickup(String orderId) async {
+    return updateOrderStatus(orderId, DriverOrderStatus.pickedUp);
+  }
+
+  /// Navigate to customer (picked_up → on_route_to_customer)
+  Future<DriverResult<bool>> navigateToCustomer(String orderId) async {
+    return updateOrderStatus(orderId, DriverOrderStatus.onRouteToCustomer);
+  }
+
+  /// Mark arrived at customer (on_route_to_customer → arrived_at_customer)
+  Future<DriverResult<bool>> markArrivedAtCustomer(String orderId) async {
+    return updateOrderStatus(orderId, DriverOrderStatus.arrivedAtCustomer);
+  }
+
+  /// Complete delivery with photo (arrived_at_customer → delivered)
+  Future<DriverResult<bool>> completeDeliveryWithPhoto(String orderId, String photoUrl) async {
+    try {
+      final authState = _ref.read(authStateProvider);
+      final repository = _ref.read(driverOrderRepositoryProvider);
+
+      if (authState.user?.role != UserRole.driver) {
+        return DriverResult.error(
+          DriverException('Only drivers can complete deliveries', DriverErrorType.permissionDenied),
+        );
+      }
+
+      final driverId = await _getDriverIdFromProvider(_ref);
+
+      // Update order status to delivered with photo proof
+      final success = await repository.updateOrderStatus(
+        orderId,
+        DriverOrderStatus.delivered,
+        driverId: driverId,
+        notes: 'Delivery completed with photo proof: $photoUrl'
+      );
 
       if (success) {
-        debugPrint('Order status updated successfully, realtime subscriptions will update UI automatically');
+        debugPrint('Delivery completed with photo successfully, realtime subscriptions will update UI automatically');
         return DriverResult.success(true);
       } else {
         return DriverResult.error(
-          DriverException('Failed to update order status', DriverErrorType.statusUpdate),
+          DriverException('Failed to complete delivery', DriverErrorType.statusUpdate),
         );
       }
     } catch (e) {
-      debugPrint('Error updating order status: $e');
+      debugPrint('Error completing delivery with photo: $e');
       return DriverResult.fromException(e);
     }
   }

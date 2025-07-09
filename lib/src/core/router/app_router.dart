@@ -68,6 +68,7 @@ import '../../features/user_management/presentation/screens/admin/admin_users_sc
 import '../../features/orders/presentation/screens/admin/admin_orders_screen.dart';
 import '../../features/admin/presentation/screens/admin_reports_screen.dart';
 import '../../features/drivers/presentation/screens/driver_dashboard.dart';
+import '../../features/drivers/presentation/screens/driver_orders_management_screen.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/test_screens/data_test_screen.dart';
 import '../../shared/test_screens/test_menu_screen.dart';
@@ -476,6 +477,13 @@ List<RouteBase> _buildRoutes() {
       path: AppRoutes.driverDashboard,
       name: 'driver-dashboard',
       builder: (context, state) => const DriverDashboard(),
+      routes: [
+        GoRoute(
+          path: 'orders',
+          name: 'driver-orders-management',
+          builder: (context, state) => const DriverOrdersManagementScreen(),
+        ),
+      ],
     ),
 
     // Customer Routes (Phase 5: Role-based Routing)

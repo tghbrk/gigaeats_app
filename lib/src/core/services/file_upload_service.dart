@@ -161,11 +161,68 @@ class FileUploadService {
           .from(bucketName)
           .uploadBinary(filePath, fileBytes);
 
-      return _supabase.storage
-          .from(bucketName)
-          .getPublicUrl(filePath);
+      // Check if bucket is private and use appropriate URL method
+      if (_isPrivateBucket(bucketName)) {
+        // For private buckets, create a signed URL (valid for 24 hours)
+        return await _supabase.storage
+            .from(bucketName)
+            .createSignedUrl(filePath, 86400); // 24 hours
+      } else {
+        // For public buckets, use public URL
+        return _supabase.storage
+            .from(bucketName)
+            .getPublicUrl(filePath);
+      }
     } catch (e) {
       throw Exception('Failed to upload file: $e');
+    }
+  }
+
+  /// Check if a bucket is private
+  bool _isPrivateBucket(String bucketName) {
+    // List of private buckets
+    const privateBuckets = {
+      'delivery-proofs',
+      'pickup-verifications',
+      'kyc-documents',
+      'order-documents',
+    };
+    return privateBuckets.contains(bucketName);
+  }
+
+  /// Get signed URL for an existing file in a private bucket
+  Future<String> getSignedUrl(String bucketName, String filePath, {int expiresIn = 86400}) async {
+    try {
+      return await _supabase.storage
+          .from(bucketName)
+          .createSignedUrl(filePath, expiresIn);
+    } catch (e) {
+      throw Exception('Failed to create signed URL: $e');
+    }
+  }
+
+  /// Convert a public URL to a signed URL for private buckets
+  Future<String> convertToSignedUrl(String publicUrl, {int expiresIn = 86400}) async {
+    try {
+      // Extract bucket name and file path from public URL
+      final uri = Uri.parse(publicUrl);
+      final pathSegments = uri.pathSegments;
+
+      if (pathSegments.length < 4 || pathSegments[1] != 'storage' || pathSegments[2] != 'v1') {
+        throw Exception('Invalid Supabase storage URL format');
+      }
+
+      final bucketName = pathSegments[4];
+      final filePath = pathSegments.skip(5).join('/');
+
+      if (_isPrivateBucket(bucketName)) {
+        return await getSignedUrl(bucketName, filePath, expiresIn: expiresIn);
+      } else {
+        // Return original URL for public buckets
+        return publicUrl;
+      }
+    } catch (e) {
+      throw Exception('Failed to convert to signed URL: $e');
     }
   }
 

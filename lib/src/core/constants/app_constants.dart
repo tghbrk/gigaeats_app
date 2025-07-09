@@ -202,6 +202,7 @@ class AppRoutes {
 
   // Driver Routes
   static const String driverDashboard = '/driver/dashboard';
+  static const String driverOrders = '/driver/dashboard/orders';
 
   // Customer Routes (Phase 5: Role-based Routing)
   static const String customerDashboard = '/customer/dashboard';

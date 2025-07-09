@@ -2,17 +2,21 @@ import 'package:flutter/foundation.dart';
 import 'dart:developer' as developer;
 import 'dart:convert';
 
-/// Enhanced debugging utility for Flutter web applications
+/// Enhanced debugging utility for Flutter applications (optimized for Android emulator)
 class DebugLogger {
   static const String _appName = 'GigaEats';
-  
-  /// Log general information
+
+  /// Log general information (Android emulator optimized)
   static void info(String message, {String? tag}) {
     final logTag = tag ?? _appName;
-    if (kIsWeb && kDebugMode) {
-      developer.log('ℹ️ $message', name: logTag);
-    } else {
-      debugPrint('[$logTag] $message');
+    if (kDebugMode) {
+      if (kIsWeb) {
+        developer.log('ℹ️ $message', name: logTag);
+      } else {
+        // Android emulator - enhanced logging
+        debugPrint('[$logTag] ℹ️ $message');
+        developer.log('ℹ️ $message', name: logTag);
+      }
     }
   }
   

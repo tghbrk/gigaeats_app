@@ -39,4 +39,5 @@ class SupabaseConfig {
   static const String kycDocumentsBucket = 'kyc-documents';
   static const String orderDocumentsBucket = 'order-documents';
   static const String deliveryProofsBucket = 'delivery-proofs';
+  static const String pickupVerificationsBucket = 'pickup-verifications';
 }

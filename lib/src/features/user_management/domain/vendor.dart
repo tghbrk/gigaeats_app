@@ -253,7 +253,7 @@ class Vendor extends Equatable {
       }
     }
 
-    debugPrint('🕒 [BUSINESS-HOURS-PARSE] Final parsed schedule: ${schedule.map((k, v) => MapEntry(k, '${v.safeIsOpen ? "${v.openTime}-${v.closeTime}" : "Closed"}'))}');
+    debugPrint('🕒 [BUSINESS-HOURS-PARSE] Final parsed schedule: ${schedule.map((k, v) => MapEntry(k, v.safeIsOpen ? "${v.openTime}-${v.closeTime}" : "Closed"))}');
     return schedule;
   }
 

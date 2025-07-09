@@ -395,8 +395,7 @@ class VendorProfileEditNotifier extends StateNotifier<VendorProfileEditState> {
       DebugLogger.logObject('Error Details', {
         'errorType': e.runtimeType.toString(),
         'errorMessage': e.toString(),
-        'hasStackTrace': stackTrace != null,
-        'stackTraceLength': stackTrace?.toString().length ?? 0,
+        'stackTraceLength': stackTrace.toString().length,
       });
 
       // Provide user-friendly error messages
@@ -755,7 +754,7 @@ class VendorProfileEditNotifier extends StateNotifier<VendorProfileEditState> {
             errors[fieldName] = 'Free delivery threshold cannot be negative';
           } else if (thresholdValue > 2000) {
             errors[fieldName] = 'Free delivery threshold cannot exceed RM 2000';
-          } else if (state.minimumOrderAmount != null && thresholdValue < state.minimumOrderAmount!) {
+          } else if (thresholdValue < state.minimumOrderAmount) {
             errors[fieldName] = 'Free delivery threshold should be higher than minimum order amount';
           } else {
             errors.remove(fieldName);

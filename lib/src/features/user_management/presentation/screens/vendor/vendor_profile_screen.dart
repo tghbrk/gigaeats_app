@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../user_management/domain/vendor.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+
 import '../../../../../presentation/providers/repository_providers.dart' show currentVendorProvider;
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';

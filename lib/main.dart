@@ -17,13 +17,20 @@ import 'src/features/auth/presentation/providers/auth_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Enable web debugging
-  if (kIsWeb && kDebugMode) {
-    developer.log('🌐 Flutter Web Debug Mode Enabled', name: 'GigaEats');
-    // Force debug prints to console in web
-    debugPrint = (String? message, {int? wrapWidth}) {
-      developer.log(message ?? '', name: 'GigaEats-Debug');
-    };
+  // Enhanced debugging for Android emulator (preferred for GigaEats)
+  if (kDebugMode) {
+    if (kIsWeb) {
+      developer.log('🌐 Flutter Web Debug Mode Enabled', name: 'GigaEats');
+      // Force debug prints to console in web
+      debugPrint = (String? message, {int? wrapWidth}) {
+        developer.log(message ?? '', name: 'GigaEats-Debug');
+      };
+    } else {
+      // Android emulator debugging (preferred)
+      developer.log('📱 Flutter Android Debug Mode Enabled', name: 'GigaEats');
+      debugPrint('📱 GigaEats Android Debug Mode - Emulator Ready');
+      debugPrint('🔍 Debug logs will appear in console and Android Studio logcat');
+    }
   }
 
   // Initialize Supabase (Primary Authentication & Backend)

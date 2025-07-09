@@ -338,7 +338,7 @@ final currentVendorProvider = FutureProvider<Vendor?>((ref) async {
 
       // Debug parsed business hours
       final parsedHours = vendor.businessInfo.operatingHours.schedule;
-      debugPrint('🕒 [CURRENT-VENDOR-PROVIDER] Parsed operating hours: ${parsedHours.map((k, v) => MapEntry(k, '${v.safeIsOpen ? "${v.openTime}-${v.closeTime}" : "Closed"}'))}');
+      debugPrint('🕒 [CURRENT-VENDOR-PROVIDER] Parsed operating hours: ${parsedHours.map((k, v) => MapEntry(k, v.safeIsOpen ? "${v.openTime}-${v.closeTime}" : "Closed"))}');
     } else {
       debugPrint('⚠️ [CURRENT-VENDOR-PROVIDER] No vendor found for user ID: $userId');
     }

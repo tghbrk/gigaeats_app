@@ -67,7 +67,7 @@ class OrderRepository extends BaseRepository {
             vendors!inner(id, business_name, logo_url)
           ''')
           .eq('customer_id', userId)
-          .eq('status', status.name)
+          .eq('status', _mapOrderStatusToDbString(status))
           .order('created_at', ascending: false);
 
       final orders = response.map((json) => Order.fromJson(json)).toList();
@@ -157,7 +157,7 @@ class OrderRepository extends BaseRepository {
       _logger.info('🔄 [ORDER-REPO] Updating order $orderId status to ${newStatus.name}');
 
       final updateData = {
-        'status': newStatus.name,
+        'status': _mapOrderStatusToDbString(newStatus),
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -203,7 +203,7 @@ class OrderRepository extends BaseRepository {
       await client
           .from('orders')
           .update({
-            'status': OrderStatus.cancelled.name,
+            'status': _mapOrderStatusToDbString(OrderStatus.cancelled),
             'cancelled_at': DateTime.now().toIso8601String(),
             'cancellation_reason': reason,
             'updated_at': DateTime.now().toIso8601String(),
@@ -285,5 +285,25 @@ class OrderRepository extends BaseRepository {
     final now = DateTime.now();
     final timestamp = now.millisecondsSinceEpoch.toString().substring(8);
     return 'GE${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}$timestamp';
+  }
+
+  /// Map OrderStatus enum to database string value
+  String _mapOrderStatusToDbString(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending:
+        return 'pending';
+      case OrderStatus.confirmed:
+        return 'confirmed';
+      case OrderStatus.preparing:
+        return 'preparing';
+      case OrderStatus.ready:
+        return 'ready';
+      case OrderStatus.outForDelivery:
+        return 'out_for_delivery';
+      case OrderStatus.delivered:
+        return 'delivered';
+      case OrderStatus.cancelled:
+        return 'cancelled';
+    }
   }
 }

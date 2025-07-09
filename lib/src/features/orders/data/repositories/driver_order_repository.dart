@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/services/base_repository.dart';
-import '../models/driver_order.dart';
+import '../../../drivers/data/models/driver_order.dart';
 
 /// Provider for driver order repository
 final driverOrderRepositoryProvider = Provider<DriverOrderRepository>((ref) {
@@ -129,6 +129,14 @@ class DriverOrderRepository extends BaseRepository {
             delivered_at:actual_delivery_time,
             vendor:vendors!orders_vendor_id_fkey(
               business_address
+            ),
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url
+              )
             )
           ''')
           .eq('assigned_driver_id', driverId)
@@ -337,26 +345,60 @@ class DriverOrderRepository extends BaseRepository {
           throw Exception('User not authenticated');
         }
 
-        // Handle special case for arrived_at_customer - this is tracked internally
-        // but doesn't change the order status (stays out_for_delivery)
-        if (status == DriverOrderStatus.arrivedAtCustomer) {
-          // For arrived at customer, we update the driver's delivery status
+        // Get driver ID if not provided
+        String actualDriverId;
+        if (driverId != null) {
+          actualDriverId = driverId;
+          debugPrint('DriverOrderRepository: Using provided driver ID: $actualDriverId');
+        } else {
+          debugPrint('DriverOrderRepository: Driver ID not provided, fetching from user profile');
+          try {
+            final driverProfile = await _supabase
+                .from('drivers')
+                .select('id')
+                .eq('user_id', currentUser.id)
+                .maybeSingle();
+
+            if (driverProfile == null) {
+              debugPrint('DriverOrderRepository: No driver profile found for user ${currentUser.id}');
+              throw Exception('Driver profile not found for user ${currentUser.id}. Please ensure you are registered as a driver.');
+            }
+
+            final driverIdValue = driverProfile['id'];
+            if (driverIdValue == null) {
+              debugPrint('DriverOrderRepository: Driver profile found but ID is null');
+              throw Exception('Driver profile exists but ID is null for user ${currentUser.id}');
+            }
+
+            actualDriverId = driverIdValue as String;
+            debugPrint('DriverOrderRepository: Found driver ID: $actualDriverId');
+          } catch (e) {
+            debugPrint('DriverOrderRepository: Error fetching driver ID: $e');
+            if (e.toString().contains('Driver profile')) {
+              rethrow; // Re-throw our custom exceptions
+            }
+            throw Exception('Could not find driver profile for user ${currentUser.id}: ${e.toString()}');
+          }
+        }
+
+        // Handle special cases for granular driver workflow statuses
+        // These are tracked internally but don't change the order status
+        if (status == DriverOrderStatus.arrivedAtCustomer || status == DriverOrderStatus.onRouteToCustomer) {
+          // For granular driver statuses, we update the driver's delivery status
           // without changing the order status. This allows UI to progress.
-          debugPrint('DriverOrderRepository: Driver arrived at customer - updating driver delivery status');
+          debugPrint('DriverOrderRepository: Driver status ${status.value} - updating driver delivery status only');
 
           // Update driver delivery status to track granular state
-          if (driverId != null) {
-            await _supabase
-                .from('drivers')
-                .update({
-                  'current_delivery_status': status.value, // Track granular driver status
-                  'last_seen': DateTime.now().toIso8601String(),
-                  'updated_at': DateTime.now().toIso8601String(),
-                })
-                .eq('id', driverId);
-          }
+          await _supabase
+              .from('drivers')
+              .update({
+                'current_delivery_status': status.value, // Track granular driver status
+                'last_seen': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', actualDriverId);
 
-          debugPrint('DriverOrderRepository: Driver arrival recorded successfully');
+          debugPrint('DriverOrderRepository: Driver status ${status.value} recorded successfully');
           return true;
         }
 
@@ -374,7 +416,7 @@ class DriverOrderRepository extends BaseRepository {
             orderStatus = 'arrived_at_vendor';
             break;
           case DriverOrderStatus.onRouteToCustomer:
-            orderStatus = 'out_for_delivery';
+            orderStatus = 'on_route_to_customer';
             break;
           case DriverOrderStatus.delivered:
             orderStatus = 'delivered';
@@ -386,12 +428,12 @@ class DriverOrderRepository extends BaseRepository {
             orderStatus = _mapDriverStatusToOrderStatus(status);
         }
 
-        debugPrint('DriverOrderRepository: Calling RPC with params: orderId=$orderId, status=$orderStatus, driverId=$driverId');
+        debugPrint('DriverOrderRepository: Calling RPC with params: orderId=$orderId, status=$orderStatus, driverId=$actualDriverId');
 
         final response = await _supabase.rpc('update_driver_order_status', params: {
           'p_order_id': orderId,
           'p_new_status': orderStatus,
-          'p_driver_id': driverId,
+          'p_driver_id': actualDriverId,
           'p_notes': notes,
         });
 
@@ -402,9 +444,7 @@ class DriverOrderRepository extends BaseRepository {
           debugPrint('DriverOrderRepository: Order status updated successfully via database function');
 
           // Also update driver's delivery status for granular tracking
-          if (driverId != null) {
-            await _updateDriverDeliveryStatus(driverId, status);
-          }
+          await _updateDriverDeliveryStatus(actualDriverId, status);
 
           return true;
         } else {
@@ -448,12 +488,22 @@ class DriverOrderRepository extends BaseRepository {
             ),
             driver:drivers!orders_assigned_driver_id_fkey(
               current_delivery_status
+            ),
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url
+              )
             )
           ''')
           .eq('id', orderId)
           .single();
 
       debugPrint('DriverOrderRepository: Order details retrieved');
+      debugPrint('DriverOrderRepository: Raw response keys: ${response.keys.toList()}');
+      debugPrint('DriverOrderRepository: Response id: ${response['id']}, order_number: ${response['order_number']}');
 
       // Use driver's delivery status if available, otherwise map from order status
       final driverDeliveryStatus = response['driver']?['current_delivery_status'] as String?;
@@ -461,12 +511,68 @@ class DriverOrderRepository extends BaseRepository {
 
       debugPrint('DriverOrderRepository: Order status: ${response['status']}, Driver delivery status: $driverDeliveryStatus, Effective status: $effectiveStatus');
 
-      return DriverOrder.fromJson({
-        ...response,
-        'status': effectiveStatus,
-        'vendor_address': response['vendor']?['business_address'],
-        'customer_phone': response['contact_phone'], // Map contact_phone to customer_phone for model compatibility
-      });
+      // Create a simplified DriverOrder object with only the available data
+      // This avoids the complex model requirements that cause type cast errors
+      try {
+        // Parse delivery address safely
+        String deliveryAddressStr = '';
+        if (response['delivery_address'] != null) {
+          final addr = response['delivery_address'];
+          if (addr is Map) {
+            final parts = <String>[];
+            if (addr['street'] != null) parts.add(addr['street'].toString());
+            if (addr['city'] != null) parts.add(addr['city'].toString());
+            if (addr['state'] != null) parts.add(addr['state'].toString());
+            if (addr['postal_code'] != null) parts.add(addr['postal_code'].toString());
+            deliveryAddressStr = parts.join(', ');
+          } else {
+            deliveryAddressStr = addr.toString();
+          }
+        }
+
+        return DriverOrder.fromJson({
+          'id': response['id']?.toString() ?? '',
+          'order_id': response['id']?.toString() ?? '',
+          'order_number': response['order_number']?.toString() ?? '',
+          'driver_id': response['assigned_driver_id']?.toString() ?? '',
+          'vendor_id': '', // Not available in this query
+          'vendor_name': response['vendor_name']?.toString() ?? 'Unknown Vendor',
+          'customer_id': '', // Not available in this query
+          'customer_name': response['customer_name']?.toString() ?? 'Unknown Customer',
+          'status': effectiveStatus,
+          'priority': 'normal', // Default priority
+          'delivery_details': {
+            'pickup_address': response['vendor']?['business_address']?.toString() ?? '',
+            'delivery_address': deliveryAddressStr,
+            'contact_phone': response['contact_phone']?.toString(),
+          },
+          'order_earnings': {
+            'base_fee': _safeToDouble(response['delivery_fee']),
+            'distance_fee': 0.0,
+            'time_bonus': 0.0,
+            'peak_hour_bonus': 0.0,
+            'tip_amount': 0.0,
+            'total_earnings': _safeToDouble(response['delivery_fee']),
+          },
+          'order_items_count': (response['order_items'] as List?)?.length ?? 0,
+          'order_total': _safeToDouble(response['total_amount']),
+          'payment_method': null,
+          'requires_cash_collection': false,
+          'assigned_at': response['assigned_at']?.toString() ?? DateTime.now().toIso8601String(),
+          'accepted_at': null,
+          'started_route_at': null,
+          'arrived_at_vendor_at': null,
+          'picked_up_at': response['picked_up_at']?.toString(),
+          'arrived_at_customer_at': null,
+          'delivered_at': response['delivered_at']?.toString(),
+          'created_at': response['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (e) {
+        debugPrint('DriverOrderRepository: Error creating DriverOrder from JSON: $e');
+        debugPrint('DriverOrderRepository: Response data: $response');
+        rethrow;
+      }
     });
   }
 
@@ -488,7 +594,7 @@ class DriverOrderRepository extends BaseRepository {
       case 'picked_up':
         return 'picked_up';
       case 'out_for_delivery':
-        return 'on_route_to_customer'; // Driver has order and is en route to customer
+        return 'picked_up'; // Map legacy status to picked up so driver can navigate to customer
       // Note: arrived_at_customer doesn't exist in order_status_enum
       // Driver arrival is tracked internally but order stays 'out_for_delivery'
       case 'delivered':
@@ -503,10 +609,6 @@ class DriverOrderRepository extends BaseRepository {
   /// Map driver status to order status
   String _mapDriverStatusToOrderStatus(DriverOrderStatus driverStatus) {
     switch (driverStatus) {
-      case DriverOrderStatus.available:
-        return 'ready';
-      case DriverOrderStatus.ready:
-        return 'ready';
       case DriverOrderStatus.assigned:
         return 'confirmed';
       case DriverOrderStatus.onRouteToVendor:
@@ -523,6 +625,8 @@ class DriverOrderRepository extends BaseRepository {
         return 'delivered';
       case DriverOrderStatus.cancelled:
         return 'cancelled';
+      case DriverOrderStatus.failed:
+        return 'cancelled'; // Map failed to cancelled in the orders system
     }
   }
 
@@ -558,6 +662,14 @@ class DriverOrderRepository extends BaseRepository {
             ),
             driver:drivers!orders_assigned_driver_id_fkey(
               current_delivery_status
+            ),
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url
+              )
             )
           ''')
           .eq('assigned_driver_id', driverId)
@@ -612,6 +724,14 @@ class DriverOrderRepository extends BaseRepository {
             delivered_at:actual_delivery_time,
             vendor:vendors!orders_vendor_id_fkey(
               business_address
+            ),
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url
+              )
             )
           ''')
           .eq('assigned_driver_id', driverId)
@@ -754,5 +874,17 @@ class DriverOrderRepository extends BaseRepository {
 
       debugPrint('DriverOrderRepository: Order $orderId cancelled successfully');
     });
+  }
+
+  /// Helper method to safely convert values to double
+  double _safeToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      return parsed ?? 0.0;
+    }
+    return 0.0;
   }
 }

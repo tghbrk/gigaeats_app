@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../drivers/data/models/driver_order.dart' show DriverOrderStatus;
+
 /// Driver-specific order model with delivery information
 class DriverOrder extends Equatable {
   final String id;
@@ -40,29 +42,31 @@ class DriverOrder extends Equatable {
 
   factory DriverOrder.fromJson(Map<String, dynamic> json) {
     return DriverOrder(
-      id: json['id'] as String,
-      orderNumber: json['order_number'] as String,
-      vendorName: json['vendor_name'] as String? ?? 'Unknown Vendor',
-      vendorAddress: json['vendor_address'] as String?,
-      customerName: json['customer_name'] as String? ?? 'Unknown Customer',
+      id: json['id']?.toString() ?? '',
+      orderNumber: json['order_number']?.toString() ?? '',
+      vendorName: json['vendor_name']?.toString() ?? 'Unknown Vendor',
+      vendorAddress: json['vendor_address']?.toString(),
+      customerName: json['customer_name']?.toString() ?? 'Unknown Customer',
       deliveryAddress: _parseDeliveryAddress(json['delivery_address']),
-      customerPhone: json['contact_phone'] as String?,
-      totalAmount: (json['total_amount'] as num).toDouble(),
-      deliveryFee: (json['delivery_fee'] as num).toDouble(),
-      status: DriverOrderStatus.fromString(json['status'] as String),
-      estimatedDeliveryTime: json['estimated_delivery_time'] != null
-          ? DateTime.parse(json['estimated_delivery_time'] as String)
+      customerPhone: json['contact_phone']?.toString(),
+      totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
+      deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 0.0,
+      status: DriverOrderStatus.fromString(json['status']?.toString() ?? 'assigned'),
+      estimatedDeliveryTime: json['estimated_delivery_time'] != null && json['estimated_delivery_time'].toString().isNotEmpty
+          ? DateTime.tryParse(json['estimated_delivery_time'].toString())
           : null,
-      specialInstructions: json['special_instructions'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      assignedAt: json['assigned_at'] != null
-          ? DateTime.parse(json['assigned_at'] as String)
+      specialInstructions: json['special_instructions']?.toString(),
+      createdAt: json['created_at'] != null && json['created_at'].toString().isNotEmpty
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      assignedAt: json['assigned_at'] != null && json['assigned_at'].toString().isNotEmpty
+          ? DateTime.tryParse(json['assigned_at'].toString())
           : null,
-      pickedUpAt: json['picked_up_at'] != null
-          ? DateTime.parse(json['picked_up_at'] as String)
+      pickedUpAt: json['picked_up_at'] != null && json['picked_up_at'].toString().isNotEmpty
+          ? DateTime.tryParse(json['picked_up_at'].toString())
           : null,
-      deliveredAt: json['delivered_at'] != null
-          ? DateTime.parse(json['delivered_at'] as String)
+      deliveredAt: json['delivered_at'] != null && json['delivered_at'].toString().isNotEmpty
+          ? DateTime.tryParse(json['delivered_at'].toString())
           : null,
     );
   }
@@ -178,99 +182,8 @@ class DriverOrder extends Equatable {
       ];
 }
 
-/// Driver order status enum
-enum DriverOrderStatus {
-  available,
-  assigned,
-  ready,
-  onRouteToVendor,
-  arrivedAtVendor,
-  pickedUp,
-  onRouteToCustomer,
-  arrivedAtCustomer,
-  delivered,
-  cancelled;
-
-  String get displayName {
-    switch (this) {
-      case DriverOrderStatus.available:
-        return 'Available';
-      case DriverOrderStatus.assigned:
-        return 'Assigned';
-      case DriverOrderStatus.ready:
-        return 'Ready for Pickup';
-      case DriverOrderStatus.onRouteToVendor:
-        return 'On Route to Pickup';
-      case DriverOrderStatus.arrivedAtVendor:
-        return 'Arrived at Pickup';
-      case DriverOrderStatus.pickedUp:
-        return 'Picked Up';
-      case DriverOrderStatus.onRouteToCustomer:
-        return 'On Route to Customer';
-      case DriverOrderStatus.arrivedAtCustomer:
-        return 'Arrived at Customer';
-      case DriverOrderStatus.delivered:
-        return 'Delivered';
-      case DriverOrderStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  String get value {
-    switch (this) {
-      case DriverOrderStatus.available:
-        return 'available';
-      case DriverOrderStatus.assigned:
-        return 'assigned';
-      case DriverOrderStatus.ready:
-        return 'ready';
-      case DriverOrderStatus.onRouteToVendor:
-        return 'on_route_to_vendor';
-      case DriverOrderStatus.arrivedAtVendor:
-        return 'arrived_at_vendor';
-      case DriverOrderStatus.pickedUp:
-        return 'picked_up';
-      case DriverOrderStatus.onRouteToCustomer:
-        return 'on_route_to_customer';
-      case DriverOrderStatus.arrivedAtCustomer:
-        return 'arrived_at_customer';
-      case DriverOrderStatus.delivered:
-        return 'delivered';
-      case DriverOrderStatus.cancelled:
-        return 'cancelled';
-    }
-  }
-
-  static DriverOrderStatus fromString(String value) {
-    switch (value.toLowerCase()) {
-      case 'available':
-        return DriverOrderStatus.available;
-      case 'assigned':
-        return DriverOrderStatus.assigned;
-      case 'ready':
-        return DriverOrderStatus.ready;
-      case 'on_route_to_vendor':
-        return DriverOrderStatus.onRouteToVendor;
-      case 'arrived_at_vendor':
-        return DriverOrderStatus.arrivedAtVendor;
-      case 'picked_up':
-        return DriverOrderStatus.pickedUp;
-      case 'on_route_to_customer':
-        return DriverOrderStatus.onRouteToCustomer;
-      case 'arrived_at_customer':
-        return DriverOrderStatus.arrivedAtCustomer;
-      case 'en_route': // Legacy support
-      case 'out_for_delivery': // Legacy support
-        return DriverOrderStatus.onRouteToCustomer;
-      case 'delivered':
-        return DriverOrderStatus.delivered;
-      case 'cancelled':
-        return DriverOrderStatus.cancelled;
-      default:
-        throw ArgumentError('Invalid driver order status: $value');
-    }
-  }
-}
+// DriverOrderStatus enum moved to lib/src/features/drivers/data/models/driver_order.dart
+// Import that file to use the comprehensive DriverOrderStatus enum
 
 /// Extension to add missing getters for compatibility
 extension DriverOrderExtension on DriverOrder {

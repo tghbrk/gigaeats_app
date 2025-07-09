@@ -1,6 +1,5 @@
 
-
-import '../../../orders/data/models/driver_order.dart';
+import '../../../drivers/data/models/driver_order.dart';
 import '../../../orders/data/repositories/driver_order_repository.dart';
 import '../models/driver_error.dart';
 import '../../../../core/utils/logger.dart';
@@ -36,7 +35,7 @@ class DriverOrderService {
   /// Get available orders for pickup
   List<DriverOrder> getAvailableOrders(List<DriverOrder> orders) {
     return orders.where((order) =>
-      order.status == DriverOrderStatus.ready
+      order.status == DriverOrderStatus.assigned
       // Note: DriverOrder.assignedDriverId is never null as it's a getter for driverId
       // Available orders should be filtered at the data source level
     ).toList();
@@ -101,9 +100,9 @@ class DriverOrderService {
   Future<DriverOrder?> getOrderDetails(String orderId) async {
     try {
       _logger.info('🚗 [DRIVER-ORDER-SERVICE] Getting order details for $orderId');
-      
+
       final order = await repository.getOrderDetails(orderId);
-      
+
       _logger.info('✅ [DRIVER-ORDER-SERVICE] Order details retrieved for $orderId');
       return order;
     } catch (e) {
@@ -116,9 +115,9 @@ class DriverOrderService {
   Future<List<DriverOrder>> getOrderHistory(String driverId, {int limit = 50}) async {
     try {
       _logger.info('🚗 [DRIVER-ORDER-SERVICE] Getting order history for driver $driverId');
-      
+
       final orders = await repository.getDriverOrderHistory(driverId, limit: limit);
-      
+
       _logger.info('✅ [DRIVER-ORDER-SERVICE] Retrieved ${orders.length} orders for driver $driverId');
       return orders;
     } catch (e) {
@@ -141,7 +140,7 @@ class DriverOrderService {
         if (endDate != null && order.createdAt.isAfter(endDate)) continue;
         
         // Calculate earnings based on order value and commission
-        totalEarnings += order.driverEarnings;
+        totalEarnings += order.orderEarnings.totalEarnings;
       }
       
       _logger.info('✅ [DRIVER-ORDER-SERVICE] Total earnings for driver $driverId: RM$totalEarnings');
@@ -155,7 +154,7 @@ class DriverOrderService {
   /// Validate order for acceptance
   bool canAcceptOrder(DriverOrder order, String driverId) {
     // Check if order is available
-    if (order.status != DriverOrderStatus.ready) {
+    if (order.status != DriverOrderStatus.assigned) {
       return false;
     }
 
@@ -181,7 +180,7 @@ class DriverOrderService {
         'cancelled_orders': orders.where((o) => o.status == DriverOrderStatus.cancelled).length,
         'total_earnings': orders
             .where((o) => o.status == DriverOrderStatus.delivered)
-            .fold(0.0, (sum, order) => sum + order.driverEarnings),
+            .fold(0.0, (sum, order) => sum + order.orderEarnings.totalEarnings),
         'average_rating': _calculateAverageRating(orders),
       };
       

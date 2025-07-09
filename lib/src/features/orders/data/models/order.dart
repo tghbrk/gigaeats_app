@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
 
+
 import 'delivery_method.dart';
 
 part 'order.g.dart';
@@ -369,6 +370,7 @@ class Order extends Equatable {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
+
     // Handle nested customer data from database joins
     if (json.containsKey('customers') && json['customers'] is List && (json['customers'] as List).isNotEmpty) {
       final customerData = (json['customers'] as List).first as Map<String, dynamic>;
@@ -385,6 +387,41 @@ class Order extends Equatable {
     } else if (json.containsKey('vendors') && json['vendors'] is List && (json['vendors'] as List).isNotEmpty) {
       final vendorData = (json['vendors'] as List).first as Map<String, dynamic>;
       json['vendor_name'] = vendorData['business_name'] ?? 'Unknown Vendor';
+    }
+
+    // Handle nested order_items with menu_item data
+    if (json.containsKey('order_items') && json['order_items'] is List) {
+      final orderItemsList = json['order_items'] as List;
+
+      final processedItems = orderItemsList.map((itemJson) {
+        if (itemJson is Map<String, dynamic>) {
+          final processedItem = Map<String, dynamic>.from(itemJson);
+
+          // Flatten menu_item data into the order item
+          if (processedItem.containsKey('menu_item') && processedItem['menu_item'] is Map) {
+            final menuItemData = processedItem['menu_item'] as Map<String, dynamic>;
+
+            // Copy menu item fields to order item if they don't already exist
+            processedItem['name'] ??= menuItemData['name'] ?? 'Unknown Item';
+            processedItem['description'] ??= menuItemData['description'] ?? '';
+            processedItem['image_url'] ??= menuItemData['image_url'];
+
+            // Remove the nested menu_item to avoid confusion
+            processedItem.remove('menu_item');
+          }
+
+          // Ensure required fields have default values
+          processedItem['name'] ??= 'Unknown Item';
+          processedItem['description'] ??= '';
+          processedItem['unit_price'] ??= processedItem['price'] ?? 0.0;
+          processedItem['total_price'] ??= processedItem['subtotal'] ?? 0.0;
+
+          return processedItem;
+        }
+        return itemJson;
+      }).toList();
+
+      json['order_items'] = processedItems;
     }
 
     return _$OrderFromJson(json);

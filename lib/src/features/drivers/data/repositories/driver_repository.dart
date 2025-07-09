@@ -208,7 +208,7 @@ class DriverRepository extends BaseRepository {
       await supabase
           .from('drivers')
           .update({
-            'status': status.name,
+            'status': _mapDriverStatusToDbString(status),
             'last_seen': DateTime.now().toIso8601String(),
           })
           .eq('id', driverId);
@@ -445,7 +445,7 @@ class DriverRepository extends BaseRepository {
           .eq('driver_id', driverId);
 
       if (status != null) {
-        query = query.eq('status', status.name);
+        query = query.eq('status', status.value);
       }
 
       // Apply ordering first
@@ -476,5 +476,19 @@ class DriverRepository extends BaseRepository {
           if (data.isEmpty) return null;
           return data.first['current_location'] as Map<String, dynamic>?;
         });
+  }
+
+  /// Map DriverStatus enum to database string value
+  String _mapDriverStatusToDbString(DriverStatus status) {
+    switch (status) {
+      case DriverStatus.offline:
+        return 'offline';
+      case DriverStatus.online:
+        return 'online';
+      case DriverStatus.busy:
+        return 'busy';
+      case DriverStatus.unavailable:
+        return 'unavailable';
+    }
   }
 }

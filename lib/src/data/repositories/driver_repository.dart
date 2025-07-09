@@ -35,7 +35,7 @@ class DriverRepository extends BaseRepository {
           .eq('driver_id', driverId);
 
       if (status != null) {
-        query = query.eq('status', status.name);
+        query = query.eq('status', status.value);
       }
 
       // Apply ordering first
@@ -126,7 +126,7 @@ class DriverRepository extends BaseRepository {
       _logger.info('🔄 [DRIVER-REPO] Updating order $driverOrderId status to ${newStatus.name}');
 
       final updateData = {
-        'status': newStatus.name,
+        'status': newStatus.value,
         'updated_at': DateTime.now().toIso8601String(),
       };
 

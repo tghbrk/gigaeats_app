@@ -263,7 +263,7 @@ class VendorRepository extends BaseRepository {
       _logger.info('🔄 [VENDOR-REPO] Updating vendor $vendorId status to ${newStatus.name}');
 
       final updateData = <String, dynamic>{
-        'status': newStatus.name,
+        'status': _mapVendorStatusToDbString(newStatus),
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -341,5 +341,19 @@ class VendorRepository extends BaseRepository {
 
     await client.from('vendor_stats').insert(statsPayload);
     _logger.info('✅ [VENDOR-REPO] Vendor stats initialized');
+  }
+
+  /// Map VendorStatus enum to database string value
+  String _mapVendorStatusToDbString(VendorStatus status) {
+    switch (status) {
+      case VendorStatus.active:
+        return 'active';
+      case VendorStatus.inactive:
+        return 'inactive';
+      case VendorStatus.suspended:
+        return 'suspended';
+      case VendorStatus.pendingVerification:
+        return 'pending_verification';
+    }
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../models/driver_order.dart';
+import '../../../drivers/data/models/driver_order.dart';
 import '../../../drivers/data/models/driver_error.dart';
 import '../models/driver_order_state_machine.dart';
 import '../repositories/driver_order_repository.dart';
@@ -76,8 +76,8 @@ class DriverOrderService {
         DriverOrderStatus.assigned,
       );
 
-      // TODO: Restore when DriverResult is implemented in validateTransition
-      if (!transitionResult) {
+      // Check if transition is valid
+      if (!transitionResult.isValid) {
         return DriverResult.error(
           DriverException(
             'Invalid status transition from ${order.status.displayName} to assigned',
@@ -133,8 +133,8 @@ class DriverOrderService {
         newStatus,
       );
 
-      // TODO: Restore when DriverResult is implemented in validateTransition
-      if (!transitionResult) {
+      // Check if transition is valid
+      if (!transitionResult.isValid) {
         return DriverResult.error(
           DriverException(
             'Invalid status transition from ${order.status.displayName} to ${newStatus.displayName}',
@@ -226,7 +226,7 @@ class DriverOrderService {
     score += 50;
 
     // Amount-based priority (higher value orders get slight boost)
-    score += (order.totalAmount / 10).round();
+    score += (order.orderTotal / 10).round();
 
     return score;
   }
@@ -242,8 +242,8 @@ class DriverOrderService {
 
   /// Validate order assignment business rules
   DriverResult<bool> validateOrderAssignment(String driverId, DriverOrder order) {
-    // Check if order is still available
-    if (order.status != DriverOrderStatus.available) {
+    // Check if order is still available for assignment
+    if (order.status != DriverOrderStatus.assigned) {
       return DriverResult.error(
         DriverException(
           'Order is no longer available',

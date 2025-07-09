@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+import '../../../orders/data/models/driver_order_state_machine.dart';
+
 part 'driver_order.g.dart';
 
 /// Driver order status enumeration with granular tracking
@@ -71,21 +73,40 @@ enum DriverOrderStatus {
         return 'failed';
     }
   }
+
+  /// Create DriverOrderStatus from string value
+  static DriverOrderStatus fromString(String value) {
+    switch (value.toLowerCase()) {
+      case 'assigned':
+        return DriverOrderStatus.assigned;
+      case 'on_route_to_vendor':
+        return DriverOrderStatus.onRouteToVendor;
+      case 'arrived_at_vendor':
+        return DriverOrderStatus.arrivedAtVendor;
+      case 'picked_up':
+        return DriverOrderStatus.pickedUp;
+      case 'on_route_to_customer':
+        return DriverOrderStatus.onRouteToCustomer;
+      case 'arrived_at_customer':
+        return DriverOrderStatus.arrivedAtCustomer;
+      case 'en_route': // Legacy support
+      case 'out_for_delivery': // Legacy support (snake_case)
+      case 'outfordelivery': // Legacy support (camelCase converted to lowercase)
+        return DriverOrderStatus.pickedUp; // Map legacy status to picked up so driver can navigate to customer
+      case 'delivered':
+        return DriverOrderStatus.delivered;
+      case 'cancelled':
+        return DriverOrderStatus.cancelled;
+      case 'failed':
+        return DriverOrderStatus.failed;
+      default:
+        throw ArgumentError('Invalid driver order status: $value');
+    }
+  }
 }
 
-/// Driver order action enumeration
-enum DriverOrderAction {
-  accept,
-  reject,
-  startRoute,
-  arriveAtVendor,
-  pickupOrder,
-  startDelivery,
-  arriveAtCustomer,
-  completeDelivery,
-  reportIssue,
-  cancel,
-}
+// DriverOrderAction enum moved to lib/src/features/orders/data/models/driver_order_state_machine.dart
+// Import that file to use the enhanced DriverOrderAction enum with mandatory confirmation support
 
 /// Driver order priority enumeration
 enum DriverOrderPriority {
@@ -165,6 +186,10 @@ class DeliveryDetails extends Equatable {
   factory DeliveryDetails.fromJson(Map<String, dynamic> json) => _$DeliveryDetailsFromJson(json);
   Map<String, dynamic> toJson() => _$DeliveryDetailsToJson(this);
 
+  // Convenience getters for backward compatibility
+  String get address => deliveryAddress;
+  String? get phone => contactPhone;
+
   @override
   List<Object?> get props => [
         pickupAddress,
@@ -218,6 +243,8 @@ class DriverOrder extends Equatable {
   final String id;
   @JsonKey(name: 'order_id')
   final String orderId;
+  @JsonKey(name: 'order_number')
+  final String? orderNumber;
   @JsonKey(name: 'driver_id')
   final String driverId;
   @JsonKey(name: 'vendor_id')
@@ -281,10 +308,13 @@ class DriverOrder extends Equatable {
   final DateTime createdAt;
   @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
+  @JsonKey(name: 'requested_delivery_time')
+  final DateTime? requestedDeliveryTime;
 
   const DriverOrder({
     required this.id,
     required this.orderId,
+    this.orderNumber,
     required this.driverId,
     required this.vendorId,
     required this.vendorName,
@@ -315,6 +345,7 @@ class DriverOrder extends Equatable {
     this.metadata,
     required this.createdAt,
     required this.updatedAt,
+    this.requestedDeliveryTime,
   });
 
   factory DriverOrder.fromJson(Map<String, dynamic> json) => _$DriverOrderFromJson(json);
@@ -324,6 +355,7 @@ class DriverOrder extends Equatable {
   List<Object?> get props => [
         id,
         orderId,
+        orderNumber,
         driverId,
         vendorId,
         vendorName,
@@ -354,6 +386,7 @@ class DriverOrder extends Equatable {
         metadata,
         createdAt,
         updatedAt,
+        requestedDeliveryTime,
       ];
 
   /// Check if order is completed
@@ -389,21 +422,21 @@ class DriverOrder extends Equatable {
     }
   }
 
-  /// Get available actions for current status
+  /// Get available actions for current status using enhanced workflow actions
   List<DriverOrderAction> get availableActions {
     switch (status) {
       case DriverOrderStatus.assigned:
-        return [DriverOrderAction.accept, DriverOrderAction.reject];
+        return [DriverOrderAction.navigateToVendor, DriverOrderAction.cancel];
       case DriverOrderStatus.onRouteToVendor:
-        return [DriverOrderAction.arriveAtVendor, DriverOrderAction.reportIssue];
+        return [DriverOrderAction.arrivedAtVendor, DriverOrderAction.reportIssue];
       case DriverOrderStatus.arrivedAtVendor:
-        return [DriverOrderAction.pickupOrder, DriverOrderAction.reportIssue];
+        return [DriverOrderAction.confirmPickup, DriverOrderAction.reportIssue]; // Mandatory confirmation
       case DriverOrderStatus.pickedUp:
-        return [DriverOrderAction.startDelivery, DriverOrderAction.reportIssue];
+        return [DriverOrderAction.navigateToCustomer, DriverOrderAction.reportIssue];
       case DriverOrderStatus.onRouteToCustomer:
-        return [DriverOrderAction.arriveAtCustomer, DriverOrderAction.reportIssue];
+        return [DriverOrderAction.arrivedAtCustomer, DriverOrderAction.reportIssue];
       case DriverOrderStatus.arrivedAtCustomer:
-        return [DriverOrderAction.completeDelivery, DriverOrderAction.reportIssue];
+        return [DriverOrderAction.confirmDeliveryWithPhoto, DriverOrderAction.reportIssue]; // Mandatory confirmation
       case DriverOrderStatus.delivered:
       case DriverOrderStatus.cancelled:
       case DriverOrderStatus.failed:
@@ -446,8 +479,8 @@ class DriverOrder extends Equatable {
   /// Get driver rating (customer rating for this order)
   double? get driverRating => customerRating;
 
-  /// Get order number (formatted order ID)
-  String get orderNumber => 'GE${orderId.substring(0, 8).toUpperCase()}';
+  /// Get formatted order number (use field if available, otherwise format order ID)
+  String get formattedOrderNumber => orderNumber ?? 'GE${orderId.substring(0, 8).toUpperCase()}';
 
   /// Get delivery fee (base fee from earnings)
   double get deliveryFee => orderEarnings.baseFee;

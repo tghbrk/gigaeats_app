@@ -10,6 +10,7 @@ import '../../../../user_management/presentation/providers/customer_address_prov
 
 import '../../widgets/customer/schedule_time_picker.dart';
 import '../../widgets/customer/scheduled_delivery_display.dart';
+import '../../widgets/enhanced_delivery_method_picker.dart';
 import '../../../../shared/widgets/custom_button.dart';
 
 class CustomerCartScreen extends ConsumerStatefulWidget {
@@ -74,12 +75,9 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
       return;
     }
 
-    // If delivery method doesn't require driver, no address needed
-    if (!cart.deliveryMethod.requiresDriver) {
-      debugPrint('ℹ️ [CART-SCREEN] Delivery method does not require address');
-      debugPrint('🔄 [CART-SCREEN] ===== AUTO-POPULATE ADDRESS END (NO ADDRESS REQUIRED) =====');
-      return;
-    }
+    // Always auto-populate address to enable delivery method availability checks
+    // Even if current method doesn't require driver, user might want to switch to delivery
+    debugPrint('💡 [CART-SCREEN] Auto-populating address to enable delivery method availability checks');
 
     // Load addresses and auto-select default
     final addressesState = ref.read(address_provider.customerAddressesProvider);
@@ -410,18 +408,28 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
     final parts = <String>[];
 
     customizations.forEach((customizationId, selectedValue) {
-      if (selectedValue is String && selectedValue.isNotEmpty) {
-        // Single selection - we need to find the option name
-        // For now, we'll just show the ID, but in a real implementation
-        // you'd look up the option name from the product's customizations
-        parts.add(selectedValue);
+      if (selectedValue is Map<String, dynamic>) {
+        // Single selection - new format with Map containing name and price
+        final name = selectedValue['name'] as String?;
+        if (name != null && name.isNotEmpty) {
+          parts.add(name);
+        }
       } else if (selectedValue is List && selectedValue.isNotEmpty) {
-        // Multiple selections
-        for (final optionId in selectedValue) {
-          if (optionId is String && optionId.isNotEmpty) {
-            parts.add(optionId);
+        // Multiple selections - List of Maps
+        for (final option in selectedValue) {
+          if (option is Map<String, dynamic>) {
+            final name = option['name'] as String?;
+            if (name != null && name.isNotEmpty) {
+              parts.add(name);
+            }
+          } else if (option is String && option.isNotEmpty) {
+            // Backward compatibility for old string format
+            parts.add(option);
           }
         }
+      } else if (selectedValue is String && selectedValue.isNotEmpty) {
+        // Backward compatibility - old single selection format
+        parts.add(selectedValue);
       }
     });
 
@@ -494,23 +502,19 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Show only customer-relevant delivery methods
-                ...[
-                  CustomerDeliveryMethod.customerPickup,
-                  CustomerDeliveryMethod.delivery,
-                  CustomerDeliveryMethod.scheduled,
-                ].map((method) => RadioListTile<CustomerDeliveryMethod>(
-                  title: Text(method.displayName),
-                  subtitle: Text(method.description),
-                  value: method,
-                  groupValue: cartState.deliveryMethod,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(customerCartProvider.notifier).setDeliveryMethod(value);
-                    }
+                // Enhanced delivery method picker with pricing
+                EnhancedDeliveryMethodPicker(
+                  selectedMethod: cartState.deliveryMethod,
+                  onMethodChanged: (method) {
+                    ref.read(customerCartProvider.notifier).setDeliveryMethod(method);
                   },
-                  contentPadding: EdgeInsets.zero,
-                )),
+                  vendorId: cartState.items.isNotEmpty ? cartState.items.first.vendorId : '',
+                  subtotal: cartState.subtotal,
+                  deliveryAddress: cartState.selectedAddress,
+                  scheduledTime: cartState.scheduledDeliveryTime,
+                  showEstimatedTime: true,
+                  showFeatureComparison: false,
+                ),
               ],
             ),
           ),
@@ -632,7 +636,7 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
             const SizedBox(height: 16),
             _buildSummaryRow('Subtotal', cartState.subtotal),
             _buildSummaryRow('SST (6%)', cartState.sstAmount),
-            _buildSummaryRow('Delivery Fee', cartState.deliveryFee),
+            _buildDeliveryFeeRow(cartState),
             const Divider(),
             _buildSummaryRow(
               'Total',
@@ -664,6 +668,32 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               color: isTotal ? theme.colorScheme.primary : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryFeeRow(CustomerCartState cartState) {
+    final theme = Theme.of(context);
+    final deliveryFee = cartState.deliveryFee;
+    final isFree = deliveryFee <= 0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Delivery Fee',
+            style: theme.textTheme.bodyMedium,
+          ),
+          Text(
+            isFree ? 'FREE' : 'RM ${deliveryFee.toStringAsFixed(2)}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: isFree ? theme.colorScheme.tertiary : null,
             ),
           ),
         ],

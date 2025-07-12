@@ -1596,6 +1596,17 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
   //   }
   // }
 
+  /// Check if the error message indicates a delivery time constraint issue
+  bool _isDeliveryTimeConstraintError(String errorMessage) {
+    final lowerError = errorMessage.toLowerCase();
+    return lowerError.contains('delivery time must be between') ||
+           lowerError.contains('8:00 am and 10:00 pm') ||
+           lowerError.contains('business hours') ||
+           (lowerError.contains('delivery time') && lowerError.contains('between'));
+  }
+
+
+
   /// Show enhanced error dialog for wallet payment failures
   void _showWalletPaymentErrorDialog(String errorMessage) {
     // Parse error message to extract error code and guidance
@@ -1603,89 +1614,143 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
     final mainError = lines.first.replaceFirst('Payment failed: ', '');
     final guidance = lines.length > 1 ? lines.skip(1).join('\n') : null;
 
+    // Check if this is a delivery time constraint error
+    final isDeliveryTimeError = _isDeliveryTimeConstraintError(errorMessage);
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         icon: Icon(
-          Icons.account_balance_wallet_outlined,
+          isDeliveryTimeError
+              ? Icons.schedule_outlined
+              : Icons.account_balance_wallet_outlined,
           color: Colors.red.shade600,
           size: 48,
         ),
-        title: const Text(
-          'Wallet Payment Failed',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          isDeliveryTimeError
+              ? 'Delivery Time Issue'
+              : 'Wallet Payment Failed',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              mainError,
+              isDeliveryTimeError
+                  ? 'Your order cannot be processed because the delivery is scheduled outside our operating hours.'
+                  : mainError,
               style: const TextStyle(fontSize: 16),
             ),
-            if (guidance != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.lightbulb_outline,
-                          color: Colors.blue.shade600,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'How to fix this:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      guidance,
-                      style: TextStyle(color: Colors.blue.shade700),
-                    ),
-                  ],
+            if (isDeliveryTimeError) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Operating Hours: 8:00 AM - 10:00 PM daily',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade700,
                 ),
               ),
             ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDeliveryTimeError
+                    ? Colors.orange.shade50
+                    : Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDeliveryTimeError
+                      ? Colors.orange.shade200
+                      : Colors.blue.shade200,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isDeliveryTimeError
+                            ? Icons.schedule_outlined
+                            : Icons.lightbulb_outline,
+                        color: isDeliveryTimeError
+                            ? Colors.orange.shade600
+                            : Colors.blue.shade600,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isDeliveryTimeError
+                            ? 'Schedule your delivery:'
+                            : 'How to fix this:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDeliveryTimeError
+                              ? Colors.orange.shade700
+                              : Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isDeliveryTimeError
+                        ? 'Click "Schedule Delivery" below to choose a valid delivery time and complete your order.'
+                        : guidance ?? 'Please try again or contact support if the issue persists.',
+                    style: TextStyle(
+                      color: isDeliveryTimeError
+                          ? Colors.orange.shade700
+                          : Colors.blue.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // Navigate to wallet screen for top-up
-              if (mainError.toLowerCase().contains('insufficient')) {
+              // Navigate to wallet screen for top-up if insufficient funds
+              if (!isDeliveryTimeError && mainError.toLowerCase().contains('insufficient')) {
                 context.go('/customer/wallet');
               }
             },
             child: Text(
-              mainError.toLowerCase().contains('insufficient') ? 'Top Up Wallet' : 'OK',
+              isDeliveryTimeError
+                  ? 'Cancel'
+                  : mainError.toLowerCase().contains('insufficient')
+                      ? 'Top Up Wallet'
+                      : 'OK',
             ),
           ),
-          if (errorMessage.contains('retry_allowed'))
+          if (isDeliveryTimeError)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _showScheduleTimePicker();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              ),
+              child: const Text('Schedule Delivery'),
+            )
+          else if (errorMessage.contains('retry_allowed'))
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 _placeOrder(); // Retry the order
               },
               child: const Text('Try Again'),
-            ),
-          if (!mainError.toLowerCase().contains('insufficient'))
+            )
+          else if (!mainError.toLowerCase().contains('insufficient'))
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();

@@ -9,7 +9,15 @@ class DeliveryFeeService {
   static const String _tag = 'DeliveryFeeService';
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Calculate delivery fee for an order
+  // Cache for delivery fee calculations to prevent redundant API calls
+  final Map<String, DeliveryFeeCalculation> _calculationCache = {};
+  final Map<String, DateTime> _cacheTimestamps = {};
+  static const Duration _cacheExpiry = Duration(minutes: 5); // Cache for 5 minutes
+
+  // Track ongoing calculations to prevent duplicate requests
+  final Map<String, Future<DeliveryFeeCalculation>> _ongoingCalculations = {};
+
+  /// Calculate delivery fee for an order with caching and deduplication
   Future<DeliveryFeeCalculation> calculateDeliveryFee({
     required DeliveryMethod deliveryMethod,
     required String vendorId,
@@ -18,8 +26,67 @@ class DeliveryFeeService {
     double? deliveryLongitude,
     DateTime? deliveryTime,
   }) async {
+    // Create cache key based on calculation parameters
+    final cacheKey = _generateCacheKey(
+      deliveryMethod: deliveryMethod,
+      vendorId: vendorId,
+      subtotal: subtotal,
+      deliveryLatitude: deliveryLatitude,
+      deliveryLongitude: deliveryLongitude,
+    );
+
+    // Check if calculation is already in progress
+    if (_ongoingCalculations.containsKey(cacheKey)) {
+      DebugLogger.info('⏳ [DELIVERY-FEE] Reusing ongoing calculation for ${deliveryMethod.value}', tag: _tag);
+      return await _ongoingCalculations[cacheKey]!;
+    }
+
+    // Check cache first and cleanup expired entries
+    _cleanupCache();
+    if (_isCacheValid(cacheKey)) {
+      DebugLogger.info('💾 [DELIVERY-FEE] Using cached result for ${deliveryMethod.value}', tag: _tag);
+      return _calculationCache[cacheKey]!;
+    }
+
+    // Start new calculation and track it
+    final calculationFuture = _performCalculation(
+      deliveryMethod: deliveryMethod,
+      vendorId: vendorId,
+      subtotal: subtotal,
+      deliveryLatitude: deliveryLatitude,
+      deliveryLongitude: deliveryLongitude,
+      deliveryTime: deliveryTime,
+    );
+
+    _ongoingCalculations[cacheKey] = calculationFuture;
+
     try {
-      DebugLogger.info('Calculating delivery fee for method: ${deliveryMethod.value}', tag: _tag);
+      final result = await calculationFuture;
+
+      // Cache the result
+      _calculationCache[cacheKey] = result;
+      _cacheTimestamps[cacheKey] = DateTime.now();
+
+      DebugLogger.info('✅ [DELIVERY-FEE] Calculated and cached result for ${deliveryMethod.value}: RM${result.finalFee.toStringAsFixed(2)}', tag: _tag);
+
+      return result;
+    } finally {
+      // Remove from ongoing calculations
+      _ongoingCalculations.remove(cacheKey);
+    }
+  }
+
+  /// Perform the actual calculation without caching logic
+  Future<DeliveryFeeCalculation> _performCalculation({
+    required DeliveryMethod deliveryMethod,
+    required String vendorId,
+    required double subtotal,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
+    DateTime? deliveryTime,
+  }) async {
+    try {
+      DebugLogger.info('🔄 [DELIVERY-FEE] Performing calculation for method: ${deliveryMethod.value}', tag: _tag);
 
       // For pickup methods, return zero fee immediately
       if (deliveryMethod.isPickup) {
@@ -37,31 +104,40 @@ class DeliveryFeeService {
         );
       }
 
-      // Use database function for calculation
-      final response = await _supabase.rpc('calculate_delivery_fee', params: {
-        'p_delivery_method': deliveryMethod.value,
-        'p_vendor_id': vendorId,
-        'p_delivery_latitude': deliveryLatitude,
-        'p_delivery_longitude': deliveryLongitude,
-        'p_subtotal': subtotal,
-        'p_delivery_time': (deliveryTime ?? DateTime.now()).toIso8601String(),
-      });
+      // Try database function for calculation first
+      try {
+        final response = await _supabase.rpc('calculate_delivery_fee', params: {
+          'p_delivery_method': deliveryMethod.value,
+          'p_vendor_id': vendorId,
+          'p_delivery_latitude': deliveryLatitude,
+          'p_delivery_longitude': deliveryLongitude,
+          'p_subtotal': subtotal,
+          'p_delivery_time': (deliveryTime ?? DateTime.now()).toIso8601String(),
+        });
 
-      if (response == null) {
-        throw Exception('Failed to calculate delivery fee: No response from database');
+        if (response != null) {
+          DebugLogger.info('Database calculation result: $response', tag: _tag);
+          return DeliveryFeeCalculation.fromJson(response);
+        }
+      } catch (e) {
+        DebugLogger.warning('Database function not available, using fallback calculation: $e', tag: _tag);
       }
 
-      DebugLogger.info('Database calculation result: $response', tag: _tag);
-
-      return DeliveryFeeCalculation.fromJson(response);
-    } catch (e) {
-      DebugLogger.error('Error calculating delivery fee: $e', tag: _tag);
-      
-      // Fallback to local calculation
+      // Fallback to local calculation (always used if database function fails)
+      DebugLogger.info('Using fallback delivery fee calculation for method: ${deliveryMethod.value}', tag: _tag);
       return _calculateFallbackDeliveryFee(
         deliveryMethod: deliveryMethod,
         subtotal: subtotal,
         distanceKm: _estimateDistance(deliveryLatitude, deliveryLongitude),
+      );
+    } catch (e) {
+      DebugLogger.error('Error in delivery fee calculation: $e', tag: _tag);
+
+      // Final fallback with default values
+      return _calculateFallbackDeliveryFee(
+        deliveryMethod: deliveryMethod,
+        subtotal: subtotal,
+        distanceKm: 5.0, // Default distance
       );
     }
   }
@@ -352,5 +428,62 @@ class DeliveryFeeService {
       DebugLogger.error('Error checking delivery availability: $e', tag: _tag);
       return true; // Default to available on error
     }
+  }
+
+  /// Generate cache key for delivery fee calculation
+  String _generateCacheKey({
+    required DeliveryMethod deliveryMethod,
+    required String vendorId,
+    required double subtotal,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
+  }) {
+    // Round coordinates to reduce cache key variations
+    final lat = deliveryLatitude?.toStringAsFixed(3) ?? 'null';
+    final lng = deliveryLongitude?.toStringAsFixed(3) ?? 'null';
+    final roundedSubtotal = (subtotal / 10).round() * 10; // Round to nearest 10
+
+    return '${deliveryMethod.value}_${vendorId}_$roundedSubtotal}_${lat}_$lng';
+  }
+
+  /// Check if cached result is still valid
+  bool _isCacheValid(String cacheKey) {
+    if (!_calculationCache.containsKey(cacheKey) || !_cacheTimestamps.containsKey(cacheKey)) {
+      return false;
+    }
+
+    final cacheTime = _cacheTimestamps[cacheKey]!;
+    final now = DateTime.now();
+
+    return now.difference(cacheTime) < _cacheExpiry;
+  }
+
+  /// Clear expired cache entries
+  void _cleanupCache() {
+    final now = DateTime.now();
+    final expiredKeys = <String>[];
+
+    for (final entry in _cacheTimestamps.entries) {
+      if (now.difference(entry.value) >= _cacheExpiry) {
+        expiredKeys.add(entry.key);
+      }
+    }
+
+    for (final key in expiredKeys) {
+      _calculationCache.remove(key);
+      _cacheTimestamps.remove(key);
+    }
+
+    if (expiredKeys.isNotEmpty) {
+      DebugLogger.info('🧹 [DELIVERY-FEE] Cleaned up ${expiredKeys.length} expired cache entries', tag: _tag);
+    }
+  }
+
+  /// Clear all cached calculations (useful for testing or when data changes)
+  void clearCache() {
+    _calculationCache.clear();
+    _cacheTimestamps.clear();
+    _ongoingCalculations.clear();
+    DebugLogger.info('🗑️ [DELIVERY-FEE] Cache cleared', tag: _tag);
   }
 }

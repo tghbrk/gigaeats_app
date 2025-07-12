@@ -6,7 +6,9 @@ import '../customer/schedule_time_picker.dart';
 import '../../providers/enhanced_cart_provider.dart';
 import '../../providers/checkout_flow_provider.dart';
 import '../../providers/checkout_defaults_provider.dart';
+import '../../providers/delivery_pricing_provider.dart';
 import '../../../data/models/customer_delivery_method.dart';
+import '../../../data/models/delivery_fee_calculation.dart';
 import '../../../../user_management/domain/customer_profile.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../../shared/widgets/custom_text_field.dart';
@@ -24,7 +26,7 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
   final TextEditingController _instructionsController = TextEditingController();
   final AppLogger _logger = AppLogger();
 
-  CustomerDeliveryMethod _selectedMethod = CustomerDeliveryMethod.customerPickup;
+  CustomerDeliveryMethod _selectedMethod = CustomerDeliveryMethod.pickup;
   CustomerAddress? _selectedAddress;
   DateTime? _scheduledTime;
   bool _isAutoPopulating = false;
@@ -225,6 +227,13 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
   }
 
   Widget _buildDeliveryMethodSection(ThemeData theme, dynamic cartState) {
+    // Debug logging for widget parameters
+    _logger.debug('🔧 [DELIVERY-DETAILS] Building delivery method section');
+    _logger.debug('🔧 [DELIVERY-DETAILS] VendorId: ${cartState.primaryVendorId ?? 'null'}');
+    _logger.debug('🔧 [DELIVERY-DETAILS] Subtotal: ${cartState.subtotal}');
+    _logger.debug('🔧 [DELIVERY-DETAILS] Address: ${_selectedAddress?.fullAddress ?? 'null'}');
+    _logger.debug('🔧 [DELIVERY-DETAILS] Scheduled time: ${_scheduledTime?.toString() ?? 'null'}');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -527,6 +536,7 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
           ),
           const SizedBox(height: 12),
           _buildSummaryRow(theme, 'Method', _selectedMethod.displayName),
+          _buildPricingRow(theme),
           if (_selectedAddress != null)
             _buildSummaryRow(theme, 'Address', _selectedAddress!.fullAddress),
           if (_scheduledTime != null)
@@ -566,6 +576,418 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
     );
   }
 
+  Widget _buildPricingRow(ThemeData theme) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final pricingState = ref.watch(deliveryPricingProvider);
+        final cartState = ref.watch(enhancedCartProvider);
+
+        // Trigger pricing calculation when method changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (cartState.items.isNotEmpty) {
+            final vendorId = cartState.primaryVendorId ?? '';
+            ref.read(deliveryPricingProvider.notifier).calculateDeliveryFee(
+              deliveryMethod: _selectedMethod,
+              vendorId: vendorId,
+              subtotal: cartState.subtotal,
+              deliveryAddress: _selectedAddress,
+              scheduledTime: _scheduledTime,
+            );
+          }
+        });
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 80,
+                child: Text(
+                  'Fee:',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildPricingContent(theme, pricingState),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPricingContent(ThemeData theme, DeliveryPricingState pricingState) {
+    if (pricingState.isCalculating) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Calculating...',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final calculation = pricingState.calculation;
+    if (calculation == null) {
+      return Text(
+        'Not available',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+
+    final isFree = calculation.finalFee <= 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isFree ? 'FREE' : 'RM ${calculation.finalFee.toStringAsFixed(2)}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: isFree ? theme.colorScheme.tertiary : theme.colorScheme.primary,
+          ),
+        ),
+        if (!isFree && calculation.breakdown.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          _buildFeeBreakdown(theme, calculation),
+          const SizedBox(height: 4),
+          _buildPricingExplanation(theme, calculation),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFeeBreakdown(ThemeData theme, DeliveryFeeCalculation calculation) {
+    final breakdown = <Widget>[];
+
+    if (calculation.baseFee > 0) {
+      breakdown.add(_buildBreakdownItem(
+        theme,
+        'Base fee',
+        'RM ${calculation.baseFee.toStringAsFixed(2)}',
+      ));
+    }
+
+    if (calculation.distanceFee > 0) {
+      breakdown.add(_buildBreakdownItem(
+        theme,
+        'Distance (${calculation.distanceKm.toStringAsFixed(1)}km)',
+        'RM ${calculation.distanceFee.toStringAsFixed(2)}',
+      ));
+    }
+
+    if (calculation.hasSurge) {
+      breakdown.add(_buildBreakdownItem(
+        theme,
+        'Peak time surcharge',
+        'RM ${calculation.surgeFee.toStringAsFixed(2)}',
+      ));
+    }
+
+    if (calculation.hasDiscount) {
+      breakdown.add(_buildBreakdownItem(
+        theme,
+        'Discount',
+        '-RM ${calculation.discountAmount.toStringAsFixed(2)}',
+        isDiscount: true,
+      ));
+    }
+
+    if (breakdown.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        children: breakdown,
+      ),
+    );
+  }
+
+  Widget _buildBreakdownItem(
+    ThemeData theme,
+    String label,
+    String amount, {
+    bool isDiscount = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            amount,
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: isDiscount
+                  ? theme.colorScheme.tertiary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPricingExplanation(ThemeData theme, DeliveryFeeCalculation calculation) {
+    return InkWell(
+      onTap: () => _showPricingDetailsDialog(calculation),
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 12,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'How is this calculated?',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPricingDetailsDialog(DeliveryFeeCalculation calculation) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.receipt_long,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            const Text('Delivery Fee Breakdown'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetailedBreakdown(Theme.of(context), calculation),
+              const SizedBox(height: 16),
+              _buildPricingExplanationText(Theme.of(context)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedBreakdown(ThemeData theme, DeliveryFeeCalculation calculation) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          if (calculation.baseFee > 0)
+            _buildDetailedBreakdownRow(
+              theme,
+              'Base Delivery Fee',
+              'RM ${calculation.baseFee.toStringAsFixed(2)}',
+              'Standard fee for delivery service',
+            ),
+          if (calculation.distanceFee > 0)
+            _buildDetailedBreakdownRow(
+              theme,
+              'Distance Charge',
+              'RM ${calculation.distanceFee.toStringAsFixed(2)}',
+              '${calculation.distanceKm.toStringAsFixed(1)}km from vendor',
+            ),
+          if (calculation.hasSurge)
+            _buildDetailedBreakdownRow(
+              theme,
+              'Peak Time Surcharge',
+              'RM ${calculation.surgeFee.toStringAsFixed(2)}',
+              '${((calculation.surgeMultiplier - 1) * 100).toStringAsFixed(0)}% increase during busy hours',
+            ),
+          if (calculation.hasDiscount)
+            _buildDetailedBreakdownRow(
+              theme,
+              'Discount Applied',
+              '-RM ${calculation.discountAmount.toStringAsFixed(2)}',
+              'Promotional discount',
+              isDiscount: true,
+            ),
+          const Divider(),
+          _buildDetailedBreakdownRow(
+            theme,
+            'Total Delivery Fee',
+            'RM ${calculation.finalFee.toStringAsFixed(2)}',
+            '',
+            isTotal: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedBreakdownRow(
+    ThemeData theme,
+    String label,
+    String amount,
+    String description, {
+    bool isDiscount = false,
+    bool isTotal = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              Text(
+                amount,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+                  color: isDiscount
+                      ? theme.colorScheme.tertiary
+                      : isTotal
+                          ? theme.colorScheme.primary
+                          : null,
+                ),
+              ),
+            ],
+          ),
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                description,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPricingExplanationText(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'How delivery fees work:',
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildExplanationPoint(
+          theme,
+          'Base Fee',
+          'Standard charge for delivery service',
+        ),
+        _buildExplanationPoint(
+          theme,
+          'Distance',
+          'Additional charge based on distance from vendor',
+        ),
+        _buildExplanationPoint(
+          theme,
+          'Peak Hours',
+          'Higher rates during busy periods to ensure availability',
+        ),
+        _buildExplanationPoint(
+          theme,
+          'Free Delivery',
+          'Available for pickup orders or qualifying order amounts',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExplanationPoint(ThemeData theme, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.only(top: 6, right: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: theme.textTheme.bodySmall,
+                children: [
+                  TextSpan(
+                    text: '$title: ',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  TextSpan(text: description),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onDeliveryMethodChanged(CustomerDeliveryMethod method) {
     _logger.info('🚚 [DELIVERY-DETAILS] Method changed to: ${method.value}');
 
@@ -575,9 +997,34 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
 
     ref.read(checkoutFlowProvider.notifier).setDeliveryMethod(method);
 
+    // Update pricing provider with new delivery method
+    ref.read(deliveryPricingProvider.notifier).updateDeliveryMethod(method);
+
+    // Trigger immediate pricing calculation
+    _triggerPricingCalculation(method);
+
     // Auto-populate address if new method requires it and we don't have one
     if (method.requiresDriver && _selectedAddress == null) {
       _autoPopulateAddressForMethod(method);
+    }
+  }
+
+  /// Trigger pricing calculation for current parameters
+  void _triggerPricingCalculation(CustomerDeliveryMethod method) {
+    final cartState = ref.read(enhancedCartProvider);
+
+    if (cartState.items.isNotEmpty) {
+      final vendorId = cartState.primaryVendorId ?? '';
+
+      _logger.debug('💰 [DELIVERY-DETAILS] Triggering pricing calculation for method: ${method.value}');
+
+      ref.read(deliveryPricingProvider.notifier).calculateDeliveryFee(
+        deliveryMethod: method,
+        vendorId: vendorId,
+        subtotal: cartState.subtotal,
+        deliveryAddress: _selectedAddress,
+        scheduledTime: _scheduledTime,
+      );
     }
   }
 
@@ -597,6 +1044,9 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
         ref.read(checkoutFlowProvider.notifier).setDeliveryAddress(_selectedAddress);
 
         _logger.info('✅ [DELIVERY-DETAILS] Auto-populated address for method change');
+
+        // Trigger pricing recalculation with auto-populated address
+        _triggerPricingCalculation(method);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -637,8 +1087,11 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
         isDefault: true,
       );
     });
-    
+
     ref.read(checkoutFlowProvider.notifier).setDeliveryAddress(_selectedAddress);
+
+    // Trigger pricing recalculation with new address
+    _triggerPricingCalculation(_selectedMethod);
   }
 
   void _selectScheduledTime() {
@@ -658,6 +1111,9 @@ class _DeliveryDetailsStepState extends ConsumerState<DeliveryDetailsStep>
 
             ref.read(checkoutFlowProvider.notifier).setScheduledDeliveryTime(dateTime);
             _logger.info('⏰ [DELIVERY-DETAILS] Scheduled time set: $dateTime');
+
+            // Trigger pricing recalculation with new scheduled time
+            _triggerPricingCalculation(_selectedMethod);
           }
         },
         onCancel: () {

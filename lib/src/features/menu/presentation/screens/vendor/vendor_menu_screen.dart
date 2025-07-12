@@ -138,14 +138,96 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            onPressed: () => _navigateToAddProduct(),
+            icon: const Icon(Icons.add),
+            tooltip: 'Add Item',
+          ),
+          IconButton(
             onPressed: () => _loadProducts(),
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh menu',
           ),
-          IconButton(
-            onPressed: () => _showBulkActions(),
+          PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             tooltip: 'More options',
+            onSelected: (value) {
+              switch (value) {
+                case 'import_menu':
+                  _showComingSoon('Menu import');
+                  break;
+                case 'export_menu':
+                  _showComingSoon('Menu export');
+                  break;
+                case 'manage_categories':
+                  _showComingSoon('Category management');
+                  break;
+                case 'bulk_availability':
+                  _showComingSoon('Bulk availability toggle');
+                  break;
+                case 'template_management':
+                  _navigateToTemplateManagement();
+                  break;
+                case 'bulk_templates':
+                  _navigateToBulkTemplateApplication();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'import_menu',
+                child: ListTile(
+                  leading: Icon(Icons.upload_file_rounded, color: Colors.blue),
+                  title: Text('Import Menu'),
+                  subtitle: Text('Upload menu items from CSV or Excel'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export_menu',
+                child: ListTile(
+                  leading: Icon(Icons.download_rounded, color: Colors.green),
+                  title: Text('Export Menu'),
+                  subtitle: Text('Download your menu as CSV or PDF'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'manage_categories',
+                child: ListTile(
+                  leading: Icon(Icons.category_rounded, color: Colors.purple),
+                  title: Text('Manage Categories'),
+                  subtitle: Text('Add, edit, or organize menu categories'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'bulk_availability',
+                child: ListTile(
+                  leading: Icon(Icons.visibility_off_rounded, color: Colors.orange),
+                  title: Text('Bulk Availability'),
+                  subtitle: Text('Toggle availability for multiple items'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'template_management',
+                child: ListTile(
+                  leading: Icon(Icons.layers_rounded, color: Colors.indigo),
+                  title: Text('Template Management'),
+                  subtitle: Text('Create and manage customization templates'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'bulk_templates',
+                child: ListTile(
+                  leading: Icon(Icons.auto_awesome_rounded, color: Colors.teal),
+                  title: Text('Bulk Templates'),
+                  subtitle: Text('Apply templates to multiple menu items'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -353,7 +435,6 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
                 ),
               ],
             ),
-      floatingActionButton: _buildEnhancedFAB(),
     );
   }
 
@@ -943,7 +1024,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
                 spacing: 12,
                 children: [
                   TextButton.icon(
-                    onPressed: () => _showBulkActions(),
+                    onPressed: () => _showComingSoon('Menu import'),
                     icon: Icon(
                       Icons.upload_file_rounded,
                       size: 18,
@@ -975,213 +1056,9 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
     );
   }
 
-  void _showBulkActions() {
-    final theme = Theme.of(context);
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.settings_rounded,
-                    color: theme.colorScheme.onPrimaryContainer,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Menu Actions',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'Manage your menu items in bulk',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    Icons.close_rounded,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
 
-            const SizedBox(height: 24),
 
-            // Action Items - Wrapped in Flexible to prevent overflow
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildBulkActionTile(
-                      icon: Icons.upload_file_rounded,
-                      iconColor: Colors.blue,
-                      title: 'Import Menu',
-                      subtitle: 'Upload menu items from CSV or Excel',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showComingSoon('Menu import');
-                      },
-                    ),
-
-                    _buildBulkActionTile(
-                      icon: Icons.download_rounded,
-                      iconColor: Colors.green,
-                      title: 'Export Menu',
-                      subtitle: 'Download your menu as CSV or PDF',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showComingSoon('Menu export');
-                      },
-                    ),
-
-                    _buildBulkActionTile(
-                      icon: Icons.category_rounded,
-                      iconColor: Colors.purple,
-                      title: 'Manage Categories',
-                      subtitle: 'Add, edit, or organize menu categories',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showComingSoon('Category management');
-                      },
-                    ),
-
-                    _buildBulkActionTile(
-                      icon: Icons.visibility_off_rounded,
-                      iconColor: Colors.orange,
-                      title: 'Bulk Availability',
-                      subtitle: 'Toggle availability for multiple items',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showComingSoon('Bulk availability toggle');
-                      },
-                    ),
-
-                    _buildBulkActionTile(
-                      icon: Icons.layers_rounded,
-                      iconColor: Colors.indigo,
-                      title: 'Template Management',
-                      subtitle: 'Create and manage customization templates',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _navigateToTemplateManagement();
-                      },
-                    ),
-
-                    _buildBulkActionTile(
-                      icon: Icons.auto_awesome_rounded,
-                      iconColor: Colors.teal,
-                      title: 'Bulk Templates',
-                      subtitle: 'Apply templates to multiple menu items',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _navigateToBulkTemplateApplication();
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBulkActionTile({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: theme.colorScheme.onSurfaceVariant,
-              size: 16,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _handleProductAction(String action, Product product) {
     switch (action) {
@@ -1318,61 +1195,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
     );
   }
 
-  Widget _buildEnhancedFAB() {
-    final theme = Theme.of(context);
-    final hasItems = _products.isNotEmpty;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Secondary FAB for bulk actions (only show if there are items)
-        if (hasItems) ...[
-          FloatingActionButton(
-            heroTag: 'vendor_menu_bulk_actions_fab',
-            onPressed: () => _showBulkActions(),
-            backgroundColor: theme.colorScheme.secondaryContainer,
-            foregroundColor: theme.colorScheme.onSecondaryContainer,
-            elevation: 2,
-            tooltip: 'More Actions',
-            child: Icon(
-              Icons.more_horiz_rounded,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // Primary FAB for adding items
-        FloatingActionButton.extended(
-          heroTag: 'vendor_menu_add_item_fab',
-          onPressed: () => _navigateToAddProduct(),
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          elevation: 6,
-          icon: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.onPrimary.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.add_rounded,
-              size: 20,
-              color: theme.colorScheme.onPrimary,
-            ),
-          ),
-          label: Text(
-            hasItems ? 'Add Item' : 'Add First Item',
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onPrimary,
-            ),
-          ),
-          extendedPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        ),
-      ],
-    );
-  }
 
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {

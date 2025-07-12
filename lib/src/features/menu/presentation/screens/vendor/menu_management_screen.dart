@@ -7,7 +7,7 @@ import '../../../data/services/menu_service.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 import '../../../../../shared/widgets/custom_button.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-import '../../../../vendors/presentation/screens/product_form_screen.dart';
+import 'product_form_screen.dart';
 import 'bulk_template_application_screen.dart';
 import 'template_management_screen.dart';
 

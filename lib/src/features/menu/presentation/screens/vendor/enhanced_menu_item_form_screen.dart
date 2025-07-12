@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/models/product.dart' as product_model;
 import '../../../data/models/customization_template.dart';
 
 import '../../widgets/vendor/enhanced_customization_section.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
+import '../../providers/customization_template_providers.dart';
+import '../../utils/template_debug_logger.dart';
 
 /// Enhanced menu item form screen demonstrating the new customization management
 class EnhancedMenuItemFormScreen extends ConsumerStatefulWidget {
@@ -32,10 +33,10 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
   final _descriptionController = TextEditingController();
   final _basePriceController = TextEditingController();
   
-  // Form state
-  List<product_model.MenuItemCustomization> _customizations = [];
+  // Form state - template-only
   List<CustomizationTemplate> _linkedTemplates = [];
   double get _basePrice => double.tryParse(_basePriceController.text) ?? 0.0;
+  String get _menuItemName => _nameController.text.trim().isEmpty ? 'New Menu Item' : _nameController.text.trim();
 
   @override
   void initState() {
@@ -56,7 +57,66 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
   Future<void> _loadData() async {
     // Load existing data if editing
     if (widget.menuItemId != null) {
-      // TODO: Load existing menu item data
+      final session = TemplateDebugLogger.createSession('enhanced_menu_form_load_data');
+      session.addEvent('Loading data for menu item: ${widget.menuItemId}');
+
+      try {
+        // Load existing menu item data
+        final menuItemRepository = ref.read(menuItemRepositoryProvider);
+        final menuItem = await menuItemRepository.getMenuItemById(widget.menuItemId!);
+
+        if (menuItem != null) {
+          session.addEvent('Menu item loaded: ${menuItem.name}');
+
+          // Populate form fields
+          _nameController.text = menuItem.name;
+          _descriptionController.text = menuItem.description ?? '';
+          _basePriceController.text = menuItem.basePrice.toString();
+
+          session.addEvent('Form fields populated');
+
+          // Load existing templates
+          debugPrint('🔧 [ENHANCED-MENU-FORM] About to load templates for menu item: ${widget.menuItemId}');
+          final templates = await ref.read(menuItemTemplatesProvider(widget.menuItemId!).future);
+
+          debugPrint('🔧 [ENHANCED-MENU-FORM] Templates loaded from provider: ${templates.length}');
+          for (final template in templates) {
+            debugPrint('🔧 [ENHANCED-MENU-FORM] Template: ${template.name} (${template.id}) with ${template.options.length} options');
+          }
+
+          setState(() {
+            _linkedTemplates = templates;
+          });
+
+          debugPrint('🔧 [ENHANCED-MENU-FORM] State updated with ${_linkedTemplates.length} templates');
+
+          session.addEvent('Templates loaded: ${templates.length}');
+
+          TemplateDebugLogger.logSuccess(
+            operation: 'enhanced_menu_form_load_data',
+            message: 'Successfully loaded menu item and ${templates.length} templates',
+            data: {
+              'menuItemId': widget.menuItemId,
+              'menuItemName': menuItem.name,
+              'templatesCount': templates.length,
+            },
+          );
+
+          session.complete('success');
+        } else {
+          session.addEvent('❌ Menu item not found');
+          session.complete('error: menu item not found');
+        }
+      } catch (e, stackTrace) {
+        TemplateDebugLogger.logError(
+          operation: 'enhanced_menu_form_load_data',
+          error: e,
+          stackTrace: stackTrace,
+          context: {'menuItemId': widget.menuItemId},
+        );
+
+        session.complete('error: $e');
+      }
     }
   }
 
@@ -200,16 +260,19 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
             );
           }
 
+          debugPrint('🔧 [ENHANCED-MENU-FORM] Building EnhancedCustomizationSection with ${_linkedTemplates.length} linked templates');
+          for (int i = 0; i < _linkedTemplates.length; i++) {
+            final template = _linkedTemplates[i];
+            debugPrint('🔧 [ENHANCED-MENU-FORM] Passing template $i: ${template.name} (${template.id}) with ${template.options.length} options');
+          }
+
           return EnhancedCustomizationSection(
             vendorId: snapshot.data!,
-            customizations: _customizations,
             linkedTemplates: _linkedTemplates,
-            onCustomizationsChanged: (customizations) {
-              setState(() {
-                _customizations = customizations;
-              });
-            },
+            menuItemName: _menuItemName,
+            basePrice: _basePrice,
             onTemplatesChanged: (templates) {
+              debugPrint('🔧 [ENHANCED-MENU-FORM] Templates changed: ${templates.length}');
               setState(() {
                 _linkedTemplates = templates;
               });
@@ -266,17 +329,17 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
                   
                   _buildPricingSummaryRow('Base Price', _basePrice),
                   
-                  if (_customizations.isNotEmpty) ...[
+                  if (_linkedTemplates.isNotEmpty) ...[
                     const Divider(),
                     Text(
-                      'Customization Impact',
+                      'Template Pricing Impact',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ..._customizations.map((customization) => 
-                      _buildCustomizationPricingRow(customization)
+                    ..._linkedTemplates.map((template) =>
+                      _buildTemplatePricingRow(template)
                     ),
                     const Divider(),
                     _buildTotalPriceRange(),
@@ -369,8 +432,8 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
     );
   }
 
-  Widget _buildCustomizationPricingRow(product_model.MenuItemCustomization customization) {
-    final options = customization.options;
+  Widget _buildTemplatePricingRow(CustomizationTemplate template) {
+    final options = template.options;
     if (options.isEmpty) return const SizedBox.shrink();
 
     final minPrice = options.map((opt) => opt.additionalPrice).reduce((min, price) => price < min ? price : min);
@@ -382,13 +445,41 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Text(
-              customization.name,
-              style: const TextStyle(fontSize: 14),
+            child: Row(
+              children: [
+                Icon(
+                  template.isSingleSelection ? Icons.radio_button_checked : Icons.check_box,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    template.name,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                if (template.isRequired)
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      'Required',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           Text(
-            minPrice == maxPrice 
+            minPrice == maxPrice
                 ? (minPrice == 0 ? 'Free' : '+RM ${maxPrice.toStringAsFixed(2)}')
                 : '+RM ${minPrice.toStringAsFixed(2)} - ${maxPrice.toStringAsFixed(2)}',
             style: TextStyle(
@@ -405,24 +496,28 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
     double minTotal = _basePrice;
     double maxTotal = _basePrice;
 
-    for (final customization in _customizations) {
-      if (customization.options.isNotEmpty) {
-        final minOptionPrice = customization.options
+    for (final template in _linkedTemplates) {
+      if (template.options.isNotEmpty) {
+        final minOptionPrice = template.options
             .map((opt) => opt.additionalPrice)
             .reduce((min, price) => price < min ? price : min);
-        final maxOptionPrice = customization.options
+        final maxOptionPrice = template.options
             .map((opt) => opt.additionalPrice)
             .reduce((max, price) => price > max ? price : max);
-        
-        minTotal += minOptionPrice;
-        if (customization.type == 'multiple') {
-          // For multiple choice, sum all options for max
-          maxTotal += customization.options
-              .map((opt) => opt.additionalPrice)
-              .fold(0.0, (sum, price) => sum + price);
-        } else {
+
+        if (template.isRequired) {
+          // For required templates, add minimum price to minTotal
+          minTotal += minOptionPrice;
+        }
+
+        if (template.isSingleSelection) {
           // For single choice, take the maximum
           maxTotal += maxOptionPrice;
+        } else {
+          // For multiple choice, sum all options for max
+          maxTotal += template.options
+              .map((opt) => opt.additionalPrice)
+              .fold(0.0, (sum, price) => sum + price);
         }
       }
     }

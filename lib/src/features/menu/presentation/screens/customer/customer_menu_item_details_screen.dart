@@ -31,7 +31,7 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
 
   int _quantity = 1;
   final Map<String, dynamic> _selectedCustomizations = {};
-  final double _additionalPrice = 0.0;
+  double _additionalPrice = 0.0; // Made mutable to update with customization prices
   String? _specialInstructions;
 
   @override
@@ -321,6 +321,20 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
   }
 
   Widget _buildCustomizationsSection(Product product, ThemeData theme) {
+    _logger.info('🔧 [MENU-ITEM-DETAILS] Building customizations section for product: ${product.name}');
+    _logger.info('🔧 [MENU-ITEM-DETAILS] Product has ${product.customizations.length} direct customizations');
+
+    // Log each customization for debugging
+    for (int i = 0; i < product.customizations.length; i++) {
+      final customization = product.customizations[i];
+      _logger.info('🔧 [MENU-ITEM-DETAILS] Customization $i: ${customization.name} (type: ${customization.type}, required: ${customization.isRequired}, options: ${customization.options.length})');
+
+      for (int j = 0; j < customization.options.length; j++) {
+        final option = customization.options[j];
+        _logger.info('🔧 [MENU-ITEM-DETAILS]   Option $j: ${option.name} (+RM${option.additionalPrice})');
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -337,11 +351,17 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
           directCustomizations: product.customizations,
           selectedCustomizations: _selectedCustomizations,
           onSelectionChanged: (customizations, additionalPrice) {
+            _logger.info('🔧 [MENU-ITEM-DETAILS] Customization selection changed: $customizations');
+            _logger.info('🔧 [MENU-ITEM-DETAILS] Additional price: RM$additionalPrice');
+            _logger.info('🔧 [MENU-ITEM-DETAILS] Previous additional price: RM$_additionalPrice');
             WidgetsBinding.instance.addPostFrameCallback((_) {
               setState(() {
                 _selectedCustomizations.clear();
                 _selectedCustomizations.addAll(customizations);
+                _additionalPrice = additionalPrice; // Update the additional price
               });
+              _logger.info('🔧 [MENU-ITEM-DETAILS] Updated additional price to: RM$_additionalPrice');
+              _logger.info('🔧 [MENU-ITEM-DETAILS] New total price: RM${(_quantity * (product.basePrice + _additionalPrice)).toStringAsFixed(2)}');
             });
           },
         ),
@@ -440,7 +460,11 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
             children: [
               IconButton(
                 onPressed: _quantity > (product.minOrderQuantity ?? 1)
-                    ? () => setState(() => _quantity--)
+                    ? () {
+                        setState(() => _quantity--);
+                        _logger.info('🔢 [MENU-ITEM-DETAILS] Quantity decreased to: $_quantity');
+                        _logger.info('🔢 [MENU-ITEM-DETAILS] New total: RM${(_quantity * (product.basePrice + _additionalPrice)).toStringAsFixed(2)}');
+                      }
                     : null,
                 icon: const Icon(Icons.remove_circle_outline),
               ),
@@ -457,7 +481,11 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
               ),
               IconButton(
                 onPressed: (product.maxOrderQuantity == null || _quantity < product.maxOrderQuantity!)
-                    ? () => setState(() => _quantity++)
+                    ? () {
+                        setState(() => _quantity++);
+                        _logger.info('🔢 [MENU-ITEM-DETAILS] Quantity increased to: $_quantity');
+                        _logger.info('🔢 [MENU-ITEM-DETAILS] New total: RM${(_quantity * (product.basePrice + _additionalPrice)).toStringAsFixed(2)}');
+                      }
                     : null,
                 icon: const Icon(Icons.add_circle_outline),
               ),
@@ -471,6 +499,14 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
   Widget _buildAddToCartBar(Product product, Vendor? vendor, ThemeData theme) {
     final itemPrice = product.basePrice + _additionalPrice;
     final totalPrice = itemPrice * _quantity;
+
+    // Debug logging for price calculation
+    _logger.info('💰 [MENU-ITEM-DETAILS] Price calculation:');
+    _logger.info('💰 [MENU-ITEM-DETAILS]   Base price: RM${product.basePrice.toStringAsFixed(2)}');
+    _logger.info('💰 [MENU-ITEM-DETAILS]   Additional price: RM${_additionalPrice.toStringAsFixed(2)}');
+    _logger.info('💰 [MENU-ITEM-DETAILS]   Item price: RM${itemPrice.toStringAsFixed(2)}');
+    _logger.info('💰 [MENU-ITEM-DETAILS]   Quantity: $_quantity');
+    _logger.info('💰 [MENU-ITEM-DETAILS]   Total price: RM${totalPrice.toStringAsFixed(2)}');
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -539,9 +575,13 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
 
   void _addToCart(Product product, Vendor? vendor) {
     _logger.info('🛒 [MENU-ITEM-DETAILS] Adding ${product.name} to cart');
+    _logger.info('🛒 [MENU-ITEM-DETAILS] Current customizations: $_selectedCustomizations');
+    _logger.info('🛒 [MENU-ITEM-DETAILS] Quantity: $_quantity');
+    _logger.info('🛒 [MENU-ITEM-DETAILS] Special instructions: $_specialInstructions');
 
     // Validate required customizations
     if (!_validateRequiredCustomizations(product)) {
+      _logger.warning('🛒 [MENU-ITEM-DETAILS] Validation failed for required customizations');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please select all required customizations'),
@@ -551,6 +591,8 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
       );
       return;
     }
+
+    _logger.info('🛒 [MENU-ITEM-DETAILS] Validation passed, proceeding to add to cart');
 
     // Validate vendor information
     if (vendor == null) {
@@ -603,20 +645,55 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
   }
 
   bool _validateRequiredCustomizations(Product product) {
+    _logger.info('🔍 [MENU-ITEM-DETAILS] Validating required customizations');
+
     for (final customization in product.customizations) {
       if (customization.isRequired) {
         final selection = _selectedCustomizations[customization.id];
-        if (selection == null) return false;
+        _logger.info('🔍 [MENU-ITEM-DETAILS] Checking customization ${customization.id} (${customization.name}): required=${customization.isRequired}, type=${customization.type}, selection=$selection');
 
-        if (customization.type == 'single' && (selection as String).isEmpty) {
+        if (selection == null) {
+          _logger.warning('🔍 [MENU-ITEM-DETAILS] Required customization ${customization.name} has no selection');
           return false;
         }
 
-        if (customization.type == 'multiple' && (selection as List).isEmpty) {
-          return false;
+        // Handle different customization types and their data structures
+        if (customization.type == 'single' || customization.type == 'single_select' || customization.type == 'radio') {
+          // For single selections, expect a Map with 'id' key
+          if (selection is Map<String, dynamic>) {
+            final selectedId = selection['id']?.toString();
+            if (selectedId == null || selectedId.isEmpty) {
+              _logger.warning('🔍 [MENU-ITEM-DETAILS] Required single customization ${customization.name} has empty selection');
+              return false;
+            }
+          } else if (selection is String) {
+            // Backward compatibility: handle old string format
+            if (selection.isEmpty) {
+              _logger.warning('🔍 [MENU-ITEM-DETAILS] Required single customization ${customization.name} has empty string selection');
+              return false;
+            }
+          } else {
+            _logger.warning('🔍 [MENU-ITEM-DETAILS] Required single customization ${customization.name} has invalid selection type: ${selection.runtimeType}');
+            return false;
+          }
+        }
+
+        if (customization.type == 'multiple' || customization.type == 'multi_select' || customization.type == 'checkbox') {
+          // For multiple selections, expect a List of Maps
+          if (selection is List) {
+            if (selection.isEmpty) {
+              _logger.warning('🔍 [MENU-ITEM-DETAILS] Required multiple customization ${customization.name} has empty list selection');
+              return false;
+            }
+          } else {
+            _logger.warning('🔍 [MENU-ITEM-DETAILS] Required multiple customization ${customization.name} has invalid selection type: ${selection.runtimeType}');
+            return false;
+          }
         }
       }
     }
+
+    _logger.info('🔍 [MENU-ITEM-DETAILS] All required customizations validated successfully');
     return true;
   }
 

@@ -8,6 +8,7 @@ import '../../../data/models/product.dart' as product_model;
 import '../../../data/models/customization_template.dart';
 import '../../../data/services/menu_service.dart';
 import '../../widgets/vendor/enhanced_customization_section.dart';
+import '../../providers/customization_template_providers.dart';
 import '../../../../../shared/widgets/custom_button.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
@@ -49,8 +50,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   List<String> _allergens = [];
   List<BulkPricingTier> _bulkPricingTiers = [];
   List<String> _imageUrls = [];
-  final List<product_model.MenuItemCustomization> _customizations = []; // Add state for customizations
-  final List<CustomizationTemplate> _linkedTemplates = []; // Add state for linked templates
+  final List<CustomizationTemplate> _linkedTemplates = []; // Template-only customization system
 
   // Loading states
   bool _isLoading = false;
@@ -82,21 +82,23 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final authState = ref.read(authStateProvider);
       final vendorId = authState.user?.id ?? 'vendor_001';
-      
+
       final menuService = MenuService();
       _categories = await menuService.getVendorCategories(vendorId);
-      
+
       if (widget.menuItemId != null) {
         _existingItem = await menuService.getMenuItem(widget.menuItemId!);
         if (_existingItem != null) {
           _populateFormWithExistingData();
+          // Load existing templates for this menu item
+          await _loadExistingTemplates();
         }
       }
-      
+
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
@@ -121,7 +123,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     _prepTimeController.text = item.preparationTimeMinutes.toString();
     _availableQuantityController.text = item.availableQuantity?.toString() ?? '';
     _tagsController.text = item.tags.join(', ');
-    
+
     _selectedCategory = item.category;
     _selectedUnit = item.unit ?? 'pax';
     _isHalalCertified = item.isHalalCertified;
@@ -130,6 +132,37 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     _allergens = List.from(item.allergens);
     _bulkPricingTiers = List.from(item.bulkPricingTiers);
     _imageUrls = List.from(item.imageUrls);
+  }
+
+  /// Load existing templates for the menu item
+  Future<void> _loadExistingTemplates() async {
+    if (widget.menuItemId == null) return;
+
+    debugPrint('🔧 [MENU-ITEM-FORM] Loading templates for menu item: ${widget.menuItemId}');
+
+    try {
+      // Use the menuItemTemplatesProvider to load templates
+      final templates = await ref.read(menuItemTemplatesProvider(widget.menuItemId!).future);
+
+      debugPrint('🔧 [MENU-ITEM-FORM] Templates loaded from provider: ${templates.length}');
+      for (final template in templates) {
+        debugPrint('🔧 [MENU-ITEM-FORM] Template: ${template.name} (${template.id}) with ${template.options.length} options');
+      }
+
+      setState(() {
+        _linkedTemplates.clear();
+        _linkedTemplates.addAll(templates);
+      });
+
+      debugPrint('🔧 [MENU-ITEM-FORM] State updated with ${_linkedTemplates.length} templates');
+
+    } catch (e, stackTrace) {
+      debugPrint('🔧 [MENU-ITEM-FORM] ❌ Failed to load templates: $e');
+      debugPrint('🔧 [MENU-ITEM-FORM] ❌ Stack trace: $stackTrace');
+
+      // Don't show error to user for template loading failure
+      // Just log it and continue with empty templates
+    }
   }
 
   @override
@@ -626,15 +659,11 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
         return EnhancedCustomizationSection(
           vendorId: snapshot.data!,
-          customizations: _customizations,
           linkedTemplates: _linkedTemplates,
-          onCustomizationsChanged: (customizations) {
-            setState(() {
-              _customizations.clear();
-              _customizations.addAll(customizations);
-            });
-          },
+          menuItemName: _nameController.text.trim().isEmpty ? 'New Menu Item' : _nameController.text.trim(),
+          basePrice: double.tryParse(_basePriceController.text) ?? 0.0,
           onTemplatesChanged: (templates) {
+            debugPrint('🔧 [MENU-ITEM-FORM] Templates changed: ${templates.length}');
             setState(() {
               _linkedTemplates.clear();
               _linkedTemplates.addAll(templates);
@@ -979,7 +1008,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
           tags: _tagsController.text.isNotEmpty ? _tagsController.text.split(',').map((e) => e.trim()).toList() : [],
           rating: 0.0,
           totalReviews: 0,
-          customizations: _customizations, // Add customizations to the updated product
+          customizations: [], // Note: Use template-based customizations via EnhancedCustomizationSection
         );
 
         print('🍽️ [MENU-FORM-DEBUG] Updated product data: ${updatedProduct.toJson()}');
@@ -1003,7 +1032,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
           tags: tags,
           rating: 0.0,
           totalReviews: 0,
-          customizations: _customizations, // Add customizations to the new product
+          customizations: [], // Note: Use template-based customizations via EnhancedCustomizationSection
         );
 
         print('🍽️ [MENU-FORM-DEBUG] Product data: ${newProduct.toJson()}');

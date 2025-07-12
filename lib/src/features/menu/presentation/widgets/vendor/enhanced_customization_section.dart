@@ -2,24 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/customization_template.dart';
-import '../../../data/models/product.dart' as product_model;
-import 'template_selection_widget.dart';
+import 'enhanced_template_selector.dart';
+import 'customer_preview_component.dart';
+import '../../utils/template_debug_logger.dart';
 
-/// Enhanced customization section that supports both templates and direct customizations
+/// Template-only customization section for menu items
 class EnhancedCustomizationSection extends ConsumerStatefulWidget {
   final String vendorId;
-  final List<product_model.MenuItemCustomization> customizations;
   final List<CustomizationTemplate> linkedTemplates;
-  final Function(List<product_model.MenuItemCustomization>) onCustomizationsChanged;
   final Function(List<CustomizationTemplate>) onTemplatesChanged;
+  final String menuItemName;
+  final double basePrice;
 
   const EnhancedCustomizationSection({
     super.key,
     required this.vendorId,
-    required this.customizations,
     required this.linkedTemplates,
-    required this.onCustomizationsChanged,
     required this.onTemplatesChanged,
+    required this.menuItemName,
+    required this.basePrice,
   });
 
   @override
@@ -29,12 +30,23 @@ class EnhancedCustomizationSection extends ConsumerStatefulWidget {
 class _EnhancedCustomizationSectionState extends ConsumerState<EnhancedCustomizationSection>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  bool _showTemplateSelection = false;
+  bool _showTemplateSelector = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    TemplateDebugLogger.logUIInteraction(
+      component: 'EnhancedCustomizationSection',
+      action: 'initialized',
+      context: {
+        'vendorId': widget.vendorId,
+        'menuItemName': widget.menuItemName,
+        'basePrice': widget.basePrice,
+        'linkedTemplatesCount': widget.linkedTemplates.length,
+      },
+    );
   }
 
   @override
@@ -47,156 +59,272 @@ class _EnhancedCustomizationSectionState extends ConsumerState<EnhancedCustomiza
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    debugPrint('🔧 [ENHANCED-CUSTOMIZATION-SECTION] Building with ${widget.linkedTemplates.length} linked templates');
+    for (int i = 0; i < widget.linkedTemplates.length; i++) {
+      final template = widget.linkedTemplates[i];
+      debugPrint('🔧 [ENHANCED-CUSTOMIZATION-SECTION] Template $i: ${template.name} (${template.id}) with ${template.options.length} options');
+    }
+
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Icon(Icons.tune, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Customizations',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _showTemplateSelection = !_showTemplateSelection;
-                    });
-                  },
-                  icon: Icon(_showTemplateSelection ? Icons.close : Icons.layers),
-                  tooltip: _showTemplateSelection ? 'Close Templates' : 'Apply Templates',
-                ),
-              ],
+      elevation: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          _buildHeader(theme),
+
+          // Template Selector (when expanded)
+          if (_showTemplateSelector) ...[
+            EnhancedTemplateSelector(
+              vendorId: widget.vendorId,
+              selectedTemplateIds: widget.linkedTemplates.map((t) => t.id).toList(),
+              onTemplatesSelected: _onTemplatesSelected,
+              showCreateOption: true,
+              showPreview: false, // We have a separate preview section
+              allowReordering: true,
             ),
-            
-            const SizedBox(height: 16),
-            
-            // Template Selection (when expanded)
-            if (_showTemplateSelection) ...[
-              TemplateSelectionWidget(
-                vendorId: widget.vendorId,
-                selectedTemplateIds: widget.linkedTemplates.map((t) => t.id).toList(),
-                onTemplatesSelected: _onTemplatesSelected,
-              ),
-              const SizedBox(height: 16),
-            ],
-            
-            // Tabs for Templates and Direct Customizations
-            TabBar(
-              controller: _tabController,
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.layers, size: 16),
-                      const SizedBox(width: 4),
-                      Text('Templates (${widget.linkedTemplates.length})'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.tune, size: 16),
-                      const SizedBox(width: 4),
-                      Text('Direct (${widget.customizations.length})'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Tab Content
-            SizedBox(
-              height: 300,
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildTemplatesTab(),
-                  _buildDirectCustomizationsTab(),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Summary
-            _buildSummary(),
+            const Divider(height: 1),
           ],
-        ),
+
+          // Main Content Tabs
+          TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.layers),
+                text: 'Applied Templates',
+              ),
+              Tab(
+                icon: Icon(Icons.preview),
+                text: 'Customer Preview',
+              ),
+            ],
+          ),
+
+          // Tab Content
+          SizedBox(
+            height: 400,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildAppliedTemplatesTab(),
+                _buildCustomerPreviewTab(),
+              ],
+            ),
+          ),
+
+          // Summary Footer
+          _buildSummaryFooter(theme),
+        ],
       ),
     );
   }
 
-  Widget _buildTemplatesTab() {
-    final theme = Theme.of(context);
-
-    if (widget.linkedTemplates.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.layers_outlined,
-              size: 48,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No Templates Applied',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Click the templates icon above to apply existing templates',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+  Widget _buildHeader(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(12),
         ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: widget.linkedTemplates.length,
-      itemBuilder: (context, index) {
-        final template = widget.linkedTemplates[index];
-        return _buildTemplateCard(template, index);
-      },
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.layers,
+            color: theme.colorScheme.primary,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Template Management',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                Text(
+                  'Configure customization options using reusable templates',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Template count badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${widget.linkedTemplates.length}',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Template selector toggle
+          IconButton(
+            onPressed: () {
+              debugPrint('🔧 [ENHANCED-CUSTOMIZATION] Toggling template selector: $_showTemplateSelector');
+              setState(() {
+                _showTemplateSelector = !_showTemplateSelector;
+              });
+            },
+            icon: Icon(_showTemplateSelector ? Icons.close : Icons.add),
+            tooltip: _showTemplateSelector ? 'Close Template Selector' : 'Add Templates',
+            style: IconButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+              foregroundColor: theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildTemplateCard(CustomizationTemplate template, int index) {
+  Widget _buildAppliedTemplatesTab() {
     final theme = Theme.of(context);
 
+    debugPrint('🔧 [ENHANCED-CUSTOMIZATION-SECTION] Building applied templates tab with ${widget.linkedTemplates.length} templates');
+
+    if (widget.linkedTemplates.isEmpty) {
+      debugPrint('🔧 [ENHANCED-CUSTOMIZATION-SECTION] No templates found, showing empty state');
+      return _buildEmptyTemplatesState(theme);
+    }
+
+    debugPrint('🔧 [ENHANCED-CUSTOMIZATION-SECTION] Building template list with ${widget.linkedTemplates.length} templates');
+
+    return Column(
+      children: [
+        // Reorder Instructions
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.drag_handle,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Templates are applied in the order shown. Drag to reorder how customers see them.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Templates List
+        Expanded(
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: widget.linkedTemplates.length,
+            onReorder: _reorderTemplates,
+            itemBuilder: (context, index) {
+              final template = widget.linkedTemplates[index];
+              return _buildAppliedTemplateCard(template, index, key: ValueKey(template.id));
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomerPreviewTab() {
+    return CustomerPreviewComponent(
+      selectedTemplates: widget.linkedTemplates,
+      menuItemName: widget.menuItemName,
+      basePrice: widget.basePrice,
+      showInteractive: true,
+    );
+  }
+
+  Widget _buildEmptyTemplatesState(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.layers_clear,
+            size: 64,
+            color: theme.colorScheme.outline,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No Templates Applied',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add templates to provide customization options for customers',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: () {
+              setState(() {
+                _showTemplateSelector = true;
+              });
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Templates'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppliedTemplateCard(CustomizationTemplate template, int index, {Key? key}) {
+    final theme = Theme.of(context);
+
+    debugPrint('🔧 [ENHANCED-CUSTOMIZATION-SECTION] Building applied template card for: ${template.name} (index: $index) with ${template.options.length} options');
+
     return Card(
+      key: key,
       margin: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
-        leading: Icon(
-          template.isSingleSelection ? Icons.radio_button_checked : Icons.check_box,
-          color: theme.colorScheme.primary,
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.drag_handle, size: 20),
+            const SizedBox(width: 8),
+            Icon(
+              template.isSingleSelection ? Icons.radio_button_checked : Icons.check_box,
+              color: theme.colorScheme.primary,
+            ),
+          ],
         ),
         title: Text(
           template.name,
           style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
         subtitle: Row(
@@ -229,12 +357,22 @@ class _EnhancedCustomizationSectionState extends ConsumerState<EnhancedCustomiza
                   ),
                 ),
               ),
+            const Spacer(),
+            Text(
+              '${template.options.length} options',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
         trailing: IconButton(
           icon: const Icon(Icons.remove_circle_outline),
           onPressed: () => _removeTemplate(index),
           tooltip: 'Remove Template',
+          style: IconButton.styleFrom(
+            foregroundColor: theme.colorScheme.error,
+          ),
         ),
         children: [
           Padding(
@@ -249,24 +387,34 @@ class _EnhancedCustomizationSectionState extends ConsumerState<EnhancedCustomiza
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 Text(
-                  'Options:',
+                  'Options Preview:',
                   style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
                   children: template.options.map((option) => Chip(
                     label: Text(option.name),
-                    avatar: option.hasAdditionalCost 
-                        ? Text(option.formattedPrice, style: const TextStyle(fontSize: 10))
+                    avatar: option.additionalPrice > 0
+                        ? CircleAvatar(
+                            radius: 8,
+                            backgroundColor: theme.colorScheme.primary,
+                            child: Text(
+                              '+${option.additionalPrice.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                            ),
+                          )
                         : null,
-                    backgroundColor: option.isDefault 
+                    backgroundColor: option.isDefault
                         ? theme.colorScheme.primaryContainer
                         : theme.colorScheme.surfaceContainerHighest,
                   )).toList(),
@@ -279,166 +427,183 @@ class _EnhancedCustomizationSectionState extends ConsumerState<EnhancedCustomiza
     );
   }
 
-  Widget _buildDirectCustomizationsTab() {
-    final theme = Theme.of(context);
-
-    if (widget.customizations.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.tune,
-              size: 48,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No Direct Customizations',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Add custom options specific to this menu item',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _addDirectCustomization,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Customization'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Direct Customizations',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _addDirectCustomization,
-              icon: const Icon(Icons.add),
-              label: const Text('Add'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: ListView.builder(
-            itemCount: widget.customizations.length,
-            itemBuilder: (context, index) {
-              final customization = widget.customizations[index];
-              return _buildDirectCustomizationCard(customization, index);
-            },
-          ),
-        ),
-      ],
+  Widget _buildSummaryFooter(ThemeData theme) {
+    final templateCount = widget.linkedTemplates.length;
+    final totalOptions = widget.linkedTemplates.fold<int>(
+      0,
+      (sum, template) => sum + template.options.length,
     );
-  }
-
-  Widget _buildDirectCustomizationCard(product_model.MenuItemCustomization customization, int index) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Text(customization.name),
-        subtitle: Text('${customization.type}, ${customization.isRequired ? "Required" : "Optional"}'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _editDirectCustomization(index),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => _removeDirectCustomization(index),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummary() {
-    final theme = Theme.of(context);
-    final totalCustomizations = widget.linkedTemplates.length + widget.customizations.length;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(12),
+          bottomRight: Radius.circular(12),
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: theme.colorScheme.primary, size: 20),
+          Icon(
+            Icons.info_outline,
+            color: theme.colorScheme.primary,
+            size: 20,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              totalCustomizations == 0
-                  ? 'No customizations configured'
-                  : '$totalCustomizations customization${totalCustomizations == 1 ? '' : 's'} configured (${widget.linkedTemplates.length} from templates, ${widget.customizations.length} direct)',
-              style: theme.textTheme.bodySmall?.copyWith(
+              templateCount == 0
+                  ? 'No templates applied. Add templates to provide customization options.'
+                  : '$templateCount template${templateCount == 1 ? '' : 's'} applied with $totalOptions total options',
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
+          if (templateCount > 0) ...[
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => _tabController.animateTo(1),
+              child: const Text('Preview'),
+            ),
+          ],
         ],
       ),
     );
   }
 
+  // Action Methods
   void _onTemplatesSelected(List<CustomizationTemplate> templates) {
-    widget.onTemplatesChanged(templates);
-    setState(() {
-      _showTemplateSelection = false;
-    });
-    
+    final session = TemplateDebugLogger.createSession('template_selection');
+
+    session.addEvent('Templates selection started');
+    session.addEvent('Previous templates count: ${widget.linkedTemplates.length}');
+    session.addEvent('New templates count: ${templates.length}');
+
+    // Log individual template changes
+    final previousIds = widget.linkedTemplates.map((t) => t.id).toSet();
+    final newIds = templates.map((t) => t.id).toSet();
+
+    final added = newIds.difference(previousIds);
+    final removed = previousIds.difference(newIds);
+
+    for (final templateId in added) {
+      final template = templates.firstWhere((t) => t.id == templateId);
+      TemplateDebugLogger.logTemplateSelection(
+        templateId: templateId,
+        templateName: template.name,
+        menuItemId: widget.menuItemName,
+        action: 'selected',
+        metadata: {
+          'category': _getCategoryFromTemplate(template),
+          'type': template.isSingleSelection ? 'single' : 'multiple',
+          'required': template.isRequired,
+          'optionsCount': template.options.length,
+        },
+      );
+    }
+
+    for (final templateId in removed) {
+      final template = widget.linkedTemplates.firstWhere((t) => t.id == templateId);
+      TemplateDebugLogger.logTemplateSelection(
+        templateId: templateId,
+        templateName: template.name,
+        menuItemId: widget.menuItemName,
+        action: 'deselected',
+      );
+    }
+
+    session.addEvent('Template changes processed');
+
+    try {
+      widget.onTemplatesChanged(templates);
+      session.addEvent('Parent callback executed successfully');
+
+      setState(() {
+        _showTemplateSelector = false;
+      });
+      session.addEvent('UI state updated');
+
+      TemplateDebugLogger.logSuccess(
+        operation: 'template_selection',
+        message: 'Templates updated successfully',
+        data: {
+          'totalTemplates': templates.length,
+          'addedCount': added.length,
+          'removedCount': removed.length,
+        },
+      );
+
+      session.complete('success');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Applied ${templates.length} template${templates.length == 1 ? '' : 's'}'),
+          action: templates.isNotEmpty ? SnackBarAction(
+            label: 'Preview',
+            onPressed: () => _tabController.animateTo(1),
+          ) : null,
+        ),
+      );
+    } catch (error, stackTrace) {
+      TemplateDebugLogger.logError(
+        operation: 'template_selection',
+        error: error,
+        stackTrace: stackTrace,
+        context: {
+          'templatesCount': templates.length,
+          'menuItemName': widget.menuItemName,
+        },
+      );
+
+      session.complete('error: $error');
+    }
+  }
+
+  String _getCategoryFromTemplate(CustomizationTemplate template) {
+    final name = template.name.toLowerCase();
+    if (name.contains('size') || name.contains('portion')) return 'Size Options';
+    if (name.contains('add') || name.contains('extra')) return 'Add-ons';
+    if (name.contains('spice') || name.contains('level')) return 'Spice Level';
+    if (name.contains('cook') || name.contains('style')) return 'Cooking Style';
+    if (name.contains('diet') || name.contains('vegan') || name.contains('halal')) return 'Dietary';
+    return 'Other';
+  }
+
+  void _removeTemplate(int index) {
+    debugPrint('🔧 [ENHANCED-CUSTOMIZATION] Removing template at index: $index');
+    final template = widget.linkedTemplates[index];
+    final updatedTemplates = List<CustomizationTemplate>.from(widget.linkedTemplates);
+    updatedTemplates.removeAt(index);
+    widget.onTemplatesChanged(updatedTemplates);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Applied ${templates.length} template${templates.length == 1 ? '' : 's'}'),
+        content: Text('Removed template: ${template.name}'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            final restoredTemplates = List<CustomizationTemplate>.from(updatedTemplates);
+            restoredTemplates.insert(index, template);
+            widget.onTemplatesChanged(restoredTemplates);
+          },
+        ),
       ),
     );
   }
 
-  void _removeTemplate(int index) {
-    final updatedTemplates = List<CustomizationTemplate>.from(widget.linkedTemplates);
-    updatedTemplates.removeAt(index);
-    widget.onTemplatesChanged(updatedTemplates);
-  }
-
-  void _addDirectCustomization() {
-    // TODO: Show dialog to add direct customization
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Direct customization creation coming soon')),
-    );
-  }
-
-  void _editDirectCustomization(int index) {
-    // TODO: Show dialog to edit direct customization
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Direct customization editing coming soon')),
-    );
-  }
-
-  void _removeDirectCustomization(int index) {
-    final updatedCustomizations = List<product_model.MenuItemCustomization>.from(widget.customizations);
-    updatedCustomizations.removeAt(index);
-    widget.onCustomizationsChanged(updatedCustomizations);
+  void _reorderTemplates(int oldIndex, int newIndex) {
+    debugPrint('🔧 [ENHANCED-CUSTOMIZATION] Reordering templates: $oldIndex -> $newIndex');
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final updatedTemplates = List<CustomizationTemplate>.from(widget.linkedTemplates);
+      final item = updatedTemplates.removeAt(oldIndex);
+      updatedTemplates.insert(newIndex, item);
+      widget.onTemplatesChanged(updatedTemplates);
+    });
   }
 }

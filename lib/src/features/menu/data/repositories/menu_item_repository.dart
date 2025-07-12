@@ -192,7 +192,9 @@ class MenuItemRepository extends BaseRepository {
 
       // Create product with customizations
       final product = Product.fromJson(response);
-      return product.copyWith(customizations: customizations);
+      final productWithCustomizations = product.copyWith(customizations: customizations);
+
+      return productWithCustomizations;
     });
   }
 
@@ -228,8 +230,6 @@ class MenuItemRepository extends BaseRepository {
 
       // Handle customizations separately if they exist
       if (menuItem.customizations.isNotEmpty) {
-        debugPrint('🔧 [CREATE-MENU-ITEM] About to save ${menuItem.customizations.length} customizations');
-        debugPrint('🔧 [CREATE-MENU-ITEM] Customizations data: ${menuItem.customizations.map((c) => {'name': c.name, 'id': c.id, 'options': c.options.map((o) => {'name': o.name, 'id': o.id}).toList()}).toList()}');
         await _saveMenuItemCustomizations(createdProduct.id, menuItem.customizations);
       }
 
@@ -240,8 +240,6 @@ class MenuItemRepository extends BaseRepository {
   /// Update menu item (vendor only)
   Future<Product> updateMenuItem(Product menuItem) async {
     return executeQuery(() async {
-      debugPrint('🔧 [UPDATE-MENU-ITEM] Starting update for menu item: ${menuItem.id}');
-
       final vendorId = await _getCurrentVendorId();
       if (vendorId == null) throw Exception('Vendor not found');
 
@@ -253,12 +251,8 @@ class MenuItemRepository extends BaseRepository {
 
       // Prepare menu item data excluding customizations (handled separately)
       final menuItemData = menuItem.toJson();
-      debugPrint('🔧 [UPDATE-MENU-ITEM] Original JSON data: $menuItemData');
-
       menuItemData.remove('customizations'); // Remove customizations field
       menuItemData['updated_at'] = DateTime.now().toIso8601String();
-
-      debugPrint('🔧 [UPDATE-MENU-ITEM] Final update data: $menuItemData');
 
       final response = await supabase
           .from('menu_items')
@@ -270,11 +264,8 @@ class MenuItemRepository extends BaseRepository {
       final updatedProduct = Product.fromJson(response);
 
       // Handle customizations separately
-      debugPrint('🔧 [UPDATE-MENU-ITEM] About to save ${menuItem.customizations.length} customizations');
-      debugPrint('🔧 [UPDATE-MENU-ITEM] Customizations data: ${menuItem.customizations.map((c) => {'name': c.name, 'id': c.id, 'options': c.options.map((o) => {'name': o.name, 'id': o.id}).toList()}).toList()}');
       await _saveMenuItemCustomizations(menuItem.id, menuItem.customizations);
 
-      debugPrint('🔧 [UPDATE-MENU-ITEM] Update completed successfully');
       return updatedProduct;
     });
   }
@@ -576,22 +567,19 @@ class MenuItemRepository extends BaseRepository {
     });
   }
 
-  /// Get customizations for a menu item
+  /// Get customizations for a menu item (including template-based customizations)
   Future<List<MenuItemCustomization>> getMenuItemCustomizations(String menuItemId) async {
-    print('🔧🔧🔧 getMenuItemCustomizations CALLED for menu item: $menuItemId');
-    debugPrint('🔧 getMenuItemCustomizations CALLED for menu item: $menuItemId');
     return executeQuery(() async {
+      // Get direct customizations
       final customizationsResponse = await supabase
           .from('menu_item_customizations')
           .select('*')
           .eq('menu_item_id', menuItemId)
           .order('display_order');
 
-      print('🔧🔧🔧 getMenuItemCustomizations: Found ${customizationsResponse.length} customizations for $menuItemId');
-      debugPrint('🔧 getMenuItemCustomizations: Found ${customizationsResponse.length} customizations for $menuItemId');
-
       final customizations = <MenuItemCustomization>[];
 
+      // Process direct customizations
       for (final customizationData in customizationsResponse) {
         final optionsResponse = await supabase
             .from('customization_options')
@@ -606,17 +594,68 @@ class MenuItemRepository extends BaseRepository {
           isDefault: optionData['is_default'] ?? false,
         )).toList();
 
-        customizations.add(MenuItemCustomization(
+        final customization = MenuItemCustomization(
           id: customizationData['id'],
           name: customizationData['name'],
           type: customizationData['type'] ?? 'single',
           isRequired: customizationData['is_required'] ?? false,
           options: options,
-        ));
+        );
+
+        customizations.add(customization);
       }
 
-      print('🔧🔧🔧 getMenuItemCustomizations: Returning ${customizations.length} customizations for $menuItemId');
-      debugPrint('🔧 getMenuItemCustomizations: Returning ${customizations.length} customizations for $menuItemId');
+      // Get template-based customizations
+
+      final templateLinksResponse = await supabase
+          .from('menu_item_template_links')
+          .select('''
+            display_order,
+            is_active,
+            customization_templates (
+              id,
+              name,
+              type,
+              is_required,
+              template_options (
+                id,
+                name,
+                additional_price,
+                is_default,
+                is_available,
+                display_order
+              )
+            )
+          ''')
+          .eq('menu_item_id', menuItemId)
+          .eq('is_active', true)
+          .order('display_order');
+
+      // Process template-based customizations
+      for (final linkData in templateLinksResponse) {
+        final templateData = linkData['customization_templates'];
+        if (templateData == null) continue;
+
+        final templateOptions = (templateData['template_options'] as List?)
+            ?.where((option) => option['is_available'] == true)
+            .map((optionData) => CustomizationOption(
+              id: optionData['id'],
+              name: optionData['name'],
+              additionalPrice: (optionData['additional_price'] ?? 0.0).toDouble(),
+              isDefault: optionData['is_default'] ?? false,
+            )).toList() ?? [];
+
+        final templateCustomization = MenuItemCustomization(
+          id: templateData['id'],
+          name: templateData['name'],
+          type: templateData['type'] ?? 'single',
+          isRequired: templateData['is_required'] ?? false,
+          options: templateOptions,
+        );
+
+        customizations.add(templateCustomization);
+      }
+
       return customizations;
     });
   }
@@ -647,15 +686,12 @@ class MenuItemRepository extends BaseRepository {
 
   /// Helper method to save menu item customizations
   Future<void> _saveMenuItemCustomizations(String menuItemId, List<MenuItemCustomization> customizations) async {
-    debugPrint('🔧 [CUSTOMIZATION-SAVE] Starting to save ${customizations.length} customizations for menu item: $menuItemId');
-
     // First, remove existing customizations for this menu item
     await _clearMenuItemCustomizations(menuItemId);
 
     // Add new customizations
     for (int i = 0; i < customizations.length; i++) {
       final customization = customizations[i];
-      debugPrint('🔧 [CUSTOMIZATION-SAVE] Processing customization $i: ${customization.name} (ID: ${customization.id})');
 
       // Insert customization and get the generated ID
       final customizationData = {
@@ -668,17 +704,13 @@ class MenuItemRepository extends BaseRepository {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      debugPrint('🔧 [CUSTOMIZATION-SAVE] Inserting customization data: $customizationData');
-
       final customizationResponse = await supabase.from('menu_item_customizations').insert(customizationData).select().single();
 
       final customizationId = customizationResponse['id'];
-      debugPrint('🔧 [CUSTOMIZATION-SAVE] Created customization with ID: $customizationId');
 
       // Insert customization options
       for (int j = 0; j < customization.options.length; j++) {
         final option = customization.options[j];
-        debugPrint('🔧 [CUSTOMIZATION-SAVE] Processing option $j: ${option.name} (ID: ${option.id})');
 
         final optionData = {
           'customization_id': customizationId,
@@ -690,13 +722,9 @@ class MenuItemRepository extends BaseRepository {
           'updated_at': DateTime.now().toIso8601String(),
         };
 
-        debugPrint('🔧 [CUSTOMIZATION-SAVE] Inserting option data: $optionData');
-
         await supabase.from('customization_options').insert(optionData);
       }
     }
-
-    debugPrint('🔧 [CUSTOMIZATION-SAVE] Successfully saved all customizations');
   }
 
   /// Helper method to clear existing customizations for a menu item

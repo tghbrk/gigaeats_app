@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/product.dart';
+import '../../../data/models/customization_template.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
+import '../../providers/customization_template_providers.dart';
+import '../../utils/template_debug_logger.dart';
 // TODO: Fix missing camera_permission_service import
 // import '../../../../core/services/camera_permission_service.dart';
-import '../../widgets/customization_dialog.dart';
+// Note: Enhanced customization section available in enhanced_menu_item_form_screen.dart
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId; // null for create, non-null for edit
@@ -56,7 +59,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   List<String> _allergens = [];
   // TODO: Restore _tags when tagging functionality is implemented
   // List<String> _tags = [];
-  List<MenuItemCustomization> _customizations = [];
+  List<CustomizationTemplate> _linkedTemplates = [];
   String? _imageUrl;
   List<String> _galleryImages = [];
 
@@ -111,6 +114,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           print('🔧 [PRODUCT-FORM-DEBUG] Populating form with existing data...');
           _populateFormWithExistingData();
           print('🔧 [PRODUCT-FORM-DEBUG] Form populated successfully');
+
+          // Load existing templates for this menu item
+          print('🔧 [PRODUCT-FORM-DEBUG] Loading existing templates...');
+          await _loadExistingTemplates();
+          print('🔧 [PRODUCT-FORM-DEBUG] Templates loaded successfully');
         } else {
           print('🔧 [PRODUCT-FORM-DEBUG] ❌ No product found with ID: ${widget.productId}');
         }
@@ -132,6 +140,61 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
         );
       }
+    }
+  }
+
+  /// Load existing templates for the menu item
+  Future<void> _loadExistingTemplates() async {
+    if (widget.productId == null) return;
+
+    final session = TemplateDebugLogger.createSession('load_existing_templates');
+    session.addEvent('Loading templates for menu item: ${widget.productId}');
+
+    try {
+      TemplateDebugLogger.logDatabaseOperation(
+        operation: 'read',
+        entityType: 'menu_item_templates',
+        entityId: widget.productId!,
+        additionalInfo: 'Loading existing templates for product form',
+      );
+
+      // Use the menuItemTemplatesProvider to load templates
+      final templates = await ref.read(menuItemTemplatesProvider(widget.productId!).future);
+
+      session.addEvent('Templates loaded from provider: ${templates.length}');
+
+      TemplateDebugLogger.logSuccess(
+        operation: 'load_existing_templates',
+        message: 'Successfully loaded ${templates.length} templates',
+        data: {
+          'menuItemId': widget.productId,
+          'templatesCount': templates.length,
+          'templateIds': templates.map((t) => t.id).toList(),
+        },
+      );
+
+      setState(() {
+        _linkedTemplates = templates;
+      });
+
+      session.addEvent('State updated with ${templates.length} templates');
+      session.complete('success');
+
+    } catch (e, stackTrace) {
+      TemplateDebugLogger.logError(
+        operation: 'load_existing_templates',
+        error: e,
+        stackTrace: stackTrace,
+        context: {
+          'menuItemId': widget.productId,
+        },
+      );
+
+      session.complete('error: $e');
+
+      // Don't show error to user for template loading failure
+      // Just log it and continue with empty templates
+      print('🔧 [PRODUCT-FORM-DEBUG] ❌ Failed to load templates: $e');
     }
   }
 
@@ -166,7 +229,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _allergens = List.from(product.allergens);
     // TODO: Restore when _tags is implemented
     // _tags = List.from(product.tags);
-    _customizations = List.from(product.customizations);
+    // Note: Templates will be loaded via _loadExistingTemplates() method
+    // _linkedTemplates will be populated by _loadExistingTemplates()
     _imageUrl = product.imageUrl;
     _galleryImages = List.from(product.galleryImages);
 
@@ -807,6 +871,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   Widget _buildCustomizationSection() {
+    debugPrint('🔧 [PRODUCT-FORM-DEBUG] Building customization section with ${_linkedTemplates.length} templates');
+    for (int i = 0; i < _linkedTemplates.length; i++) {
+      debugPrint('🔧 [PRODUCT-FORM-DEBUG] Template $i: ${_linkedTemplates[i].name} (${_linkedTemplates[i].id})');
+    }
+
     return Card(
       elevation: 2,
       shadowColor: Colors.black.withValues(alpha: 0.1),
@@ -819,43 +888,45 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.tune,
-                        color: Theme.of(context).colorScheme.secondary,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Customizations',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.tune,
+                    color: Theme.of(context).colorScheme.secondary,
+                    size: 20,
+                  ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: _addCustomization,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                    elevation: 1,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                const SizedBox(width: 12),
+                // Title - takes available space
+                Expanded(
+                  child: Text(
+                    'Customizations',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Badge - fixed width
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Templates',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -863,7 +934,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             ),
             const SizedBox(height: 20),
 
-            if (_customizations.isEmpty)
+            if (_linkedTemplates.isEmpty)
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -873,105 +944,211 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                   ),
                 ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.tune,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No customizations added yet',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                child: _linkedTemplates.isEmpty
+                    ? Column(
+                        children: [
+                          Icon(
+                            Icons.tune,
+                            size: 48,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No templates applied yet',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Use the Enhanced Menu Item Form for template-based customizations',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_linkedTemplates.length} Template${_linkedTemplates.length == 1 ? '' : 's'} Applied',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _linkedTemplates.length,
+                              itemBuilder: (context, index) {
+                                final template = _linkedTemplates[index];
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.tune,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    title: Text(
+                                      template.name,
+                                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: Wrap(
+                                      spacing: 8,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primaryContainer,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            template.isSingleSelection ? 'Single' : 'Multiple',
+                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                            ),
+                                          ),
+                                        ),
+                                        if (template.isRequired)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context).colorScheme.errorContainer,
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              'Required',
+                                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                color: Theme.of(context).colorScheme.onErrorContainer,
+                                              ),
+                                            ),
+                                          ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            '${template.options.length} options',
+                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Icon(
+                                      Icons.check_circle,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'Use the Enhanced Menu Item Form to modify templates',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Add customizations like size options, add-ons, or spice levels',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
               )
             else
-              ..._customizations.asMap().entries.map((entry) {
-                final index = entry.key;
-                final customization = entry.value;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                    ),
+              // Display templates when they exist
+              Container(
+                height: 200,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.settings,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      customization.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${customization.type} • ${customization.options.length} options',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        IconButton(
-                          onPressed: () => _editCustomization(index),
-                          icon: Icon(
-                            Icons.edit,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
+                        Icon(
+                          Icons.check_circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20,
                         ),
                         const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: () => _removeCustomization(index),
-                          icon: Icon(
-                            Icons.delete,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                        Text(
+                          '${_linkedTemplates.length} Template${_linkedTemplates.length == 1 ? '' : 's'} Applied',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                );
-              }),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _linkedTemplates.length,
+                        itemBuilder: (context, index) {
+                          final template = _linkedTemplates[index];
+                          debugPrint('🔧 [PRODUCT-FORM-DEBUG] Rendering template $index: ${template.name}');
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.tune,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              title: Text(
+                                template.name,
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${template.options.length} options',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 16,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -1170,42 +1347,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
-  void _addCustomization() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => CustomizationDialog(
-          onSave: (customization) {
-            setState(() {
-              _customizations.add(customization);
-            });
-            Navigator.of(context).pop();
-          },
-        ),
-      ),
-    );
-  }
-
-  void _editCustomization(int index) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => CustomizationDialog(
-          customization: _customizations[index],
-          onSave: (customization) {
-            setState(() {
-              _customizations[index] = customization;
-            });
-            Navigator.of(context).pop();
-          },
-        ),
-      ),
-    );
-  }
-
-  void _removeCustomization(int index) {
-    setState(() {
-      _customizations.removeAt(index);
-    });
-  }
+  // Note: Customization methods removed - use Enhanced Menu Item Form for template-based customizations
 
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) {
@@ -1265,7 +1407,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         imageUrl: _imageUrl,
         galleryImages: _galleryImages,
         isFeatured: _isFeatured,
-        customizations: _customizations,
+        customizations: [], // Note: Use Enhanced Menu Item Form for template-based customizations
         createdAt: _existingProduct?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );

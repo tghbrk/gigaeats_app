@@ -96,12 +96,12 @@ void main() {
 
       // Test with customer pickup (should not require address)
       final checkoutNotifier = mockContainer.read(checkoutFlowProvider.notifier);
-      checkoutNotifier.setDeliveryMethod(CustomerDeliveryMethod.customerPickup);
-      
+      checkoutNotifier.setDeliveryMethod(CustomerDeliveryMethod.pickup);
+
       final checkoutState = mockContainer.read(checkoutFlowProvider);
-      
+
       // For customer pickup, address should not be auto-populated
-      expect(checkoutState.selectedDeliveryMethod, equals(CustomerDeliveryMethod.customerPickup));
+      expect(checkoutState.selectedDeliveryMethod, equals(CustomerDeliveryMethod.pickup));
       
       // Test with delivery (should require address)
       checkoutNotifier.setDeliveryMethod(CustomerDeliveryMethod.delivery);

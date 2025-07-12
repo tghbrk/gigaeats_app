@@ -219,7 +219,7 @@ Future<void> _testCheckoutFlow(WidgetTester tester, ProviderContainer container)
   final checkoutNotifier = container.read(enhancedCheckoutFlowProvider.notifier);
 
   // Test delivery method selection
-  final deliveryMethod = CustomerDeliveryMethod.ownFleet;
+  final deliveryMethod = CustomerDeliveryMethod.delivery;
   checkoutNotifier.setDeliveryMethod(deliveryMethod);
   await tester.pump();
 
@@ -296,7 +296,7 @@ Future<void> _testOrderPlacement(WidgetTester tester, ProviderContainer containe
   // Validate order before placement
   final isValid = await orderPlacementNotifier.validateOrder(
     cartState: cartState,
-    deliveryMethod: checkoutState.selectedDeliveryMethod ?? CustomerDeliveryMethod.customerPickup,
+    deliveryMethod: checkoutState.selectedDeliveryMethod ?? CustomerDeliveryMethod.pickup,
     deliveryAddress: checkoutState.selectedAddress,
     scheduledDeliveryTime: checkoutState.scheduledDeliveryTime,
     paymentMethod: PaymentMethodType.card,

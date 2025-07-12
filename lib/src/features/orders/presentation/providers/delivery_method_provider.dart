@@ -18,7 +18,7 @@ class DeliveryMethodState {
   final DateTime lastUpdated;
 
   const DeliveryMethodState({
-    this.selectedMethod = CustomerDeliveryMethod.customerPickup,
+    this.selectedMethod = CustomerDeliveryMethod.pickup,
     this.availableMethods = const [],
     this.feeCalculations = const {},
     this.recommendation,
@@ -83,8 +83,8 @@ class DeliveryMethodState {
     if (availableMethods.isEmpty) return null;
 
     // Customer pickup is typically fastest
-    if (availableMethods.contains(CustomerDeliveryMethod.customerPickup)) {
-      return CustomerDeliveryMethod.customerPickup;
+    if (availableMethods.contains(CustomerDeliveryMethod.pickup)) {
+      return CustomerDeliveryMethod.pickup;
     }
 
     // Otherwise return first available method
@@ -151,9 +151,9 @@ class DeliveryMethodNotifier extends StateNotifier<DeliveryMethodState> {
       // Update selected method if current selection is not available
       CustomerDeliveryMethod selectedMethod = state.selectedMethod;
       if (!availableMethods.contains(selectedMethod)) {
-        selectedMethod = recommendation.hasRecommendation 
+        selectedMethod = recommendation.hasRecommendation
             ? recommendation.recommended!
-            : (availableMethods.isNotEmpty ? availableMethods.first : CustomerDeliveryMethod.customerPickup);
+            : (availableMethods.isNotEmpty ? availableMethods.first : CustomerDeliveryMethod.pickup);
       }
 
       state = state.copyWith(
@@ -246,19 +246,11 @@ class DeliveryMethodNotifier extends StateNotifier<DeliveryMethodState> {
   /// Map CustomerDeliveryMethod to service delivery method
   dynamic _mapToDeliveryMethod(CustomerDeliveryMethod method) {
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
       case CustomerDeliveryMethod.pickup:
         return 'customer_pickup';
-      case CustomerDeliveryMethod.salesAgentPickup:
-        return 'sales_agent_pickup';
-      case CustomerDeliveryMethod.ownFleet:
       case CustomerDeliveryMethod.delivery:
+      case CustomerDeliveryMethod.scheduled:
         return 'own_fleet';
-      case CustomerDeliveryMethod.thirdParty:
-      case CustomerDeliveryMethod.lalamove:
-        return 'third_party';
-      default:
-        return null;
     }
   }
 }

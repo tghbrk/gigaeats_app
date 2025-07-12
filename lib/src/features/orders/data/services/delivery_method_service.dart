@@ -44,8 +44,8 @@ class DeliveryMethodService {
       _logger.error('❌ [DELIVERY-SERVICE] Failed to get available methods', e);
       // Return default methods as fallback
       return [
-        CustomerDeliveryMethod.customerPickup,
-        CustomerDeliveryMethod.ownFleet,
+        CustomerDeliveryMethod.pickup,
+        CustomerDeliveryMethod.delivery,
       ];
     }
   }
@@ -58,14 +58,23 @@ class DeliveryMethodService {
     CustomerAddress? deliveryAddress,
   }) async {
     try {
+      _logger.info('🔍 [DELIVERY-SERVICE] === CHECKING METHOD AVAILABILITY ===');
+      _logger.info('🔍 [DELIVERY-SERVICE] Method: ${method.value}');
+      _logger.info('🔍 [DELIVERY-SERVICE] Vendor ID: $vendorId');
+      _logger.info('🔍 [DELIVERY-SERVICE] Order Amount: RM ${orderAmount.toStringAsFixed(2)}');
+      _logger.info('🔍 [DELIVERY-SERVICE] Delivery Address: ${deliveryAddress != null ? 'Provided' : 'Not provided'}');
+
       final vendorSettings = await _getVendorDeliverySettings(vendorId);
-      
-      return await _isMethodAvailableForOrder(
+
+      final isAvailable = await _isMethodAvailableForOrder(
         method: method,
         vendorSettings: vendorSettings,
         orderAmount: orderAmount,
         deliveryAddress: deliveryAddress,
       );
+
+      _logger.info('🔍 [DELIVERY-SERVICE] === AVAILABILITY RESULT: ${isAvailable ? 'AVAILABLE' : 'NOT AVAILABLE'} ===');
+      return isAvailable;
     } catch (e) {
       _logger.error('❌ [DELIVERY-SERVICE] Failed to check method availability', e);
       return false;
@@ -126,16 +135,41 @@ class DeliveryMethodService {
   /// Get vendor delivery settings
   Future<VendorDeliverySettings> _getVendorDeliverySettings(String vendorId) async {
     try {
+      _logger.info('🔍 [DELIVERY-SERVICE] === FETCHING VENDOR DELIVERY SETTINGS ===');
+      _logger.info('🔍 [DELIVERY-SERVICE] Vendor ID: $vendorId');
+      _logger.info('🔍 [DELIVERY-SERVICE] Querying vendor_delivery_settings table...');
+
       final response = await _supabase
           .from('vendor_delivery_settings')
           .select()
           .eq('vendor_id', vendorId)
           .single();
 
-      return VendorDeliverySettings.fromJson(response);
+      _logger.info('✅ [DELIVERY-SERVICE] Vendor settings found in database');
+      _logger.info('🔍 [DELIVERY-SERVICE] Raw response: $response');
+
+      final settings = VendorDeliverySettings.fromJson(response);
+
+      _logger.info('🔍 [DELIVERY-SERVICE] === PARSED VENDOR SETTINGS ===');
+      _logger.info('🔍 [DELIVERY-SERVICE] allows_customer_pickup: ${settings.allowsCustomerPickup}');
+      _logger.info('🔍 [DELIVERY-SERVICE] has_own_fleet: ${settings.hasOwnFleet}');
+      _logger.info('🔍 [DELIVERY-SERVICE] max_delivery_radius: ${settings.maxDeliveryRadius} km');
+      _logger.info('🔍 [DELIVERY-SERVICE] own_fleet_minimum_order: RM ${settings.ownFleetMinimumOrder}');
+      _logger.info('🔍 [DELIVERY-SERVICE] vendor_latitude: ${settings.latitude}');
+      _logger.info('🔍 [DELIVERY-SERVICE] vendor_longitude: ${settings.longitude}');
+
+      return settings;
     } catch (e) {
-      _logger.warning('Failed to get vendor delivery settings, using defaults: $e');
-      return VendorDeliverySettings.defaults();
+      _logger.error('❌ [DELIVERY-SERVICE] Failed to get vendor delivery settings: $e');
+      _logger.warning('⚠️ [DELIVERY-SERVICE] Using default settings (has_own_fleet: false)');
+
+      final defaults = VendorDeliverySettings.defaults();
+      _logger.info('🔍 [DELIVERY-SERVICE] === DEFAULT SETTINGS ===');
+      _logger.info('🔍 [DELIVERY-SERVICE] allows_customer_pickup: ${defaults.allowsCustomerPickup}');
+      _logger.info('🔍 [DELIVERY-SERVICE] has_own_fleet: ${defaults.hasOwnFleet}');
+      _logger.info('🔍 [DELIVERY-SERVICE] max_delivery_radius: ${defaults.maxDeliveryRadius} km');
+
+      return defaults;
     }
   }
 
@@ -146,19 +180,41 @@ class DeliveryMethodService {
     required double orderAmount,
     CustomerAddress? deliveryAddress,
   }) async {
+    _logger.info('🔍 [DELIVERY-SERVICE] === CHECKING METHOD: ${method.value} ===');
+
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
-        return vendorSettings.allowsCustomerPickup;
+      case CustomerDeliveryMethod.pickup:
+        _logger.info('🔍 [DELIVERY-SERVICE] Checking PICKUP availability');
+        _logger.info('🔍 [DELIVERY-SERVICE] allows_customer_pickup: ${vendorSettings.allowsCustomerPickup}');
+        final isAvailable = vendorSettings.allowsCustomerPickup;
+        _logger.info('🔍 [DELIVERY-SERVICE] PICKUP result: $isAvailable');
+        return isAvailable;
 
-      case CustomerDeliveryMethod.salesAgentPickup:
-        return vendorSettings.allowsSalesAgentPickup && 
-               orderAmount >= vendorSettings.salesAgentMinimumOrder;
+      case CustomerDeliveryMethod.delivery:
+        _logger.info('🔍 [DELIVERY-SERVICE] Checking DELIVERY availability');
+        _logger.info('🔍 [DELIVERY-SERVICE] has_own_fleet: ${vendorSettings.hasOwnFleet}');
+        _logger.info('🔍 [DELIVERY-SERVICE] delivery_address_provided: ${deliveryAddress != null}');
 
-      case CustomerDeliveryMethod.ownFleet:
-        if (!vendorSettings.hasOwnFleet || deliveryAddress == null) {
+        if (!vendorSettings.hasOwnFleet) {
+          _logger.warning('❌ [DELIVERY-SERVICE] DELIVERY not available: vendor has no own fleet');
           return false;
         }
-        
+
+        if (deliveryAddress == null) {
+          _logger.warning('❌ [DELIVERY-SERVICE] DELIVERY not available: no delivery address provided');
+          return false;
+        }
+
+        _logger.info('🔍 [DELIVERY-SERVICE] Checking delivery distance and minimum order...');
+        _logger.info('🔍 [DELIVERY-SERVICE] vendor_location: (${vendorSettings.latitude}, ${vendorSettings.longitude})');
+        _logger.info('🔍 [DELIVERY-SERVICE] delivery_location: (${deliveryAddress.latitude}, ${deliveryAddress.longitude})');
+
+        // Check if address has valid coordinates
+        if (deliveryAddress.latitude == null || deliveryAddress.longitude == null) {
+          _logger.warning('❌ [DELIVERY-SERVICE] DELIVERY not available: delivery address missing coordinates');
+          return false;
+        }
+
         // Check delivery radius
         final distance = await _calculateDistance(
           vendorSettings.latitude,
@@ -166,18 +222,67 @@ class DeliveryMethodService {
           deliveryAddress.latitude!,
           deliveryAddress.longitude!,
         );
-        
-        return distance <= vendorSettings.maxDeliveryRadius &&
-               orderAmount >= vendorSettings.ownFleetMinimumOrder;
 
-      case CustomerDeliveryMethod.thirdParty:
-      case CustomerDeliveryMethod.lalamove:
-        return vendorSettings.allowsThirdPartyDelivery && 
-               deliveryAddress != null &&
-               orderAmount >= vendorSettings.thirdPartyMinimumOrder;
+        _logger.info('🔍 [DELIVERY-SERVICE] calculated_distance: ${distance.toStringAsFixed(2)} km');
+        _logger.info('🔍 [DELIVERY-SERVICE] max_delivery_radius: ${vendorSettings.maxDeliveryRadius} km');
+        _logger.info('🔍 [DELIVERY-SERVICE] order_amount: RM ${orderAmount.toStringAsFixed(2)}');
+        _logger.info('🔍 [DELIVERY-SERVICE] minimum_order: RM ${vendorSettings.ownFleetMinimumOrder}');
 
-      default:
-        return false;
+        final withinRadius = distance <= vendorSettings.maxDeliveryRadius;
+        final meetsMinimum = orderAmount >= vendorSettings.ownFleetMinimumOrder;
+
+        _logger.info('🔍 [DELIVERY-SERVICE] within_radius: $withinRadius');
+        _logger.info('🔍 [DELIVERY-SERVICE] meets_minimum: $meetsMinimum');
+
+        final isAvailable = withinRadius && meetsMinimum;
+        _logger.info('🔍 [DELIVERY-SERVICE] DELIVERY result: $isAvailable');
+        return isAvailable;
+
+      case CustomerDeliveryMethod.scheduled:
+        _logger.info('🔍 [DELIVERY-SERVICE] Checking SCHEDULED DELIVERY availability');
+        _logger.info('🔍 [DELIVERY-SERVICE] has_own_fleet: ${vendorSettings.hasOwnFleet}');
+        _logger.info('🔍 [DELIVERY-SERVICE] delivery_address_provided: ${deliveryAddress != null}');
+
+        if (!vendorSettings.hasOwnFleet) {
+          _logger.warning('❌ [DELIVERY-SERVICE] SCHEDULED DELIVERY not available: vendor has no own fleet');
+          return false;
+        }
+
+        if (deliveryAddress == null) {
+          _logger.warning('❌ [DELIVERY-SERVICE] SCHEDULED DELIVERY not available: no delivery address provided');
+          return false;
+        }
+
+        _logger.info('🔍 [DELIVERY-SERVICE] Checking scheduled delivery distance and minimum order...');
+
+        // Check if address has valid coordinates
+        if (deliveryAddress.latitude == null || deliveryAddress.longitude == null) {
+          _logger.warning('❌ [DELIVERY-SERVICE] SCHEDULED DELIVERY not available: delivery address missing coordinates');
+          return false;
+        }
+
+        // Check distance (same as delivery)
+        final distance = await _calculateDistance(
+          vendorSettings.latitude,
+          vendorSettings.longitude,
+          deliveryAddress.latitude!,
+          deliveryAddress.longitude!,
+        );
+
+        _logger.info('🔍 [DELIVERY-SERVICE] calculated_distance: ${distance.toStringAsFixed(2)} km');
+        _logger.info('🔍 [DELIVERY-SERVICE] max_delivery_radius: ${vendorSettings.maxDeliveryRadius} km');
+        _logger.info('🔍 [DELIVERY-SERVICE] order_amount: RM ${orderAmount.toStringAsFixed(2)}');
+        _logger.info('🔍 [DELIVERY-SERVICE] minimum_order: RM ${vendorSettings.ownFleetMinimumOrder}');
+
+        final withinRadius = distance <= vendorSettings.maxDeliveryRadius;
+        final meetsMinimum = orderAmount >= vendorSettings.ownFleetMinimumOrder;
+
+        _logger.info('🔍 [DELIVERY-SERVICE] within_radius: $withinRadius');
+        _logger.info('🔍 [DELIVERY-SERVICE] meets_minimum: $meetsMinimum');
+
+        final isAvailable = withinRadius && meetsMinimum;
+        _logger.info('🔍 [DELIVERY-SERVICE] SCHEDULED DELIVERY result: $isAvailable');
+        return isAvailable;
     }
   }
 
@@ -192,25 +297,20 @@ class DeliveryMethodService {
 
     // Base scores
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
+      case CustomerDeliveryMethod.pickup:
         score = 70.0; // Good baseline
         break;
-      case CustomerDeliveryMethod.salesAgentPickup:
-        score = 80.0; // Personal service
-        break;
-      case CustomerDeliveryMethod.ownFleet:
+      case CustomerDeliveryMethod.delivery:
         score = 90.0; // Best control and tracking
         break;
-      case CustomerDeliveryMethod.thirdParty:
-        score = 60.0; // External dependency
+      case CustomerDeliveryMethod.scheduled:
+        score = 85.0; // Convenient timing
         break;
-      default:
-        score = 50.0;
     }
 
     // Adjust for order amount
     if (orderAmount >= 100.0) {
-      if (method == CustomerDeliveryMethod.ownFleet) {
+      if (method == CustomerDeliveryMethod.delivery || method == CustomerDeliveryMethod.scheduled) {
         score += 10.0; // Reward high-value orders with premium service
       }
     }
@@ -219,7 +319,7 @@ class DeliveryMethodService {
     if (preferredTime != null) {
       final hour = preferredTime.hour;
       if (hour >= 11 && hour <= 14) { // Lunch rush
-        if (method == CustomerDeliveryMethod.customerPickup) {
+        if (method == CustomerDeliveryMethod.pickup) {
           score += 15.0; // Faster during peak times
         }
       }
@@ -269,7 +369,7 @@ class DeliveryMethodService {
     final reasons = <String>[];
 
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
+      case CustomerDeliveryMethod.pickup:
         reasons.add('No delivery fee');
         reasons.add('Fastest option');
         if (orderAmount < 50.0) {
@@ -277,13 +377,7 @@ class DeliveryMethodService {
         }
         break;
 
-      case CustomerDeliveryMethod.salesAgentPickup:
-        reasons.add('Personal service');
-        reasons.add('Flexible timing');
-        reasons.add('Direct communication');
-        break;
-
-      case CustomerDeliveryMethod.ownFleet:
+      case CustomerDeliveryMethod.delivery:
         reasons.add('Real-time tracking');
         reasons.add('Reliable delivery');
         reasons.add('Professional service');
@@ -292,12 +386,10 @@ class DeliveryMethodService {
         }
         break;
 
-      case CustomerDeliveryMethod.thirdParty:
-        reasons.add('Wide coverage area');
-        reasons.add('Fast delivery');
-        break;
-
-      default:
+      case CustomerDeliveryMethod.scheduled:
+        reasons.add('Convenient timing');
+        reasons.add('Plan ahead');
+        reasons.add('Guaranteed delivery time');
         break;
     }
 

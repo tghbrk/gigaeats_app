@@ -14,6 +14,7 @@ import '../../data/models/driver_error.dart';
 import '../providers/driver_realtime_providers.dart';
 import '../widgets/driver_delivery_confirmation_dialog.dart';
 import '../widgets/vendor_pickup_confirmation_dialog.dart';
+import 'pre_navigation_overview_screen.dart' as nav;
 
 /// Driver delivery workflow screen with step-by-step process
 class DriverDeliveryWorkflowScreen extends ConsumerWidget {
@@ -990,57 +991,58 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _openMaps(String address) async {
-    final encodedAddress = Uri.encodeComponent(address);
-    final url = 'https://www.google.com/maps/search/?api=1&query=$encodedAddress';
 
-    try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      debugPrint('Error opening maps: $e');
-    }
-  }
 
   /// Start navigation to vendor and update status to on_route_to_vendor
   Future<void> _startNavigationToVendor(BuildContext context, WidgetRef ref, DriverOrder order) async {
     try {
-      final actions = ref.read(realtimeDriverOrderActionsProvider);
-
       debugPrint('DriverDeliveryWorkflow: Starting navigation to vendor for order ${order.id}');
 
-      // Update order status to on route to vendor
-      final result = await actions.updateOrderStatus(order.id, DriverOrderStatus.onRouteToVendor);
+      // Show pre-navigation overview screen
+      if (context.mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => nav.PreNavigationOverviewScreen(
+              order: order,
+              destination: nav.DriverNavigationDestination.vendor,
+              onNavigationStarted: () async {
+                // Update order status to on route to vendor when navigation actually starts
+                final actions = ref.read(realtimeDriverOrderActionsProvider);
+                final result = await actions.updateOrderStatus(order.id, DriverOrderStatus.onRouteToVendor);
 
-      result.when(
-        success: (success) async {
-          // Open maps for navigation
-          await _openMaps(order.vendorAddress);
-
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Navigation started to vendor'),
-                backgroundColor: Colors.blue,
-              ),
-            );
-          }
-
-          // Refresh the order details
-          ref.invalidate(realtimeOrderDetailsProvider(order.id));
-        },
-        error: (error) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: ${error.userFriendlyMessage}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        },
-      );
+                result.when(
+                  success: (success) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Navigation started to vendor'),
+                          backgroundColor: Colors.blue,
+                        ),
+                      );
+                    }
+                    // Refresh the order details
+                    ref.invalidate(realtimeOrderDetailsProvider(order.id));
+                  },
+                  error: (error) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error: ${error.userFriendlyMessage}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+              onCancel: () {
+                // User cancelled navigation, no status update needed
+                debugPrint('DriverDeliveryWorkflow: Navigation to vendor cancelled');
+              },
+            ),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('DriverDeliveryWorkflow: Error starting navigation to vendor: $e');
       if (context.mounted) {
@@ -1057,53 +1059,65 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
   /// Start navigation to customer and update status to on_route_to_customer if needed
   Future<void> _startNavigationToCustomer(BuildContext context, WidgetRef ref, DriverOrder order) async {
     try {
-      final actions = ref.read(realtimeDriverOrderActionsProvider);
-
       debugPrint('DriverDeliveryWorkflow: Starting navigation to customer for order ${order.id}');
       debugPrint('DriverDeliveryWorkflow: Current order status: ${order.status.displayName}');
 
-      // Check if we need to update the status
-      if (order.status == DriverOrderStatus.pickedUp) {
-        // Update order status to on route to customer
-        final result = await actions.updateOrderStatus(order.id, DriverOrderStatus.onRouteToCustomer);
-
-        result.when(
-          success: (success) async {
-            // Open maps for navigation
-            await _openMaps(order.deliveryAddress);
-
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Navigation started to customer'),
-                  backgroundColor: Colors.blue,
-                ),
-              );
-            }
-
-            // Refresh the order details
-            ref.invalidate(realtimeOrderDetailsProvider(order.id));
-          },
-          error: (error) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Error: ${error.userFriendlyMessage}'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
-        );
-      } else if (order.status == DriverOrderStatus.onRouteToCustomer) {
-        // Already on route to customer, just open maps
-        await _openMaps(order.deliveryAddress);
-
+      // Check if we can start navigation to customer
+      if (order.status == DriverOrderStatus.pickedUp || order.status == DriverOrderStatus.onRouteToCustomer) {
+        // Show pre-navigation overview screen
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Navigation opened to customer'),
-              backgroundColor: Colors.blue,
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => nav.PreNavigationOverviewScreen(
+                order: order,
+                destination: nav.DriverNavigationDestination.customer,
+                onNavigationStarted: () async {
+                  // Update order status to on route to customer if needed
+                  if (order.status == DriverOrderStatus.pickedUp) {
+                    final actions = ref.read(realtimeDriverOrderActionsProvider);
+                    final result = await actions.updateOrderStatus(order.id, DriverOrderStatus.onRouteToCustomer);
+
+                    result.when(
+                      success: (success) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Navigation started to customer'),
+                              backgroundColor: Colors.blue,
+                            ),
+                          );
+                        }
+                        // Refresh the order details
+                        ref.invalidate(realtimeOrderDetailsProvider(order.id));
+                      },
+                      error: (error) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: ${error.userFriendlyMessage}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                    );
+                  } else {
+                    // Already on route, just show success message
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Navigation opened to customer'),
+                          backgroundColor: Colors.blue,
+                        ),
+                      );
+                    }
+                  }
+                },
+                onCancel: () {
+                  // User cancelled navigation, no status update needed
+                  debugPrint('DriverDeliveryWorkflow: Navigation to customer cancelled');
+                },
+              ),
             ),
           );
         }

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gigaeats_app/src/features/orders/data/models/driver_order.dart' as OrderModels;
+import 'package:gigaeats_app/src/features/orders/data/models/driver_order.dart' as order_models;
 import 'package:gigaeats_app/src/features/drivers/data/models/driver_order.dart';
 import 'package:gigaeats_app/src/features/orders/data/models/driver_order_state_machine.dart';
 import 'package:gigaeats_app/src/features/drivers/data/models/pickup_confirmation.dart';
@@ -264,7 +264,7 @@ void main() {
 
     group('Driver Order Model Tests', () {
       test('should create driver order with all required fields', () {
-        final order = OrderModels.DriverOrder(
+        final order = order_models.DriverOrder(
           id: 'test-order-123',
           orderNumber: 'ORD-2024-001',
           vendorName: 'Test Restaurant',

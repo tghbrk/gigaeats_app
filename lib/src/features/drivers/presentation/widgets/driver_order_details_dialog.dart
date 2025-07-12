@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 import '../../../../core/utils/driver_workflow_logger.dart';
 import '../../../orders/data/models/order.dart';
@@ -675,7 +675,6 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
           Row(
             children: workflowSteps.asMap().entries.map((entry) {
               final index = entry.key;
-              final status = entry.value;
               final isCompleted = index < currentIndex;
               final isCurrent = index == currentIndex;
 
@@ -1106,26 +1105,7 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
     }
   }
 
-  /// Get the raw order status from the database
-  /// This bypasses the Order.status enum which defaults unknown statuses to 'pending'
-  Future<String> _getRawOrderStatusFromDatabase() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final response = await supabase
-          .from('orders')
-          .select('status')
-          .eq('id', order.id)
-          .single();
 
-      final rawStatus = response['status'] as String;
-      debugPrint('🚗 [DIALOG] Raw status from database for order ${order.id}: $rawStatus');
-      return rawStatus;
-    } catch (e) {
-      debugPrint('🚗 [DIALOG] Error fetching raw status: $e');
-      // Fallback to the parsed status if database call fails
-      return order.status.value;
-    }
-  }
 
   /// Get the raw order status - uses a cached value or fallback
   String _getRawOrderStatus() {

@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/order.dart';
 // import '../../utils/order_status_update_helper.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
-import '../../../../vendors/presentation/widgets/assign_driver_dialog.dart';
+
 
 import '../../../../../core/utils/responsive_utils.dart';
 
@@ -551,13 +551,6 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
             Colors.teal,
             () => _updateOrderStatus(order, OrderStatus.ready),
           ),
-        ] else if (order.status == OrderStatus.ready && order.vendorCanHandleDelivery) ...[
-          _buildActionButton(
-            'Assign Driver',
-            Icons.local_shipping,
-            Colors.indigo,
-            () => _showAssignDriverDialog(order),
-          ),
         ],
       ],
     );
@@ -789,21 +782,5 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
     }
   }
 
-  void _showAssignDriverDialog(Order order) {
-    showDialog(
-      context: context,
-      builder: (context) => AssignDriverDialog(
-        orderId: order.id, // TODO: Fix parameter name when AssignDriverDialog is updated
-        // order: order,
-        onDriverAssigned: (String driverId) {
-          // Refresh the orders list
-          if (kIsWeb) {
-            ref.invalidate(platformOrdersProvider);
-          } else {
-            ref.invalidate(ordersStreamProvider);
-          }
-        },
-      ),
-    );
-  }
+
 }

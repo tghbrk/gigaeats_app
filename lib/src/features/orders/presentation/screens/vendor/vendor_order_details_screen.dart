@@ -7,7 +7,7 @@ import '../../../data/models/order.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../../shared/widgets/error_widget.dart';
-import '../../../../vendors/presentation/widgets/assign_driver_dialog.dart';
+
 
 class VendorOrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -669,76 +669,87 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
         );
 
       case OrderStatus.ready:
-        return Column(
-          children: [
-            // Show different actions based on delivery method
-            if (order.vendorCanHandleDelivery) ...[
-              // Assign for Delivery Button (only for own fleet)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showAssignDriverDialog(order),
-                  icon: const Icon(Icons.local_shipping),
-                  label: const Text('Assign Driver'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.green.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 32,
               ),
-            ] else ...[
-              // For pickup orders, show disabled state with explanation
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                'Order Ready for ${_getDeliveryMethodText(order)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
                 ),
-                child: Column(
-                  children: [
-                    Icon(
-                      order.isCustomerPickup ? Icons.store : Icons.person,
-                      color: Colors.grey,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      order.isCustomerPickup
-                          ? 'Customer Pickup Order'
-                          : 'Sales Agent Pickup Order',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      order.isCustomerPickup
-                          ? 'Customer will collect this order'
-                          : 'Sales agent will collect this order',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _getReadyOrderMessage(order),
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontSize: 12,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
-          ],
+          ),
         );
 
       case OrderStatus.outForDelivery:
         return Column(
           children: [
-            // Note: Driver assignment and tracking features will be available after database migration
-
+            // Order is out for delivery - vendor can mark as delivered when completed
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.blue.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.local_shipping,
+                    color: Colors.blue,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Order Out for Delivery',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Driver is delivering this order to customer',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             // Mark as delivered button
             SizedBox(
               width: double.infinity,
@@ -749,21 +760,6 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Reassign driver button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _showAssignDriverDialog(order),
-                icon: const Icon(Icons.swap_horiz),
-                label: const Text('Reassign Driver'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.indigo,
-                  side: const BorderSide(color: Colors.indigo),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
@@ -1198,17 +1194,23 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
     }
   }
 
-  void _showAssignDriverDialog(Order order) {
-    showDialog(
-      context: context,
-      builder: (context) => AssignDriverDialog(
-        orderId: order.id, // TODO: Fix parameter name when AssignDriverDialog is updated
-        // order: order,
-        onDriverAssigned: (String driverId) {
-          // Refresh the order details
-          _loadOrderDetails();
-        },
-      ),
-    );
+  String _getDeliveryMethodText(Order order) {
+    if (order.isCustomerPickup) {
+      return 'Customer Pickup';
+    } else if (order.vendorCanHandleDelivery) {
+      return 'Delivery';
+    } else {
+      return 'Sales Agent Pickup';
+    }
+  }
+
+  String _getReadyOrderMessage(Order order) {
+    if (order.isCustomerPickup) {
+      return 'Customer will collect this order from your location';
+    } else if (order.vendorCanHandleDelivery) {
+      return 'Order is ready for delivery assignment';
+    } else {
+      return 'Sales agent will collect this order from your location';
+    }
   }
 }

@@ -697,7 +697,7 @@ class _DriverDeliveryConfirmationDialogState extends ConsumerState<DriverDeliver
                 const Spacer(),
                 if (_currentLocation != null)
                   Text(
-                    '±${_currentLocation!.accuracy?.toStringAsFixed(0)}m',
+                    '±${_currentLocation!.accuracy.toStringAsFixed(0)}m',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.green[700],
                       fontWeight: FontWeight.w500,

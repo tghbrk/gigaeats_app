@@ -3,11 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-// TODO: Restore when go_router is used
-// import 'package:go_router/go_router.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // UserRole import for role checking
 import '../../../../data/models/user_role.dart';
+
 // TODO: Restore when loading_widget is used
 // import '../../../../shared/widgets/loading_widget.dart';
 // TODO: Restore when profile_image_picker is used
@@ -16,7 +17,8 @@ import '../../../../data/models/user_role.dart';
 import '../../../../auth/presentation/providers/enhanced_auth_provider.dart';
 // Auth provider and utils
 import '../../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../core/utils/auth_utils.dart';
+
+
 // Driver domain and provider imports
 import '../../../domain/driver.dart';
 import '../../providers/driver_profile_provider.dart';
@@ -1108,7 +1110,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
     final daysSinceJoined = DateTime.now().difference(driver.createdAt).inDays;
     debugPrint('🏆 [VERIFICATION-BADGES] Days since joined: $daysSinceJoined');
     if (daysSinceJoined > 30) {
-      debugPrint('🏆 [VERIFICATION-BADGES] Adding Experienced badge (${daysSinceJoined} days)');
+      debugPrint('🏆 [VERIFICATION-BADGES] Adding Experienced badge ($daysSinceJoined days)');
       badges.add(_buildBadge(
         theme,
         icon: Icons.workspace_premium,
@@ -1807,14 +1809,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
   }
   */
 
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
+
 
   void _showError(String message) {
     ref.read(driverProfileErrorProvider.notifier).state = message;
@@ -1879,8 +1874,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              // TODO: Implement logout functionality
-              debugPrint('🚗 Logout functionality not implemented yet');
+              await _performLogout();
             },
             child: const Text(
               'Logout',
@@ -1892,89 +1886,120 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
     );
   }
 
-  /// Build error state for performance stats
-  Widget _buildErrorPerformanceStats(ThemeData theme) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                title: 'Total Deliveries',
-                value: '0',
-                icon: Icons.local_shipping,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                title: 'Rating',
-                value: '0.0',
-                icon: Icons.star,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                title: 'On-Time Rate',
-                value: '0%',
-                icon: Icons.timer,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                title: 'This Month',
-                value: 'RM 0',
-                icon: Icons.account_balance_wallet,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Unable to load performance data',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: Colors.grey[600],
+  /// Perform complete logout with driver-specific cleanup
+  Future<void> _performLogout() async {
+    try {
+      debugPrint('🚗 DriverProfileScreen: Starting logout process...');
+
+      // Show loading indicator
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
           ),
-        ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () {
-            // TODO: Implement performance stats refresh
-            debugPrint('🚗 Performance stats refresh not implemented yet');
-          },
-          icon: const Icon(Icons.refresh),
-          label: const Text('Retry'),
-        ),
-      ],
-    );
-  }
+        );
+      }
 
-  /// Format last updated timestamp
-  String _formatLastUpdated(DateTime lastUpdated) {
-    final now = DateTime.now();
-    final difference = now.difference(lastUpdated);
+      // Perform driver-specific cleanup before logout
+      await _cleanupDriverState();
 
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} min ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hr ago';
-    } else {
-      return '${difference.inDays} days ago';
+      // Perform logout using auth provider
+      await ref.read(authStateProvider.notifier).signOut();
+
+      // Navigate to login screen
+      if (mounted) {
+        context.go('/login');
+      }
+
+      debugPrint('🚗 DriverProfileScreen: Logout completed successfully');
+    } catch (e) {
+      debugPrint('🚗 DriverProfileScreen: Logout error: $e');
+
+      // Close loading dialog if still open
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logout failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Force logout even if cleanup fails
+      try {
+        await ref.read(authStateProvider.notifier).signOut();
+        if (mounted) {
+          context.go('/login');
+        }
+      } catch (forceLogoutError) {
+        debugPrint('🚗 DriverProfileScreen: Force logout also failed: $forceLogoutError');
+        // Navigate to login manually as last resort
+        if (mounted) {
+          context.go('/login');
+        }
+      }
     }
   }
 
+  /// Cleanup driver-specific state before logout
+  Future<void> _cleanupDriverState() async {
+    try {
+      debugPrint('🚗 DriverProfileScreen: Cleaning up driver state...');
+
+      // Set driver status to offline before logout
+      final authState = ref.read(authStateProvider);
+      if (authState.user?.role == UserRole.driver) {
+        final userId = authState.user?.id;
+        if (userId != null) {
+          try {
+            final supabase = Supabase.instance.client;
+            await supabase
+                .from('drivers')
+                .update({
+                  'status': 'offline',
+                  'last_active_at': DateTime.now().toIso8601String(),
+                })
+                .eq('user_id', userId);
+            debugPrint('🚗 DriverProfileScreen: Driver status set to offline');
+          } catch (e) {
+            debugPrint('🚗 DriverProfileScreen: Failed to set driver offline: $e');
+            // Continue with logout even if status update fails
+          }
+        }
+      }
+
+      // Invalidate all driver-related providers to trigger cleanup
+      // This will cancel any active subscriptions and reset state
+      ref.invalidate(currentDriverProfileProvider);
+
+      // Note: Other driver providers are autoDispose and will be cleaned up automatically
+      // when the auth state changes, including:
+      // - currentDriverStatusProvider
+      // - availableOrdersProvider
+      // - currentDriverOrderProvider
+      // - driverEarningsProvider
+      // - Any real-time subscriptions
+
+      debugPrint('🚗 DriverProfileScreen: Driver state cleanup completed');
+    } catch (e) {
+      debugPrint('🚗 DriverProfileScreen: Error during driver state cleanup: $e');
+      // Don't throw - continue with logout even if cleanup fails
+    }
+  }
+
+
+
+
+
+  /*
   Widget _buildTestProfileContent(ThemeData theme, bool isEditing) {
     debugPrint('🧪 [TEST-CONTENT] ===== BUILDING TEST PROFILE CONTENT =====');
     debugPrint('🧪 [TEST-CONTENT] Edit mode: $isEditing');
@@ -2305,6 +2330,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
       ),
     );
   }
+  */
 
   /*
   TODO: Restore when driverProfileAsync.when is implemented

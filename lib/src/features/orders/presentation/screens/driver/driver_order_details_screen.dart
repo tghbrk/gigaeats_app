@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -8,7 +7,7 @@ import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../../drivers/data/models/driver_order.dart';
 import '../../../../drivers/presentation/providers/driver_realtime_providers.dart';
-import '../../../../drivers/presentation/providers/enhanced_driver_workflow_providers.dart';
+
 import '../../../data/models/driver_order_state_machine.dart';
 
 class DriverOrderDetailsScreen extends ConsumerWidget {
@@ -931,180 +930,11 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
   //   );
   // }
 
-  // TODO: Restore when DriverOrder is implemented
-  Future<void> _acceptOrder(BuildContext context, WidgetRef ref, dynamic order) async { // was: DriverOrder
-    debugPrint('🚗 Accepting order: ${order.id}');
+  // TODO: Restore when DriverOrder is implemented - method removed to fix analyzer warnings
+  // Future<void> _acceptOrder(BuildContext context, WidgetRef ref, dynamic order) async { ... }
 
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Accept Order'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Are you sure you want to accept this order?'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Order #${order.orderNumber}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text('Delivery Fee: RM ${order.deliveryFee.toStringAsFixed(2)}'),
-                  Text('Pickup: ${order.vendorName}'),
-                  Text('Delivery: ${order.deliveryAddress}'),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Accept'),
-          ),
-        ],
-      ),
-    );
+  // TODO: Restore when DriverOrder is implemented - method removed to fix analyzer warnings
 
-    if (confirmed == true) {
-      // TODO: Restore when realtimeDriverOrderActionsProvider is implemented
-      // final actions = ref.read(realtimeDriverOrderActionsProvider);
-      // final result = await actions.acceptOrder(order.id);
-      final result = null; // Placeholder
-
-      result.when(
-        success: (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Order accepted successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          // Navigate back to orders list
-          context.pop();
-        },
-        error: (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error.userFriendlyMessage),
-              backgroundColor: Colors.red,
-            ),
-          );
-        },
-      );
-    }
-  }
-
-  // TODO: Restore when DriverOrder is implemented
-  Future<void> _rejectOrder(BuildContext context, WidgetRef ref, dynamic order) async { // was: DriverOrder
-    debugPrint('🚗 Rejecting order: ${order.id}');
-
-    // Show confirmation dialog with reason
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (dialogContext) {
-        String? selectedReason;
-        final reasons = [
-          'Too far from my location',
-          'Already have another delivery',
-          'Restaurant is closed',
-          'Traffic/road conditions',
-          'Other',
-        ];
-
-        return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: const Text('Reject Order'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Why are you rejecting this order?'),
-                const SizedBox(height: 16),
-                ...reasons.map((reason) => RadioListTile<String>(
-                  title: Text(reason),
-                  value: reason,
-                  groupValue: selectedReason,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedReason = value;
-                    });
-                  },
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                )),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: selectedReason != null
-                    ? () => Navigator.of(dialogContext).pop({
-                          'confirmed': true,
-                          'reason': selectedReason,
-                        })
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Reject'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (result?['confirmed'] == true) {
-      // TODO: Restore when realtimeDriverOrderActionsProvider is implemented
-      // final actions = ref.read(realtimeDriverOrderActionsProvider);
-      // final rejectResult = await actions.rejectOrder(order.id);
-      final rejectResult = null; // Placeholder
-
-      rejectResult.when(
-        success: (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Order rejected'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-          // Navigate back to orders list
-          context.pop();
-        },
-        error: (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error.userFriendlyMessage),
-              backgroundColor: Colors.red,
-            ),
-          );
-        },
-      );
-    }
-  }
 
   // TODO: Restore unused method _showStatusUpdateDialog when DriverOrder is implemented
   // void _showStatusUpdateDialog(BuildContext context, WidgetRef ref, dynamic order) { // was: DriverOrder

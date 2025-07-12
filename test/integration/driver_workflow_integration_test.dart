@@ -5,7 +5,7 @@ import 'package:gigaeats_app/src/features/drivers/data/models/driver_order.dart'
 import 'package:gigaeats_app/src/features/orders/data/models/driver_order_state_machine.dart';
 import 'package:gigaeats_app/src/features/orders/data/repositories/driver_order_repository.dart';
 import 'package:gigaeats_app/src/features/drivers/data/services/driver_realtime_service.dart';
-import 'package:gigaeats_app/src/features/drivers/presentation/providers/enhanced_driver_workflow_providers.dart';
+
 import 'package:gigaeats_app/src/features/drivers/data/services/enhanced_workflow_integration_service.dart';
 import 'package:gigaeats_app/src/features/drivers/data/services/driver_workflow_notification_service.dart';
 import 'package:gigaeats_app/src/features/drivers/data/services/notification_template_initialization_service.dart';

@@ -295,8 +295,8 @@ class EnhancedCartService {
       }
     }
 
-    // Distance validation for own fleet
-    if (method == CustomerDeliveryMethod.ownFleet && cartState.selectedAddress != null) {
+    // Distance validation for delivery methods
+    if ((method == CustomerDeliveryMethod.delivery || method == CustomerDeliveryMethod.scheduled) && cartState.selectedAddress != null) {
       // TODO: Implement distance calculation and validation
       // For now, we'll skip this validation
     }

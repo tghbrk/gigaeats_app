@@ -81,7 +81,7 @@ class _CustomizationSelectionWidgetState extends ConsumerState<CustomizationSele
       final selection = _selections[customizationId];
 
       if (selection != null) {
-        if (customization.type == 'single_select') {
+        if (customization.type == 'single' || customization.type == 'single_select') {
           // Handle new format (Map with price) and old format (String ID)
           if (selection is Map<String, dynamic> && selection.containsKey('price')) {
             additionalPrice += (selection['price'] as num).toDouble();
@@ -92,7 +92,7 @@ class _CustomizationSelectionWidgetState extends ConsumerState<CustomizationSele
               additionalPrice += option.additionalPrice;
             }
           }
-        } else if (customization.type == 'multi_select') {
+        } else if (customization.type == 'multiple' || customization.type == 'multi_select') {
           if (selection is List) {
             for (final item in selection) {
               // Handle new format (Map with price) and old format (String ID)
@@ -174,9 +174,9 @@ class _CustomizationSelectionWidgetState extends ConsumerState<CustomizationSele
               ],
             ),
             const SizedBox(height: 12),
-            if (customization.type == 'single_select')
+            if (customization.type == 'single' || customization.type == 'single_select')
               _buildSingleSelectOptions(customization)
-            else if (customization.type == 'multi_select')
+            else if (customization.type == 'multiple' || customization.type == 'multi_select')
               _buildMultiSelectOptions(customization),
           ],
         ),

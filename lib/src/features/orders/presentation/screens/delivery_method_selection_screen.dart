@@ -33,7 +33,7 @@ class _DeliveryMethodSelectionScreenState extends ConsumerState<DeliveryMethodSe
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   
-  CustomerDeliveryMethod _selectedMethod = CustomerDeliveryMethod.customerPickup;
+  CustomerDeliveryMethod _selectedMethod = CustomerDeliveryMethod.pickup;
   DeliveryMethodRecommendation? _recommendation;
   bool _isLoadingRecommendations = false;
   final AppLogger _logger = AppLogger();
@@ -315,42 +315,28 @@ class _DeliveryMethodSelectionScreenState extends ConsumerState<DeliveryMethodSe
 
   String _getMethodDetailedDescription(CustomerDeliveryMethod method) {
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
+      case CustomerDeliveryMethod.pickup:
         return 'You\'ll pick up your order directly from the restaurant. This is the fastest option with no delivery fees. You\'ll receive a notification when your order is ready for pickup.';
-      
-      case CustomerDeliveryMethod.salesAgentPickup:
-        return 'Our sales agent will collect your order from the restaurant and deliver it to you personally. This option includes direct communication and flexible timing arrangements.';
-      
-      case CustomerDeliveryMethod.ownFleet:
+
+      case CustomerDeliveryMethod.delivery:
         return 'Your order will be delivered by our professional delivery team. Enjoy real-time tracking, reliable service, and contactless delivery options.';
-      
-      case CustomerDeliveryMethod.thirdParty:
-        return 'Your order will be delivered by our trusted third-party delivery partners. This option provides wide coverage and fast delivery times.';
-      
-      default:
-        return method.description;
+
+      case CustomerDeliveryMethod.scheduled:
+        return 'Schedule your delivery for a convenient time. Perfect for planning ahead with guaranteed delivery at your preferred time slot.';
     }
   }
 
   List<String> _getMethodFeatures(CustomerDeliveryMethod method) {
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
+      case CustomerDeliveryMethod.pickup:
         return [
           'No delivery fee',
           'Fastest preparation time',
           'Direct interaction with restaurant',
           'Flexible pickup timing',
         ];
-      
-      case CustomerDeliveryMethod.salesAgentPickup:
-        return [
-          'Personal service',
-          'Direct communication',
-          'Flexible delivery timing',
-          'Order verification at pickup',
-        ];
-      
-      case CustomerDeliveryMethod.ownFleet:
+
+      case CustomerDeliveryMethod.delivery:
         return [
           'Real-time order tracking',
           'Professional delivery team',
@@ -358,17 +344,15 @@ class _DeliveryMethodSelectionScreenState extends ConsumerState<DeliveryMethodSe
           'Reliable delivery times',
           'Customer support available',
         ];
-      
-      case CustomerDeliveryMethod.thirdParty:
+
+      case CustomerDeliveryMethod.scheduled:
         return [
-          'Wide delivery coverage',
-          'Fast delivery times',
-          'Multiple delivery options',
-          'Experienced delivery partners',
+          'Choose your delivery time',
+          'Plan ahead convenience',
+          'Guaranteed time slot',
+          'Real-time tracking',
+          'Professional delivery team',
         ];
-      
-      default:
-        return [];
     }
   }
 

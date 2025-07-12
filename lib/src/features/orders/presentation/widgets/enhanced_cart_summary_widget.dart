@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/enhanced_cart_models.dart';
 import '../providers/enhanced_cart_provider.dart';
 import '../controllers/cart_operations_controller.dart';
+import '../providers/delivery_pricing_provider.dart';
 import '../../../core/utils/logger.dart';
 
 /// Enhanced cart summary widget with comprehensive pricing breakdown
@@ -213,13 +214,50 @@ class EnhancedCartSummaryWidget extends ConsumerWidget {
   }
 
   Widget _buildDeliverySection(ThemeData theme, EnhancedCartState cartState) {
-    return _buildSummaryRow(
-      theme,
-      'Delivery Fee',
-      cartState.deliveryFee > 0 
-          ? 'RM ${cartState.deliveryFee.toStringAsFixed(2)}'
-          : 'FREE',
-      isHighlight: cartState.deliveryFee == 0,
+    return Consumer(
+      builder: (context, ref, child) {
+        // Watch the delivery pricing provider for consistency
+        final pricingState = ref.watch(deliveryPricingProvider);
+
+        // Use pricing provider data if available, otherwise fall back to cart state
+        final deliveryFee = pricingState.calculation?.finalFee ?? cartState.deliveryFee;
+        final isFree = deliveryFee <= 0;
+
+        return Column(
+          children: [
+            _buildSummaryRow(
+              theme,
+              'Delivery Fee',
+              isFree ? 'FREE' : 'RM ${deliveryFee.toStringAsFixed(2)}',
+              isHighlight: isFree,
+            ),
+            // Show calculation status if pricing is being calculated
+            if (pricingState.isCalculating) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Updating...',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 

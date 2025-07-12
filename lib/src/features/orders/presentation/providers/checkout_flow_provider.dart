@@ -80,7 +80,7 @@ class CheckoutFlowState {
     
     return CustomerDeliveryMethod.values.firstWhere(
       (method) => method.value == methodValue,
-      orElse: () => CustomerDeliveryMethod.customerPickup,
+      orElse: () => CustomerDeliveryMethod.pickup,
     );
   }
 

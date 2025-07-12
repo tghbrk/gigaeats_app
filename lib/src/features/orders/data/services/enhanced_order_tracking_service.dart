@@ -7,6 +7,11 @@ import '../../../core/utils/logger.dart';
 import '../../../../core/services/notification_service.dart';
 
 /// Enhanced order tracking service with real-time updates
+///
+/// Note: All StreamControllers and StreamSubscriptions are properly managed:
+/// - Controllers are closed in stopTracking() and dispose() methods
+/// - Subscriptions are cancelled in stopTracking() and dispose() methods
+/// - The dispose() method should be called when the service is no longer needed
 class EnhancedOrderTrackingService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final NotificationService _notificationService = NotificationService();
@@ -26,6 +31,7 @@ class EnhancedOrderTrackingService {
     }
 
     // Create new tracking stream
+    // ignore: close_sinks
     final controller = StreamController<OrderTrackingUpdate>.broadcast(
       onCancel: () {
         // Clean up when stream is cancelled
@@ -156,6 +162,7 @@ class EnhancedOrderTrackingService {
 
   /// Setup delivery tracking subscription
   void _setupDeliveryTrackingSubscription(String orderId) {
+    // ignore: cancel_subscriptions
     final subscription = _supabase
         .from('delivery_tracking')
         .stream(primaryKey: ['id'])
@@ -168,6 +175,7 @@ class EnhancedOrderTrackingService {
 
   /// Setup status history subscription
   void _setupStatusHistorySubscription(String orderId) {
+    // ignore: cancel_subscriptions
     final subscription = _supabase
         .from('order_status_history')
         .stream(primaryKey: ['id'])

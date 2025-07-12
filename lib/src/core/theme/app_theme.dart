@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../features/menu/presentation/theme/template_theme_extension.dart';
+
 class AppTheme {
   // Color Palette - Malaysian-inspired colors
   static const Color primaryColor = Color(0xFF1B5E20); // Deep Green
@@ -57,6 +59,9 @@ class AppTheme {
       onError: textOnPrimary,
     ),
     scaffoldBackgroundColor: backgroundColor,
+    extensions: const [
+      TemplateThemeExtension.light,
+    ],
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryColor,
       foregroundColor: textOnPrimary,
@@ -250,5 +255,8 @@ class AppTheme {
       onError: textOnPrimary,
     ),
     scaffoldBackgroundColor: const Color(0xFF121212),
+    extensions: const [
+      TemplateThemeExtension.dark,
+    ],
   );
 }

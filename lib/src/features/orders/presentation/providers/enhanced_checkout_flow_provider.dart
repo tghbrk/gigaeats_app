@@ -88,21 +88,6 @@ class EnhancedCheckoutFlowNotifier extends StateNotifier<EnhancedCheckoutFlowSta
       double fee = 0.0;
       
       switch (state.selectedDeliveryMethod!) {
-        case CustomerDeliveryMethod.customerPickup:
-          fee = 0.0;
-          break;
-        case CustomerDeliveryMethod.salesAgentPickup:
-          fee = 5.0;
-          break;
-        case CustomerDeliveryMethod.ownFleet:
-          fee = 10.0;
-          break;
-        case CustomerDeliveryMethod.lalamove:
-          fee = 15.0;
-          break;
-        case CustomerDeliveryMethod.thirdParty:
-          fee = 12.0;
-          break;
         case CustomerDeliveryMethod.pickup:
           fee = 0.0;
           break;

@@ -403,18 +403,13 @@ class EnhancedCartNotifier extends StateNotifier<EnhancedCartState> {
 
   /// Map CustomerDeliveryMethod to DeliveryMethod for service calls
   dynamic _mapToDeliveryMethod(CustomerDeliveryMethod method) {
-    // This is a temporary mapping - in a real implementation, 
+    // This is a temporary mapping - in a real implementation,
     // you'd want to use a proper enum mapping
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
       case CustomerDeliveryMethod.pickup:
         return 'customer_pickup';
-      case CustomerDeliveryMethod.salesAgentPickup:
-        return 'sales_agent_pickup';
-      case CustomerDeliveryMethod.ownFleet:
       case CustomerDeliveryMethod.delivery:
-        return 'own_fleet';
-      default:
+      case CustomerDeliveryMethod.scheduled:
         return 'own_fleet';
     }
   }
@@ -454,17 +449,11 @@ class EnhancedCartNotifier extends StateNotifier<EnhancedCartState> {
   double _calculateDefaultDeliveryFee(CustomerDeliveryMethod method) {
     switch (method) {
       case CustomerDeliveryMethod.pickup:
-      case CustomerDeliveryMethod.customerPickup:
         return 0.0;
       case CustomerDeliveryMethod.delivery:
-      case CustomerDeliveryMethod.ownFleet:
-      case CustomerDeliveryMethod.lalamove:
-      case CustomerDeliveryMethod.thirdParty:
         return 5.0; // Default delivery fee
       case CustomerDeliveryMethod.scheduled:
         return 7.0; // Slightly higher for scheduled delivery
-      case CustomerDeliveryMethod.salesAgentPickup:
-        return 3.0; // Reduced fee for sales agent pickup
     }
   }
 }

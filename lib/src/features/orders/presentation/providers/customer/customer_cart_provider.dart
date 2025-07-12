@@ -33,7 +33,7 @@ class CustomerCartState {
   const CustomerCartState({
     required this.baseCart,
     this.selectedAddress,
-    this.deliveryMethod = CustomerDeliveryMethod.customerPickup,
+    this.deliveryMethod = CustomerDeliveryMethod.pickup,
     this.scheduledDeliveryTime,
     this.specialInstructions,
     this.selectedPaymentMethod,
@@ -506,6 +506,8 @@ class CustomerCartNotifier extends StateNotifier<CustomerCartState> {
     //   }
     // }
   }
+
+
 }
 
 // Customer cart provider

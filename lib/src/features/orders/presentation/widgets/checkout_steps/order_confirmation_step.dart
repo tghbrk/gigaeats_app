@@ -413,14 +413,14 @@ class _OrderConfirmationStepState extends ConsumerState<OrderConfirmationStep>
 
   String _getEstimatedDeliveryTime(dynamic deliveryMethod) {
     if (deliveryMethod == null) return 'To be confirmed';
-    
+
     switch (deliveryMethod.toString()) {
-      case 'CustomerDeliveryMethod.customerPickup':
+      case 'CustomerDeliveryMethod.pickup':
         return '15-30 minutes';
-      case 'CustomerDeliveryMethod.salesAgentPickup':
-        return '30-45 minutes';
-      case 'CustomerDeliveryMethod.ownFleet':
+      case 'CustomerDeliveryMethod.delivery':
         return '45-60 minutes';
+      case 'CustomerDeliveryMethod.scheduled':
+        return 'At scheduled time';
       default:
         return '30-60 minutes';
     }

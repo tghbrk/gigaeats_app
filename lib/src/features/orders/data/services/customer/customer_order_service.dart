@@ -1082,20 +1082,11 @@ class CustomerOrderService {
 
     String result;
     switch (method) {
-      case CustomerDeliveryMethod.customerPickup:
       case CustomerDeliveryMethod.pickup:
         result = 'customer_pickup';
         break;
-      case CustomerDeliveryMethod.salesAgentPickup:
-        result = 'sales_agent_pickup';
-        break;
-      case CustomerDeliveryMethod.ownFleet:
       case CustomerDeliveryMethod.delivery:
         result = 'own_fleet';
-        break;
-      case CustomerDeliveryMethod.lalamove:
-      case CustomerDeliveryMethod.thirdParty:
-        result = 'lalamove';
         break;
       case CustomerDeliveryMethod.scheduled:
         // For scheduled delivery, default to own fleet

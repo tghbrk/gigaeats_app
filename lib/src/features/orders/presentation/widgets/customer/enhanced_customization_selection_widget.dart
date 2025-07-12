@@ -39,34 +39,38 @@ class _EnhancedCustomizationSelectionWidgetState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Get linked templates for this menu item
     final templatesAsync = ref.watch(menuItemTemplatesProvider(widget.menuItemId));
 
     return templatesAsync.when(
-      data: (templates) => _buildCustomizationSections(templates, theme),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => _buildErrorState(error.toString(), theme),
+      data: (templates) {
+        return _buildCustomizationSections(templates, theme);
+      },
+      loading: () {
+        return const Center(child: CircularProgressIndicator());
+      },
+      error: (error, stack) {
+        return _buildErrorState(error.toString(), theme);
+      },
     );
   }
 
   Widget _buildCustomizationSections(List<CustomizationTemplate> templates, ThemeData theme) {
     final allCustomizations = <Widget>[];
 
-    // Add template-based customizations first
+    // Prioritize template-based customizations over direct customizations
+    // to avoid duplication since templates get converted to direct customizations
     if (templates.isNotEmpty) {
       allCustomizations.add(_buildTemplateSection(templates, theme));
-    }
-
-    // Add direct customizations
-    if (widget.directCustomizations.isNotEmpty) {
+    } else if (widget.directCustomizations.isNotEmpty) {
+      // Only show direct customizations if there are no templates
       allCustomizations.add(_buildDirectCustomizationsSection(theme));
     }
 
     if (allCustomizations.isEmpty) {
       return _buildNoCustomizationsState(theme);
     }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: allCustomizations,
@@ -232,6 +236,7 @@ class _EnhancedCustomizationSelectionWidgetState
   }
 
   Widget _buildDirectCustomizationsSection(ThemeData theme) {
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -243,8 +248,8 @@ class _EnhancedCustomizationSelectionWidgetState
           ),
         ),
         const SizedBox(height: 8),
-        
-        ...widget.directCustomizations.map((customization) => 
+
+        ...widget.directCustomizations.map((customization) =>
           _buildDirectCustomization(customization, theme)),
       ],
     );
@@ -289,12 +294,26 @@ class _EnhancedCustomizationSelectionWidgetState
             const SizedBox(height: 12),
             
             // Customization options
-            if (customization.type == 'radio')
-              _buildDirectSingleSelection(customization, theme)
-            else if (customization.type == 'checkbox')
-              _buildDirectMultipleSelection(customization, theme)
-            else
-              _buildDirectTextInput(customization, theme),
+            Builder(
+              builder: (context) {
+                // Handle different type formats: 'single', 'single_select', 'radio'
+                if (customization.type == 'single' ||
+                    customization.type == 'single_select' ||
+                    customization.type == 'radio') {
+                  return _buildDirectSingleSelection(customization, theme);
+                } else if (customization.type == 'multiple' ||
+                           customization.type == 'multi_select' ||
+                           customization.type == 'checkbox') {
+                  return _buildDirectMultipleSelection(customization, theme);
+                } else if (customization.type == 'text' ||
+                           customization.type == 'text_input') {
+                  return _buildDirectTextInput(customization, theme);
+                } else {
+                  // Default to single selection for unknown types
+                  return _buildDirectSingleSelection(customization, theme);
+                }
+              },
+            ),
           ],
         ),
       ),
@@ -466,30 +485,49 @@ class _EnhancedCustomizationSelectionWidgetState
 
   void _notifyChanges() {
     final totalAdditionalCost = _calculateTotalAdditionalCost();
+    print('📢 [CUSTOMIZATION-WIDGET] Notifying parent of changes:');
+    print('📢 [CUSTOMIZATION-WIDGET] Selections: $_selections');
+    print('📢 [CUSTOMIZATION-WIDGET] Total additional cost: RM${totalAdditionalCost.toStringAsFixed(2)}');
     widget.onSelectionChanged(_selections, totalAdditionalCost);
   }
 
   double _calculateTotalAdditionalCost() {
     double total = 0.0;
 
-    for (final selection in _selections.values) {
+    print('🧮 [CUSTOMIZATION-WIDGET] Calculating total additional cost...');
+    print('🧮 [CUSTOMIZATION-WIDGET] Current selections: $_selections');
+
+    for (final entry in _selections.entries) {
+      final key = entry.key;
+      final selection = entry.value;
+
       if (selection is Map<String, dynamic>) {
         final price = selection['price'];
         if (price is num) {
-          total += price.toDouble();
+          final priceValue = price.toDouble();
+          total += priceValue;
+          print('🧮 [CUSTOMIZATION-WIDGET] Single selection "$key": ${selection['name']} (+RM${priceValue.toStringAsFixed(2)})');
         }
       } else if (selection is List) {
+        double listTotal = 0.0;
         for (final item in selection) {
           if (item is Map<String, dynamic>) {
             final price = item['price'];
             if (price is num) {
-              total += price.toDouble();
+              final priceValue = price.toDouble();
+              total += priceValue;
+              listTotal += priceValue;
+              print('🧮 [CUSTOMIZATION-WIDGET] Multi selection "$key": ${item['name']} (+RM${priceValue.toStringAsFixed(2)})');
             }
           }
+        }
+        if (listTotal > 0) {
+          print('🧮 [CUSTOMIZATION-WIDGET] Total for "$key": +RM${listTotal.toStringAsFixed(2)}');
         }
       }
     }
 
+    print('🧮 [CUSTOMIZATION-WIDGET] Total additional cost: RM${total.toStringAsFixed(2)}');
     return total;
   }
 }

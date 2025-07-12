@@ -452,3 +452,6 @@ temp/
 **/timeline.json
 **/isolate_snapshot_data
 **/vm_isolate_snapshot_data
+
+# Augmentcode
+**/.augment/

@@ -489,7 +489,7 @@ class _EnhancedValidationDemoScreenState extends ConsumerState<EnhancedValidatio
 
       final result = await validationService.validateCompleteWorkflow(
         cartState: cartState,
-        deliveryMethod: checkoutState.selectedDeliveryMethod ?? CustomerDeliveryMethod.customerPickup,
+        deliveryMethod: checkoutState.selectedDeliveryMethod ?? CustomerDeliveryMethod.pickup,
         deliveryAddress: checkoutState.selectedAddress,
         scheduledDeliveryTime: checkoutState.scheduledDeliveryTime,
         paymentMethod: PaymentMethodType.card,

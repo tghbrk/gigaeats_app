@@ -299,11 +299,19 @@ class SupabaseAuthService {
   /// Sign out
   Future<void> signOut() async {
     try {
+      debugPrint('🔐 SupabaseAuthService: Starting sign out process...');
+      debugPrint('🔐 SupabaseAuthService: Current user before sign out: ${_supabase.auth.currentUser?.email}');
+
       await _supabase.auth.signOut();
+      debugPrint('🔐 SupabaseAuthService: Supabase auth.signOut() completed');
+
       await _clearUserData();
-      debugPrint('SupabaseAuthService: Sign out successful');
+      debugPrint('🔐 SupabaseAuthService: User data cleared');
+
+      debugPrint('🔐 SupabaseAuthService: Current user after sign out: ${_supabase.auth.currentUser}');
+      debugPrint('🔐 SupabaseAuthService: Sign out successful');
     } catch (e) {
-      debugPrint('SupabaseAuthService: Error signing out: $e');
+      debugPrint('🔐 SupabaseAuthService: Error signing out: $e');
       rethrow;
     }
   }

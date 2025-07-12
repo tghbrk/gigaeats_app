@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../user_management/domain/vendor.dart';
+import '../../../domain/vendor.dart';
+import '../../../../auth/presentation/providers/auth_provider.dart';
 
 import '../../../../../presentation/providers/repository_providers.dart' show currentVendorProvider;
 import '../../../../shared/widgets/loading_widget.dart';
@@ -559,12 +560,9 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Restore undefined identifier - commented out for analyzer cleanup
-              // ref.read(authStateProvider.notifier).signOut();
-              debugPrint('Sign out not implemented');
-              context.go('/login');
+              await _performSignOut();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Sign Out'),
@@ -572,6 +570,59 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
         ],
       ),
     );
+  }
+
+  /// Perform complete sign out with comprehensive logging
+  Future<void> _performSignOut() async {
+    try {
+      debugPrint('🏪 VendorProfileScreen: Starting sign out process...');
+
+      // Show loading indicator
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      // Perform sign out using auth provider
+      debugPrint('🏪 VendorProfileScreen: Calling auth provider signOut...');
+      await ref.read(authStateProvider.notifier).signOut();
+      debugPrint('🏪 VendorProfileScreen: Auth provider signOut completed');
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        debugPrint('🏪 VendorProfileScreen: Loading dialog closed');
+      }
+
+      // Navigate to login screen
+      if (mounted) {
+        debugPrint('🏪 VendorProfileScreen: Navigating to login screen...');
+        context.go('/login');
+        debugPrint('🏪 VendorProfileScreen: Navigation to login completed');
+      }
+    } catch (e) {
+      debugPrint('🏪 VendorProfileScreen: Sign out error: $e');
+
+      // Close loading dialog if still open
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign out failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showComingSoon(String feature) {

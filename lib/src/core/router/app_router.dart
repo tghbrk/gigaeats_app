@@ -95,11 +95,14 @@ class _AuthStateNotifier extends ChangeNotifier {
     // Listen to auth state changes with debouncing to prevent infinite loops
     _ref.listen(authStateProvider, (previous, next) {
       debugPrint('🔀 Router: Auth state changed from ${previous?.status} to ${next.status}');
+      debugPrint('🔀 Router: Previous user: ${previous?.user?.email}');
+      debugPrint('🔀 Router: Next user: ${next.user?.email}');
 
       // Only notify if the auth status actually changed to prevent infinite loops
       if (_lastAuthStatus != next.status) {
         _lastAuthStatus = next.status;
         debugPrint('🔀 Router: Notifying listeners of auth status change to ${next.status}');
+        debugPrint('🔀 Router: This will trigger router refresh and redirect logic');
         notifyListeners();
       } else {
         debugPrint('🔀 Router: Ignoring duplicate auth status: ${next.status}');
@@ -161,8 +164,12 @@ String? _handleRedirect(BuildContext context, GoRouterState state, Ref ref) {
   if (publicRoutes.any((route) => location.startsWith(route))) {
     // If already authenticated, redirect to dashboard
     if (authState.status == AuthStatus.authenticated && authState.user != null) {
-      return AppRouter.getDashboardRoute(authState.user!.role);
+      final dashboardRoute = AppRouter.getDashboardRoute(authState.user!.role);
+      debugPrint('🔀 Router: User already authenticated, redirecting from $location to $dashboardRoute');
+      debugPrint('🔀 Router: User role: ${authState.user!.role}');
+      return dashboardRoute;
     }
+    debugPrint('🔀 Router: Allowing access to public route: $location');
     return null;
   }
 
@@ -189,6 +196,10 @@ String? _handleRedirect(BuildContext context, GoRouterState state, Ref ref) {
   if (authState.status == AuthStatus.unauthenticated || authState.user == null) {
     // Not authenticated, redirect to login
     debugPrint('🔀 Router: User not authenticated, redirecting to login');
+    debugPrint('🔀 Router: Auth status: ${authState.status}');
+    debugPrint('🔀 Router: User: ${authState.user}');
+    debugPrint('🔀 Router: Current location: $location');
+    debugPrint('🔀 Router: Redirecting to: ${AppRoutes.login}');
     return AppRoutes.login;
   }
 

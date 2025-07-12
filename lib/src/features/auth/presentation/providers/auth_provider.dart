@@ -245,29 +245,39 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   Future<void> signOut() async {
     _logger.info('AuthProvider: Starting sign out process');
     debugPrint('🔐 AuthProvider: Starting sign out process');
+    debugPrint('🔐 AuthProvider: Current auth status: ${state.status}');
+    debugPrint('🔐 AuthProvider: Current user: ${state.user?.email}');
+
     state = state.copyWith(status: AuthStatus.loading);
+    debugPrint('🔐 AuthProvider: Auth status set to loading');
 
     try {
+      debugPrint('🔐 AuthProvider: Calling Supabase auth service signOut...');
       await _authService.signOut();
       _logger.info('AuthProvider: Sign out successful');
-      debugPrint('🔐 AuthProvider: Sign out successful');
+      debugPrint('🔐 AuthProvider: Supabase sign out successful');
 
       // Clear all user data and set to unauthenticated
+      debugPrint('🔐 AuthProvider: Clearing auth state and setting to unauthenticated');
       state = const AuthState(
         status: AuthStatus.unauthenticated,
         user: null,
         errorMessage: null,
       );
+      debugPrint('🔐 AuthProvider: Auth state cleared - status: ${state.status}, user: ${state.user}');
+      debugPrint('🔐 AuthProvider: Sign out process completed successfully');
     } catch (e) {
       _logger.error('AuthProvider: Sign out error: $e');
       debugPrint('🔐 AuthProvider: Sign out error: $e');
 
       // Even if sign out fails, clear local state
+      debugPrint('🔐 AuthProvider: Forcing local state clear despite error');
       state = const AuthState(
         status: AuthStatus.unauthenticated,
         user: null,
         errorMessage: null,
       );
+      debugPrint('🔐 AuthProvider: Local state cleared - status: ${state.status}, user: ${state.user}');
     }
   }
 

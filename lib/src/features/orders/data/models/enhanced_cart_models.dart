@@ -336,17 +336,11 @@ class EnhancedCartState extends Equatable {
   double _calculateDefaultDeliveryFee() {
     switch (deliveryMethod) {
       case CustomerDeliveryMethod.pickup:
-      case CustomerDeliveryMethod.customerPickup:
         return 0.0;
       case CustomerDeliveryMethod.delivery:
-      case CustomerDeliveryMethod.ownFleet:
-      case CustomerDeliveryMethod.lalamove:
-      case CustomerDeliveryMethod.thirdParty:
         return 5.0; // Default delivery fee
       case CustomerDeliveryMethod.scheduled:
         return 7.0; // Slightly higher for scheduled delivery
-      case CustomerDeliveryMethod.salesAgentPickup:
-        return 3.0; // Reduced fee for sales agent pickup
     }
   }
 

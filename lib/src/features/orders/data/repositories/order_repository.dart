@@ -1570,13 +1570,13 @@ class OrderRepository extends BaseRepository {
 
       final authenticatedClient = await getAuthenticatedClient();
 
-      // Update order with assigned driver and status
+      // Update order with assigned driver and status using enhanced workflow
       final updatedOrder = await authenticatedClient
           .from('orders')
           .update({
             'assigned_driver_id': driverId,
-            'status': 'out_for_delivery',
-            'out_for_delivery_at': DateTime.now().toIso8601String(),
+            'status': 'assigned', // Enhanced workflow: ready → assigned
+            'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', orderId)
           .select('''

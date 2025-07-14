@@ -1677,53 +1677,8 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(
-    ThemeData theme, {
-    required String title,
-    required String value,
-    required IconData icon,
-    String? subtitle,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 24,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                  fontSize: 10,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  // NOTE: _buildStatCard method removed as it was unused (all calls are in commented TODO blocks)
+  // Restore this method when implementing the performance stats section
 
   Widget _buildLogoutButton(ThemeData theme) {
     return SizedBox(

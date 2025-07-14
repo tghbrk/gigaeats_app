@@ -73,6 +73,7 @@ class TemplatePreviewCard extends StatelessWidget {
                 template.name,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -80,35 +81,42 @@ class TemplatePreviewCard extends StatelessWidget {
               
               // Type and Required badges
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      template.isSingleSelection ? 'Single' : 'Multiple',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                  
-                  if (template.isRequired) ...[
-                    const SizedBox(width: 4),
-                    Container(
+                  Flexible(
+                    child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
+                        color: theme.colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(3),
                       ),
                       child: Text(
-                        'Required',
+                        template.isSingleSelection ? 'Single' : 'Multiple',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onErrorContainer,
+                          color: theme.colorScheme.onPrimaryContainer,
                           fontSize: 10,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+
+                  if (template.isRequired) ...[
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          'Required',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onErrorContainer,
+                            fontSize: 10,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),

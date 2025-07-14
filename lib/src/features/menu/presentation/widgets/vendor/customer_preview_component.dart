@@ -124,7 +124,8 @@ class _CustomerPreviewComponentState extends ConsumerState<CustomerPreviewCompon
             Text(
               'Customer Preview',
               style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
@@ -132,7 +133,7 @@ class _CustomerPreviewComponentState extends ConsumerState<CustomerPreviewCompon
               'Select templates to see how they will appear to customers',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -214,7 +215,7 @@ class _CustomerPreviewComponentState extends ConsumerState<CustomerPreviewCompon
           Text(
             'Base Price: RM ${widget.basePrice.toStringAsFixed(2)}',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -282,7 +283,7 @@ class _CustomerPreviewComponentState extends ConsumerState<CustomerPreviewCompon
               Text(
                 template.description!,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],

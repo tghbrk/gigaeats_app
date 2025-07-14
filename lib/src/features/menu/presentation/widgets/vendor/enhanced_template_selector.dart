@@ -81,18 +81,61 @@ class _EnhancedTemplateSelectorState extends ConsumerState<EnhancedTemplateSelec
           _buildFiltersSection(theme),
           
           // Tab Bar
-          TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(
-                icon: Icon(Icons.grid_view),
-                text: 'Browse Templates',
+          Container(
+            height: 48, // Standard Material Design tab height
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  width: 1,
+                ),
               ),
-              Tab(
-                icon: Icon(Icons.reorder),
-                text: 'Selected Templates',
-              ),
-            ],
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              indicatorSize: TabBarIndicatorSize.tab,
+              tabs: [
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.grid_view, size: 18),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Browse Templates',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.checklist, size: 18),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Selected Templates',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           
           // Tab Content
@@ -312,7 +355,7 @@ class _EnhancedTemplateSelectorState extends ConsumerState<EnhancedTemplateSelec
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  childAspectRatio: 0.8,
+                  childAspectRatio: 0.65, // Reduced from 0.8 to give more height
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                 ),
@@ -635,6 +678,7 @@ class _EnhancedTemplateSelectorState extends ConsumerState<EnhancedTemplateSelec
                 : null,
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header with checkbox
@@ -649,6 +693,7 @@ class _EnhancedTemplateSelectorState extends ConsumerState<EnhancedTemplateSelec
                       template.name,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -657,74 +702,87 @@ class _EnhancedTemplateSelectorState extends ConsumerState<EnhancedTemplateSelec
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 4), // Reduced from 8 to 4
 
               // Type and Required badges
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      template.isSingleSelection ? 'Single' : 'Multiple',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        template.isSingleSelection ? 'Single' : 'Multiple',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                   const SizedBox(width: 4),
                   if (template.isRequired)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Required',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onErrorContainer,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Required',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onErrorContainer,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 4), // Reduced from 8 to 4
 
               // Description
-              if (template.description != null && template.description!.isNotEmpty)
+              if (template.description != null && template.description!.isNotEmpty) ...[
                 Text(
                   template.description!,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-
-              const Spacer(),
+                const SizedBox(height: 8),
+              ],
 
               // Options count and usage
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '${template.options.length} options',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  Expanded(
+                    child: Text(
+                      '${template.options.length} options',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (template.usageCount > 0)
+                  if (template.usageCount > 0) ...[
+                    const SizedBox(width: 8),
                     Text(
                       'Used ${template.usageCount}x',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.primary,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ],
                 ],
               ),
             ],
@@ -750,9 +808,15 @@ class _EnhancedTemplateSelectorState extends ConsumerState<EnhancedTemplateSelec
           template.name,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w500,
+            color: theme.colorScheme.onSurface,
           ),
         ),
-        subtitle: Text('${template.options.length} options • ${template.type}'),
+        subtitle: Text(
+          '${template.options.length} options • ${template.type}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
         trailing: IconButton(
           icon: const Icon(Icons.remove_circle_outline),
           onPressed: () => _toggleTemplateSelection(template.id, false),

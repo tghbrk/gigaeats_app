@@ -28,7 +28,7 @@ class _CustomerPreviewM3State extends State<CustomerPreviewM3>
     with TickerProviderStateMixin {
   late AnimationController _previewAnimationController;
   late Animation<double> _fadeAnimation;
-  Map<String, dynamic> _selectedOptions = {};
+  final Map<String, dynamic> _selectedOptions = {};
 
   @override
   void initState() {

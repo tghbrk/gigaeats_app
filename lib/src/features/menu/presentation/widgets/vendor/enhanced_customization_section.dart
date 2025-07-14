@@ -325,9 +325,11 @@ class _EnhancedCustomizationSectionState extends ConsumerState<EnhancedCustomiza
           template.name,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         subtitle: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -357,11 +359,14 @@ class _EnhancedCustomizationSectionState extends ConsumerState<EnhancedCustomiza
                   ),
                 ),
               ),
-            const Spacer(),
-            Text(
-              '${template.options.length} options',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                '${template.options.length} options',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

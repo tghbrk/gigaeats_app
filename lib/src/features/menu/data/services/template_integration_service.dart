@@ -336,8 +336,8 @@ class TemplateIntegrationService {
     }
 
     try {
-      // Get current menu item
-      final menuItem = await _menuItemRepository!.getMenuItemById(menuItemId);
+      // Get current menu item (repository already validated above)
+      final menuItem = await _menuItemRepository.getMenuItemById(menuItemId);
       if (menuItem == null) {
         throw Exception('Menu item not found: $menuItemId');
       }
@@ -354,7 +354,7 @@ class TemplateIntegrationService {
       // If not preserving direct customizations, clear them
       if (!preserveDirectCustomizations) {
         final updatedMenuItem = menuItem.copyWith(customizations: []);
-        await _menuItemRepository!.updateMenuItem(updatedMenuItem);
+        await _menuItemRepository.updateMenuItem(updatedMenuItem);
       }
 
       debugPrint('✅ [TEMPLATE-INTEGRATION] Successfully migrated menu item to template-only');
@@ -413,7 +413,9 @@ class TemplateIntegrationService {
 
       // Get all templates and menu items for vendor
       final templates = await _templateRepository.getVendorTemplates(vendorId);
-      final menuItems = await _menuItemRepository!.getMenuItems(vendorId);
+
+      // Repository already validated above
+      final menuItems = await _menuItemRepository.getMenuItems(vendorId);
 
       // Check for orphaned templates (no menu items using them)
       final orphanedTemplates = <String>[];
@@ -482,7 +484,7 @@ class TemplateIntegrationService {
     try {
       // Update display order for each template
       for (int i = 0; i < templateIds.length; i++) {
-        await _supabase!
+        await _supabase
             .from('menu_item_template_links')
             .update({'display_order': i})
             .eq('menu_item_id', menuItemId)
@@ -508,7 +510,7 @@ class TemplateIntegrationService {
 
     try {
       // Get all links
-      final allLinks = await _supabase!
+      final allLinks = await _supabase
           .from('menu_item_template_links')
           .select('id, menu_item_id, template_id');
 
@@ -516,14 +518,14 @@ class TemplateIntegrationService {
 
       for (final link in allLinks) {
         // Check if menu item exists
-        final menuItemExists = await _supabase!
+        final menuItemExists = await _supabase
             .from('menu_items')
             .select('id')
             .eq('id', link['menu_item_id'])
             .maybeSingle();
 
         // Check if template exists
-        final templateExists = await _supabase!
+        final templateExists = await _supabase
             .from('customization_templates')
             .select('id')
             .eq('id', link['template_id'])
@@ -531,7 +533,7 @@ class TemplateIntegrationService {
 
         // Delete link if either menu item or template doesn't exist
         if (menuItemExists == null || templateExists == null) {
-          await _supabase!
+          await _supabase
               .from('menu_item_template_links')
               .delete()
               .eq('id', link['id']);

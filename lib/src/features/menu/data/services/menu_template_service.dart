@@ -14,11 +14,24 @@ import 'menu_import_service.dart';
 class MenuTemplateService {
   /// Generate CSV template with sample data
   Future<String> generateCsvTemplate({bool includeSampleData = true}) async {
-    final headers = MenuImportService.expectedHeaders.values.toList();
+    final headers = MenuImportService.expectedHeaders.values.map((list) => list.first).toList();
     final rows = <List<String>>[headers];
 
     if (includeSampleData) {
       rows.addAll(_getSampleData());
+    }
+
+    final csvConverter = const ListToCsvConverter();
+    return csvConverter.convert(rows);
+  }
+
+  /// Generate user-friendly CSV template with sample data
+  Future<String> generateUserFriendlyCsvTemplate({bool includeSampleData = true}) async {
+    final headers = _getUserFriendlyHeaders();
+    final rows = <List<String>>[headers];
+
+    if (includeSampleData) {
+      rows.addAll(_getUserFriendlySampleData());
     }
 
     final csvConverter = const ListToCsvConverter();
@@ -31,11 +44,11 @@ class MenuTemplateService {
     final sheet = excel['Menu Items'];
 
     // Add headers
-    final headers = MenuImportService.expectedHeaders.values.toList();
+    final headers = MenuImportService.expectedHeaders.values.map((list) => list.first).toList();
     for (int i = 0; i < headers.length; i++) {
       final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
       cell.value = TextCellValue(headers[i]);
-      
+
       // Style header cells
       cell.cellStyle = CellStyle(
         bold: true,
@@ -44,24 +57,54 @@ class MenuTemplateService {
       );
     }
 
-    // Add sample data if requested
     if (includeSampleData) {
       final sampleData = _getSampleData();
       for (int rowIndex = 0; rowIndex < sampleData.length; rowIndex++) {
-        final row = sampleData[rowIndex];
-        for (int colIndex = 0; colIndex < row.length; colIndex++) {
+        final rowData = sampleData[rowIndex];
+        for (int colIndex = 0; colIndex < rowData.length; colIndex++) {
           final cell = sheet.cell(CellIndex.indexByColumnRow(
-            columnIndex: colIndex, 
+            columnIndex: colIndex,
             rowIndex: rowIndex + 1,
           ));
-          cell.value = TextCellValue(row[colIndex]);
+          cell.value = TextCellValue(rowData[colIndex]);
         }
       }
     }
 
-    // Auto-fit columns
+    return Uint8List.fromList(excel.encode()!);
+  }
+
+  /// Generate user-friendly Excel template with sample data
+  Future<Uint8List> generateUserFriendlyExcelTemplate({bool includeSampleData = true}) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Menu Items'];
+
+    // Add user-friendly headers
+    final headers = _getUserFriendlyHeaders();
     for (int i = 0; i < headers.length; i++) {
-      sheet.setColumnWidth(i, 15.0);
+      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+      cell.value = TextCellValue(headers[i]);
+
+      // Style header cells
+      cell.cellStyle = CellStyle(
+        bold: true,
+        backgroundColorHex: ExcelColor.green50,
+        fontColorHex: ExcelColor.black,
+      );
+    }
+
+    if (includeSampleData) {
+      final sampleData = _getUserFriendlySampleData();
+      for (int rowIndex = 0; rowIndex < sampleData.length; rowIndex++) {
+        final rowData = sampleData[rowIndex];
+        for (int colIndex = 0; colIndex < rowData.length; colIndex++) {
+          final cell = sheet.cell(CellIndex.indexByColumnRow(
+            columnIndex: colIndex,
+            rowIndex: rowIndex + 1,
+          ));
+          cell.value = TextCellValue(rowData[colIndex]);
+        }
+      }
     }
 
     return Uint8List.fromList(excel.encode()!);
@@ -110,6 +153,56 @@ class MenuTemplateService {
       }
     } catch (e) {
       debugPrint('Error downloading Excel template: $e');
+      rethrow;
+    }
+  }
+
+  /// Download user-friendly CSV template
+  Future<void> downloadUserFriendlyCsvTemplate({bool includeSampleData = true}) async {
+    try {
+      final csvContent = await generateUserFriendlyCsvTemplate(includeSampleData: includeSampleData);
+
+      if (kIsWeb) {
+        // For web, trigger download
+        await _downloadFileWeb(
+          Uint8List.fromList(csvContent.codeUnits),
+          'gigaeats_menu_template_simplified.csv',
+          'text/csv',
+        );
+      } else {
+        // For mobile, save to downloads and share
+        await _saveAndShareFile(
+          Uint8List.fromList(csvContent.codeUnits),
+          'gigaeats_menu_template_simplified.csv',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error downloading user-friendly CSV template: $e');
+      rethrow;
+    }
+  }
+
+  /// Download user-friendly Excel template
+  Future<void> downloadUserFriendlyExcelTemplate({bool includeSampleData = true}) async {
+    try {
+      final excelData = await generateUserFriendlyExcelTemplate(includeSampleData: includeSampleData);
+
+      if (kIsWeb) {
+        // For web, trigger download
+        await _downloadFileWeb(
+          excelData,
+          'gigaeats_menu_template_simplified.xlsx',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        );
+      } else {
+        // For mobile, save to downloads and share
+        await _saveAndShareFile(
+          excelData,
+          'gigaeats_menu_template_simplified.xlsx',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error downloading user-friendly Excel template: $e');
       rethrow;
     }
   }
@@ -185,6 +278,154 @@ class MenuTemplateService {
         '1.80',
         '5',
         '[{"name": "Curry", "type": "multiple", "required": false, "options": [{"name": "Dhal Curry", "price": 0}, {"name": "Fish Curry", "price": 1.00}, {"name": "Chicken Curry", "price": 1.50}]}]',
+      ],
+    ];
+  }
+
+  /// Get user-friendly headers for template
+  List<String> _getUserFriendlyHeaders() {
+    return [
+      'Item Name',
+      'Description',
+      'Category',
+      'Price (RM)',
+      'Available',
+      'Unit',
+      'Min Order',
+      'Max Order',
+      'Prep Time (min)',
+      'Halal',
+      'Vegetarian',
+      'Vegan',
+      'Spicy',
+      'Spicy Level',
+      'Allergens',
+      'Tags',
+      'Bulk Price (RM)',
+      'Bulk Min Qty',
+      'Image URL',
+      'Customizations',
+      'Notes',
+    ];
+  }
+
+  /// Get user-friendly sample data for templates
+  List<List<String>> _getUserFriendlySampleData() {
+    return [
+      [
+        'Nasi Lemak Special',
+        'Traditional coconut rice with sambal and sides',
+        'Main Course',
+        '12.50',
+        'Yes',
+        'pax',
+        '1',
+        '',
+        '25',
+        'Yes',
+        'No',
+        'No',
+        'Yes',
+        '2',
+        'nuts, eggs',
+        'malaysian, traditional',
+        '11.00',
+        '10',
+        'https://example.com/nasi-lemak.jpg',
+        'Protein*: Chicken(+3.00), Beef(+4.00), Fish(+3.50); Spice Level: Mild(+0), Medium(+0), Hot(+0)',
+        '',
+      ],
+      [
+        'Teh Tarik',
+        'Traditional pulled milk tea',
+        'Beverages',
+        '3.50',
+        'Yes',
+        'cup',
+        '1',
+        '',
+        '5',
+        'Yes',
+        'Yes',
+        'No',
+        'No',
+        '',
+        '',
+        'traditional',
+        '3.00',
+        '5',
+        '',
+        'Sweetness: Less Sweet(+0), Normal(+0), Extra Sweet(+0); Temperature: Hot(+0), Iced(+0.50)',
+        '',
+      ],
+      [
+        'Roti Canai',
+        'Flaky flatbread served with curry dhal',
+        'Breakfast',
+        '2.00',
+        'Yes',
+        'piece',
+        '1',
+        '10',
+        '15',
+        'Yes',
+        'Yes',
+        'No',
+        'No',
+        '',
+        'gluten',
+        'traditional',
+        '1.80',
+        '5',
+        '',
+        'Curry: Dhal(+0), Fish Curry(+1.00), Chicken Curry(+1.50)',
+        '',
+      ],
+      [
+        'Mee Goreng',
+        'Spicy fried noodles with vegetables',
+        'Main Course',
+        '8.50',
+        'Yes',
+        'pax',
+        '1',
+        '',
+        '20',
+        'Yes',
+        'No',
+        'No',
+        'Yes',
+        '3',
+        'gluten, soy',
+        'malaysian, spicy',
+        '7.50',
+        '8',
+        '',
+        'Protein*: Chicken(+2.00), Beef(+3.00), Seafood(+4.00), Tofu(+0); Spice Level: Mild(+0), Medium(+0), Hot(+0), Extra Hot(+1.00)',
+        '',
+      ],
+      [
+        'Cendol',
+        'Traditional shaved ice dessert',
+        'Desserts',
+        '4.50',
+        'Yes',
+        'bowl',
+        '1',
+        '',
+        '10',
+        'Yes',
+        'Yes',
+        'No',
+        'No',
+        '',
+        '',
+        'traditional',
+        '',
+        '',
+        '',
+        'Toppings: Extra Coconut Milk(+0.50), Red Beans(+0.50), Sweet Corn(+0.50)',
+        '',
       ],
     ];
   }
@@ -304,5 +545,86 @@ For support, contact: support@gigaeats.com
       'Bulk Min Qty': 'Required if bulk price specified',
       'Customizations': 'Optional, valid JSON array format',
     };
+  }
+
+  /// Get user-friendly template instructions
+  String getUserFriendlyTemplateInstructions() {
+    return '''
+# GigaEats Menu Import Template - User-Friendly Format
+
+## Quick Start Guide
+1. Download this template with sample data
+2. Edit the data in your favorite spreadsheet app (Excel, Google Sheets)
+3. Save as CSV file
+4. Upload to GigaEats
+
+## Column Descriptions
+
+### Required Fields
+- **Item Name**: Unique name for your menu item
+- **Category**: Food category (e.g., "Main Course", "Beverages", "Desserts")
+- **Price (RM)**: Base price in Malaysian Ringgit (numbers only, e.g., 12.50)
+
+### Basic Information
+- **Description**: Brief description of the item
+- **Available**: Yes/No - whether item is currently available
+- **Unit**: Serving unit (e.g., "pax", "piece", "bowl", "cup")
+- **Min Order**: Minimum order quantity (default: 1)
+- **Max Order**: Maximum order quantity (leave blank for unlimited)
+- **Prep Time (min)**: Preparation time in minutes
+
+### Dietary Information
+- **Halal**: Yes/No
+- **Vegetarian**: Yes/No
+- **Vegan**: Yes/No
+- **Spicy**: Yes/No
+- **Spicy Level**: 1-5 scale (only if spicy = Yes)
+
+### Additional Details
+- **Allergens**: Comma-separated list (e.g., "nuts, eggs, dairy")
+- **Tags**: Comma-separated keywords (e.g., "malaysian, traditional, popular")
+- **Bulk Price (RM)**: Discounted price for bulk orders
+- **Bulk Min Qty**: Minimum quantity for bulk pricing
+- **Image URL**: Link to item image
+- **Notes**: Internal notes (not shown to customers)
+
+### Customizations (Advanced)
+Use simple text format: "Group: Option1(+price), Option2(+price)"
+
+**Examples:**
+- Size: Small(+0), Large(+2.00)
+- Protein*: Chicken(+3.00), Beef(+4.00), Fish(+3.50)
+- Add-ons: Cheese(+1.50), Bacon(+2.00)
+
+**Rules:**
+- Groups separated by semicolons (;)
+- Options separated by commas (,)
+- Prices in parentheses with + sign
+- Required groups marked with asterisk (*)
+
+**Full Example:**
+Size*: Small(+0), Large(+2.00); Add-ons: Cheese(+1.50), Bacon(+2.00); Spice Level: Mild(+0), Hot(+0)
+
+## Tips for Success
+1. **Start Small**: Import 5-10 items first to test
+2. **Use Sample Data**: Modify the provided examples
+3. **Keep Names Unique**: Each item name should be different
+4. **Consistent Categories**: Use the same category names
+5. **Test Customizations**: Start with simple options
+6. **Check Prices**: Ensure all prices are positive numbers
+7. **Save as CSV**: Most spreadsheet apps can export to CSV
+
+## Common Mistakes to Avoid
+- Don't use special characters in item names
+- Don't leave required fields empty
+- Don't use negative prices
+- Don't mix Yes/No with Y/N in the same file
+- Don't use complex customization formats initially
+
+## Need Help?
+- Check the sample data for examples
+- Use the simplified format for customizations
+- Contact support if you encounter issues
+''';
   }
 }

@@ -38,8 +38,8 @@ final enhancedTemplateManagementProvider = StateNotifierProvider<EnhancedTemplat
 /// Provider for template-menu item relationships with caching
 final templateMenuItemRelationshipsProvider = StateNotifierProvider<TemplateMenuItemRelationshipsNotifier, TemplateMenuItemRelationshipsState>((ref) {
   final templateRepository = ref.watch(customizationTemplateRepositoryProvider);
-  final menuItemRepository = ref.watch(menuItemRepositoryProvider);
-  return TemplateMenuItemRelationshipsNotifier(templateRepository, menuItemRepository);
+  // TODO: Add menuItemRepository when needed
+  return TemplateMenuItemRelationshipsNotifier(templateRepository);
 });
 
 // TODO: Add template usage statistics and ordering providers when needed
@@ -469,9 +469,9 @@ class EnhancedTemplateManagementNotifier extends StateNotifier<EnhancedTemplateM
 /// Template-menu item relationships notifier
 class TemplateMenuItemRelationshipsNotifier extends StateNotifier<TemplateMenuItemRelationshipsState> {
   final CustomizationTemplateRepository _templateRepository;
-  final MenuItemRepository _menuItemRepository;
+  // TODO: Add MenuItemRepository when needed for menu item operations
 
-  TemplateMenuItemRelationshipsNotifier(this._templateRepository, this._menuItemRepository)
+  TemplateMenuItemRelationshipsNotifier(this._templateRepository)
       : super(const TemplateMenuItemRelationshipsState());
 
   /// Load templates for a menu item

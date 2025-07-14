@@ -82,17 +82,94 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
 
   /// Build importing state
   Widget _buildImportingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Card(
+        margin: const EdgeInsets.all(24),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animated progress indicator
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: CircularProgressIndicator(
+                  strokeWidth: 6,
+                  valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              Text(
+                'Importing Menu Items',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              Text(
+                'Processing ${widget.importResult.validRows} items...',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Progress steps
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    _buildProgressStep('Validating data', true),
+                    _buildProgressStep('Creating menu items', true),
+                    _buildProgressStep('Setting up customizations', false),
+                    _buildProgressStep('Finalizing import', false),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                'Please don\'t close this screen',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressStep(String label, bool isActive) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text('Importing menu items...'),
-          SizedBox(height: 8),
+          Icon(
+            isActive ? Icons.check_circle : Icons.radio_button_unchecked,
+            size: 16,
+            color: isActive ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+          const SizedBox(width: 8),
           Text(
-            'This may take a few moments',
-            style: TextStyle(color: Colors.grey),
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isActive ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+            ),
           ),
         ],
       ),
@@ -163,31 +240,77 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${widget.importResult.validRows} valid items ready to import',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (widget.importResult.hasErrors)
-                    Text(
-                      '${widget.importResult.errorRows} items have errors and will be skipped',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.red,
+                  Row(
+                    children: [
+                      Icon(
+                        widget.importResult.canProceed ? Icons.check_circle : Icons.warning,
+                        size: 16,
+                        color: widget.importResult.canProceed ? Colors.green : Colors.orange,
                       ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${widget.importResult.validRows} valid items ready to import',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (widget.importResult.hasErrors) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.error,
+                          size: 16,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${widget.importResult.errorRows} items have errors and will be skipped',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
                     ),
+                  ],
+                  if (widget.importResult.warningRows > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${widget.importResult.warningRows} items have warnings',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: widget.importResult.canProceed ? _performImport : null,
-              icon: const Icon(Icons.upload),
-              label: const Text('Import Menu'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+            Tooltip(
+              message: widget.importResult.canProceed
+                  ? 'Import ${widget.importResult.validRows} valid items to your menu'
+                  : 'Fix errors before importing',
+              child: ElevatedButton.icon(
+                onPressed: widget.importResult.canProceed ? _performImport : null,
+                icon: const Icon(Icons.upload),
+                label: const Text('Import Menu'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),

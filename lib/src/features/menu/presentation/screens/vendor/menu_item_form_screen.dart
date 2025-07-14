@@ -9,18 +9,25 @@ import '../../../data/models/customization_template.dart';
 import '../../../data/services/menu_service.dart';
 import '../../widgets/vendor/enhanced_customization_section.dart';
 import '../../providers/customization_template_providers.dart';
+import '../../providers/enhanced_template_providers.dart';
+import '../../widgets/vendor/category_dialogs.dart';
 import '../../../../../shared/widgets/custom_button.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../../presentation/providers/repository_providers.dart';
+import '../../../../../presentation/providers/repository_providers.dart' show currentVendorProvider, vendorRepositoryProvider;
+import '../../../../../presentation/providers/repository_providers.dart' as repo_providers;
 import 'package:uuid/uuid.dart';
 
 class MenuItemFormScreen extends ConsumerStatefulWidget {
   final String? menuItemId; // null for create, non-null for edit
+  final String? preSelectedCategoryId; // Pre-selected category ID for new items
+  final String? preSelectedCategoryName; // Pre-selected category name for new items
 
   const MenuItemFormScreen({
     super.key,
     this.menuItemId,
+    this.preSelectedCategoryId,
+    this.preSelectedCategoryName,
   });
 
   @override
@@ -57,7 +64,6 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   bool _isSaving = false;
 
   // Data
-  List<MenuCategory> _categories = [];
   MenuItem? _existingItem;
 
   @override
@@ -84,18 +90,21 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final authState = ref.read(authStateProvider);
-      final vendorId = authState.user?.id ?? 'vendor_001';
-
       final menuService = MenuService();
-      _categories = await menuService.getVendorCategories(vendorId);
 
       if (widget.menuItemId != null) {
+        // Editing existing item
         _existingItem = await menuService.getMenuItem(widget.menuItemId!);
         if (_existingItem != null) {
           _populateFormWithExistingData();
           // Load existing templates for this menu item
           await _loadExistingTemplates();
+        }
+      } else {
+        // Creating new item - set pre-selected category if provided
+        if (widget.preSelectedCategoryId != null) {
+          _selectedCategory = widget.preSelectedCategoryId;
+          debugPrint('🍽️ [MENU-FORM] Pre-selected category: ${widget.preSelectedCategoryName} (${widget.preSelectedCategoryId})');
         }
       }
 
@@ -128,6 +137,8 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     _selectedUnit = item.unit ?? 'pax';
     _isHalalCertified = item.isHalalCertified;
     _status = item.status;
+
+    debugPrint('🍽️ [MENU-FORM] Populated form with existing data - Category: ${item.category}');
     _selectedDietaryTypes = List.from(item.dietaryTypes);
     _allergens = List.from(item.allergens);
     _bulkPricingTiers = List.from(item.bulkPricingTiers);
@@ -273,29 +284,56 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
             
             const SizedBox(height: 16),
             
-            // Category
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              decoration: const InputDecoration(
-                labelText: 'Category *',
-                border: OutlineInputBorder(),
-              ),
-              items: _categories.map((category) {
-                return DropdownMenuItem(
-                  value: category.id,
-                  child: Text(category.name),
+            // Category Selection with Enhanced Dropdown
+            Consumer(
+              builder: (context, ref, child) {
+                final currentVendorAsync = ref.watch(currentVendorProvider);
+
+                return currentVendorAsync.when(
+                  data: (vendor) {
+                    if (vendor == null) {
+                      return const Text('Vendor not found');
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CategoryDropdownSelector(
+                          vendorId: vendor.id,
+                          selectedCategoryId: _selectedCategory,
+                          onCategorySelected: (categoryId) {
+                            setState(() {
+                              _selectedCategory = categoryId;
+                            });
+                            debugPrint('🍽️ [MENU-FORM] Category selected: $categoryId');
+                          },
+                          hintText: 'Select a category for this menu item',
+                          allowEmpty: false,
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Quick action to create new category
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _showCreateCategoryDialog(vendor.id),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Create New Category'),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, stack) => Text('Error loading vendor: $error'),
                 );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedCategory = value;
-                });
-              },
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please select a category';
-                }
-                return null;
               },
             ),
           ],
@@ -319,60 +357,58 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
             ),
             const SizedBox(height: 16),
 
-            Row(
+            Column(
               children: [
                 // Base Price
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _basePriceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Base Price (RM) *',
-                      hintText: '0.00',
-                      border: OutlineInputBorder(),
-                      prefixText: 'RM ',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                    ],
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Required';
-                      }
-                      final price = double.tryParse(value);
-                      if (price == null || price <= 0) {
-                        return 'Invalid price';
-                      }
-                      return null;
-                    },
+                TextFormField(
+                  controller: _basePriceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Base Price (RM) *',
+                    hintText: '0.00',
+                    border: OutlineInputBorder(),
+                    prefixText: 'RM ',
                   ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Required';
+                    }
+                    final price = double.tryParse(value);
+                    if (price == null || price <= 0) {
+                      return 'Invalid price';
+                    }
+                    return null;
+                  },
                 ),
 
-                const SizedBox(width: 16),
+                const SizedBox(height: 16),
 
                 // Unit
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedUnit,
-                    decoration: const InputDecoration(
-                      labelText: 'Unit *',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'pax', child: Text('Per Pax')),
-                      DropdownMenuItem(value: 'kg', child: Text('Per KG')),
-                      DropdownMenuItem(value: 'pieces', child: Text('Pieces')),
-                      DropdownMenuItem(value: 'portion', child: Text('Portion')),
-                      DropdownMenuItem(value: 'set', child: Text('Set')),
-                      DropdownMenuItem(value: 'box', child: Text('Box')),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedUnit = value!;
-                      });
-                    },
+                DropdownButtonFormField<String>(
+                  value: _selectedUnit,
+                  decoration: const InputDecoration(
+                    labelText: 'Unit *',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                  isExpanded: true,
+                  isDense: true,
+                  items: const [
+                    DropdownMenuItem(value: 'pax', child: Text('Per Pax')),
+                    DropdownMenuItem(value: 'kg', child: Text('Per KG')),
+                    DropdownMenuItem(value: 'pieces', child: Text('Pieces')),
+                    DropdownMenuItem(value: 'portion', child: Text('Portion')),
+                    DropdownMenuItem(value: 'set', child: Text('Set')),
+                    DropdownMenuItem(value: 'box', child: Text('Box')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedUnit = value!;
+                    });
+                  },
                 ),
               ],
             ),
@@ -692,6 +728,32 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
 
 
+  /// Show dialog to create a new category
+  void _showCreateCategoryDialog(String vendorId) {
+    debugPrint('🍽️ [MENU-FORM] Opening create category dialog');
+    showDialog(
+      context: context,
+      builder: (context) => CategoryFormDialog(
+        vendorId: vendorId,
+        onCategoryCreated: (newCategory) {
+          debugPrint('🍽️ [MENU-FORM] New category created: ${newCategory.name}');
+          // Auto-select the newly created category
+          setState(() {
+            _selectedCategory = newCategory.id;
+          });
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Category "${newCategory.name}" created and selected'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // TODO: Remove old customization methods - replaced by enhanced template system
 
 
@@ -949,6 +1011,18 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
       return;
     }
 
+    // Additional validation for category selection
+    if (_selectedCategory == null || _selectedCategory!.isEmpty) {
+      print('🍽️ [MENU-FORM-DEBUG] Category validation failed');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a category for this menu item'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -971,7 +1045,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
       print('🍽️ [MENU-FORM-DEBUG] Vendor found: ${vendor.id}');
       print('🍽️ [MENU-FORM-DEBUG] Vendor object: ${vendor.toJson()}');
 
-      final menuItemRepository = ref.read(menuItemRepositoryProvider);
+      final menuItemRepository = ref.read(repo_providers.menuItemRepositoryProvider);
 
       final tags = _tagsController.text
           .split(',')
@@ -1014,6 +1088,9 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
         print('🍽️ [MENU-FORM-DEBUG] Updated product data: ${updatedProduct.toJson()}');
         final result = await menuItemRepository.updateMenuItem(updatedProduct);
         print('🍽️ [MENU-FORM-DEBUG] Menu item updated successfully: ${result.id}');
+
+        // Update template links for the existing menu item
+        await _saveTemplateLinks(result.id);
       } else {
         print('🍽️ [MENU-FORM-DEBUG] Creating new menu item...');
         // Create new item using Product model
@@ -1036,8 +1113,12 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
         );
 
         print('🍽️ [MENU-FORM-DEBUG] Product data: ${newProduct.toJson()}');
+        print('🍽️ [MENU-FORM-DEBUG] Selected category ID: $_selectedCategory');
         final createdProduct = await menuItemRepository.createMenuItem(newProduct);
         print('🍽️ [MENU-FORM-DEBUG] Menu item created successfully: ${createdProduct.id}');
+
+        // Link templates to the newly created menu item
+        await _saveTemplateLinks(createdProduct.id);
       }
 
       if (mounted) {
@@ -1064,6 +1145,31 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
       if (mounted) {
         setState(() => _isSaving = false);
       }
+    }
+  }
+
+  /// Save template links for the menu item
+  Future<void> _saveTemplateLinks(String menuItemId) async {
+    if (_linkedTemplates.isEmpty) {
+      debugPrint('🔧 [MENU-ITEM-FORM] No templates to link');
+      return;
+    }
+
+    try {
+      debugPrint('🔧 [MENU-ITEM-FORM] Saving ${_linkedTemplates.length} template links for menu item: $menuItemId');
+
+      // Use the template relationships provider to link templates
+      final relationshipsProvider = ref.read(templateMenuItemRelationshipsProvider.notifier);
+      await relationshipsProvider.linkTemplatesToMenuItem(
+        menuItemId: menuItemId,
+        templateIds: _linkedTemplates.map((t) => t.id).toList(),
+      );
+
+      debugPrint('🔧 [MENU-ITEM-FORM] ✅ Template links saved successfully');
+    } catch (e) {
+      debugPrint('🔧 [MENU-ITEM-FORM] ❌ Failed to save template links: $e');
+      // Don't throw error - template linking failure shouldn't prevent menu item creation
+      // Just log the error and continue
     }
   }
 

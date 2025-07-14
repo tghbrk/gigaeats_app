@@ -12,6 +12,7 @@ import '../../features/menu/data/services/template_integration_service.dart';
 import '../../features/menu/data/repositories/customization_template_repository.dart';
 import '../../features/menu/data/services/template_usage_tracking_service.dart';
 import '../../features/menu/data/repositories/menu_item_repository.dart';
+import '../../features/menu/data/repositories/menu_category_repository.dart';
 import '../../features/sales_agent/data/repositories/sales_agent_repository.dart';
 import '../../core/services/file_upload_service.dart';
 import '../../features/sales_agent/data/services/sales_agent_service.dart';
@@ -81,6 +82,11 @@ final customerRepositoryProvider = Provider<CustomerRepository>((ref) {
 // Menu item repository provider
 final menuItemRepositoryProvider = Provider<MenuItemRepository>((ref) {
   return MenuItemRepository();
+});
+
+// Menu category repository provider
+final menuCategoryRepositoryProvider = Provider<MenuCategoryRepository>((ref) {
+  return MenuCategoryRepository();
 });
 
 // Sales agent repository provider

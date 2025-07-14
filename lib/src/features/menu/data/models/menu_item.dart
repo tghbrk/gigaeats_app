@@ -405,13 +405,19 @@ class MenuItem extends Equatable {
 @JsonSerializable()
 class MenuCategory extends Equatable {
   final String id;
+  @JsonKey(name: 'vendor_id')
   final String vendorId;
   final String name;
   final String? description;
+  @JsonKey(name: 'image_url')
   final String? imageUrl;
+  @JsonKey(name: 'sort_order')
   final int sortOrder;
+  @JsonKey(name: 'is_active')
   final bool isActive;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
 
   const MenuCategory({

@@ -10,6 +10,12 @@ import '../../../../core/services/file_upload_service.dart';
 class MenuItemRepository extends BaseRepository {
   MenuItemRepository();
 
+  /// Helper method to check if a string is a UUID
+  bool _isUuid(String value) {
+    final uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false);
+    return uuidRegex.hasMatch(value);
+  }
+
   /// Get menu items for a vendor
   Future<List<Product>> getMenuItems(
     String vendorId, {
@@ -35,7 +41,31 @@ class MenuItemRepository extends BaseRepository {
 
       // Apply filters
       if (category != null) {
-        query = query.eq('category', category);
+        // Check if category is a UUID (category ID) or a category name
+        if (_isUuid(category)) {
+          // If it's a UUID, we need to get the category name first
+          debugPrint('MenuItemRepository: Category appears to be a UUID: $category');
+          final categoryResponse = await queryClient
+              .from('menu_categories')
+              .select('name')
+              .eq('id', category)
+              .eq('is_active', true)
+              .maybeSingle();
+
+          if (categoryResponse != null) {
+            final categoryName = categoryResponse['name'] as String;
+            debugPrint('MenuItemRepository: Found category name: $categoryName for ID: $category');
+            query = query.eq('category', categoryName);
+          } else {
+            debugPrint('MenuItemRepository: Category not found for ID: $category');
+            // Return empty result if category doesn't exist
+            return [];
+          }
+        } else {
+          // If it's not a UUID, assume it's a category name
+          debugPrint('MenuItemRepository: Using category as name: $category');
+          query = query.eq('category', category);
+        }
       }
 
       if (isAvailable != null) {

@@ -37,11 +37,25 @@ class ImportInstructionsCard extends StatelessWidget {
               description: 'Item Name, Category, and Base Price are mandatory for each item.',
             ),
             const SizedBox(height: 12),
-            
+
             _buildTipItem(
               icon: Icons.format_list_bulleted,
               title: 'Categories',
               description: 'New categories will be created automatically if they don\'t exist.',
+            ),
+            const SizedBox(height: 12),
+
+            _buildTipItem(
+              icon: Icons.preview,
+              title: 'Preview First',
+              description: 'Always preview your data before importing to catch errors early.',
+            ),
+            const SizedBox(height: 12),
+
+            _buildTipItem(
+              icon: Icons.backup,
+              title: 'Backup Recommended',
+              description: 'Export your current menu before importing to have a backup.',
             ),
             const SizedBox(height: 12),
             

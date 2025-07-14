@@ -50,34 +50,70 @@ class ImportSummaryCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               
-              // Statistics
-              Row(
+              // Statistics with progress indicator
+              Column(
                 children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Valid',
-                      importResult.validRows,
-                      Colors.green,
-                      Icons.check_circle,
+                  // Progress bar
+                  if (importResult.totalRows > 0) ...[
+                    Row(
+                      children: [
+                        Text(
+                          'Import Readiness',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${((importResult.validRows / importResult.totalRows) * 100).toStringAsFixed(0)}%',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: importResult.errorRows == 0 ? Colors.green : Colors.orange,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Errors',
-                      importResult.errorRows,
-                      Colors.red,
-                      Icons.error,
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: importResult.validRows / importResult.totalRows,
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        importResult.errorRows == 0 ? Colors.green : Colors.orange,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Warnings',
-                      importResult.warningRows,
-                      Colors.orange,
-                      Icons.warning,
-                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Stats cards
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          'Valid',
+                          importResult.validRows,
+                          Colors.green,
+                          Icons.check_circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildStatCard(
+                          'Errors',
+                          importResult.errorRows,
+                          Colors.red,
+                          Icons.error,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildStatCard(
+                          'Warnings',
+                          importResult.warningRows,
+                          Colors.orange,
+                          Icons.warning,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'menu_item_form_screen.dart';
+
 
 
 class VendorMenuManagementScreen extends ConsumerStatefulWidget {
@@ -258,21 +260,29 @@ class _VendorMenuManagementScreenState extends ConsumerState<VendorMenuManagemen
   }
 
   void _showAddMenuDialog() {
-    // TODO: Fix ProductFormScreen import
-    /*
+    debugPrint('🍽️ [VENDOR-MENU-MANAGEMENT] Navigating to add menu item screen');
+
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const ProductFormScreen(),
+        builder: (context) => const MenuItemFormScreen(
+          menuItemId: null, // null for create mode
+          preSelectedCategoryId: null, // no pre-selected category
+          preSelectedCategoryName: null,
+        ),
       ),
-    );
-    */
-
-    // Temporary placeholder
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Add menu functionality coming soon'),
-      ),
-    );
+    ).then((result) {
+      debugPrint('🍽️ [VENDOR-MENU-MANAGEMENT] Returned from add menu item screen with result: $result');
+      // Refresh the menu items if a new item was created
+      if (result == true) {
+        // The parent widgets will handle refresh through their providers
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Menu item created successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
   }
 
   void _handleMenuAction(String action, String itemName) {
@@ -280,7 +290,7 @@ class _VendorMenuManagementScreenState extends ConsumerState<VendorMenuManagemen
       case 'edit':
         // Navigate to edit form - for demo purposes, we'll show a message
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Edit $itemName - Navigate to ProductFormScreen with item ID')),
+          SnackBar(content: Text('Edit $itemName - Navigate to MenuItemFormScreen with item ID')),
         );
         break;
       case 'duplicate':

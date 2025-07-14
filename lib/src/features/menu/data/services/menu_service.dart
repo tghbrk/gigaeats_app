@@ -69,6 +69,7 @@ class MenuService {
       description: description,
       imageUrl: imageUrl,
       sortOrder: sortOrder ?? _categories.where((c) => c.vendorId == vendorId).length,
+      isActive: true,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );

@@ -16,7 +16,7 @@ class TemplateTestRunner extends StatefulWidget {
 class _TemplateTestRunnerState extends State<TemplateTestRunner> {
   bool _isRunning = false;
   String _status = 'Ready to run tests';
-  List<String> _logs = [];
+  final List<String> _logs = [];
 
   @override
   Widget build(BuildContext context) {

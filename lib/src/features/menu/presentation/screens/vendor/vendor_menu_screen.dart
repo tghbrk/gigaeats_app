@@ -8,9 +8,14 @@ import '../../../data/models/product.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-import 'product_form_screen.dart';
+import 'menu_item_form_screen.dart';
+import 'menu_management_screen.dart';
 import 'template_management_screen.dart';
 import 'bulk_template_application_screen.dart';
+import '../../widgets/vendor/menu_export_dialog.dart';
+import '../../widgets/vendor/menu_import_dialog.dart';
+import '../../providers/menu_import_export_providers.dart';
+import '../../../data/models/menu_export_import.dart';
 
 
 class VendorMenuScreen extends ConsumerStatefulWidget {
@@ -153,13 +158,13 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
             onSelected: (value) {
               switch (value) {
                 case 'import_menu':
-                  _showComingSoon('Menu import');
+                  _showImportMenuDialog();
                   break;
                 case 'export_menu':
-                  _showComingSoon('Menu export');
+                  _showExportMenuDialog();
                   break;
                 case 'manage_categories':
-                  _showComingSoon('Category management');
+                  _navigateToCategoryManagement();
                   break;
                 case 'bulk_availability':
                   _showComingSoon('Bulk availability toggle');
@@ -1024,7 +1029,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
                 spacing: 12,
                 children: [
                   TextButton.icon(
-                    onPressed: () => _showComingSoon('Menu import'),
+                    onPressed: () => _showImportMenuDialog(),
                     icon: Icon(
                       Icons.upload_file_rounded,
                       size: 18,
@@ -1085,6 +1090,30 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
   void _duplicateProduct(Product product) {
     // TODO: Implement product duplication
     _showComingSoon('Duplicate product functionality');
+  }
+
+  Future<void> _navigateToCategoryManagement() async {
+    // Get current vendor ID
+    final authState = ref.read(authStateProvider);
+    if (authState.user == null) return;
+
+    try {
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(authState.user!.id);
+
+      if (vendor != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MenuManagementScreen(
+              vendorId: vendor.id,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('🏷️ [VENDOR-MENU] Error navigating to category management: $e');
+      _showComingSoon('Category management');
+    }
   }
 
   Future<void> _navigateToTemplateManagement() async {
@@ -1156,15 +1185,19 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
   }
 
   void _navigateToAddProduct() {
-    print('🍽️ [VENDOR-MENU-DEBUG] Navigating to add product screen');
+    print('🍽️ [VENDOR-MENU-DEBUG] Navigating to add menu item screen');
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const ProductFormScreen(),
+        builder: (context) => const MenuItemFormScreen(
+          menuItemId: null, // null for create mode
+          preSelectedCategoryId: null, // no pre-selected category
+          preSelectedCategoryName: null,
+        ),
       ),
     ).then((result) {
       // Refresh the products after adding
       if (result == true) {
-        print('🍽️ [VENDOR-MENU-DEBUG] Returned from add product screen, refreshing...');
+        print('🍽️ [VENDOR-MENU-DEBUG] Returned from add menu item screen, refreshing...');
         _loadProducts();
       }
     });
@@ -1175,7 +1208,7 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
     print('🍽️ [VENDOR-MENU-DEBUG] Product ID: $productId');
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ProductFormScreen(productId: productId),
+        builder: (context) => MenuItemFormScreen(menuItemId: productId),
       ),
     ).then((result) {
       print('🍽️ [VENDOR-MENU-DEBUG] Returned from edit screen with result: $result');
@@ -1184,6 +1217,148 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
         _loadProducts();
       }
     });
+  }
+
+  Future<void> _showExportMenuDialog() async {
+    debugPrint('🍽️ [VENDOR-MENU] Opening export menu dialog');
+
+    // Get current vendor ID
+    final authState = ref.read(authStateProvider);
+    if (authState.user == null) {
+      _showComingSoon('Menu export (user not authenticated)');
+      return;
+    }
+
+    try {
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(authState.user!.id);
+
+      if (vendor == null) {
+        _showComingSoon('Menu export (vendor not found)');
+        return;
+      }
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => MenuExportDialog(
+            vendorId: vendor.id,
+            vendorName: vendor.businessName,
+            onExportComplete: (result) {
+              debugPrint('🍽️ [VENDOR-MENU] Export completed: ${result.fileName}');
+
+              if (mounted) {
+                // Automatically share the file after successful export
+                if (result.isSuccessful) {
+                  _autoShareExportedFile(result);
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      result.isSuccessful
+                        ? 'Menu exported successfully! ${result.totalItems} items exported.'
+                        : 'Export failed: ${result.errorMessage}',
+                    ),
+                    backgroundColor: result.isSuccessful ? Colors.green : Colors.red,
+                    action: result.isSuccessful ? SnackBarAction(
+                      label: 'Share Again',
+                      onPressed: () async {
+                        try {
+                          final exportService = ref.read(menuExportServiceProvider);
+                          await exportService.shareExportedFile(result);
+                        } catch (e) {
+                          debugPrint('❌ [VENDOR-MENU] Failed to share file: $e');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to share file: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ) : null,
+                  ),
+                );
+              }
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('🍽️ [VENDOR-MENU] Error opening export dialog: $e');
+      _showComingSoon('Menu export (error occurred)');
+    }
+  }
+
+  Future<void> _autoShareExportedFile(MenuExportResult result) async {
+    try {
+      debugPrint('🍽️ [VENDOR-MENU] Auto-sharing exported file: ${result.fileName}');
+
+      final exportService = ref.read(menuExportServiceProvider);
+      await exportService.shareExportedFile(result);
+
+      debugPrint('🍽️ [VENDOR-MENU] Auto-share completed successfully');
+    } catch (e) {
+      debugPrint('⚠️ [VENDOR-MENU] Auto-share failed: $e');
+      // Don't show error to user for auto-share failure, they can still use "Share Again" button
+    }
+  }
+
+  Future<void> _showImportMenuDialog() async {
+    debugPrint('🍽️ [VENDOR-MENU] Opening import menu dialog');
+
+    // Get current vendor ID
+    final authState = ref.read(authStateProvider);
+    if (authState.user == null) {
+      _showComingSoon('Menu import (user not authenticated)');
+      return;
+    }
+
+    try {
+      final vendorRepository = ref.read(vendorRepositoryProvider);
+      final vendor = await vendorRepository.getVendorByUserId(authState.user!.id);
+
+      if (vendor == null) {
+        _showComingSoon('Menu import (vendor not found)');
+        return;
+      }
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => MenuImportDialog(
+            vendorId: vendor.id,
+            onImportComplete: (result) {
+              debugPrint('🍽️ [VENDOR-MENU] Import completed: ${result.fileName}');
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      result.isSuccessful
+                        ? 'Menu imported successfully! ${result.importedRows} items imported.'
+                        : 'Import failed: ${result.errorMessage}',
+                    ),
+                    backgroundColor: result.isSuccessful ? Colors.green : Colors.red,
+                  ),
+                );
+
+                // Refresh menu data after successful import
+                if (result.isSuccessful) {
+                  _loadProducts();
+                }
+              }
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('🍽️ [VENDOR-MENU] Error opening import dialog: $e');
+      _showComingSoon('Menu import (error occurred)');
+    }
   }
 
   void _showComingSoon(String feature) {

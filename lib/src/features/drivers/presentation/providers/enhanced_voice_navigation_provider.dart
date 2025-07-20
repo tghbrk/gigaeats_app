@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/voice_navigation_service.dart';
 import '../../data/models/navigation_models.dart';
-import '../../../shared/providers/app_providers.dart';
 
 /// Enhanced voice navigation provider for Phase 4.1
 /// Provides advanced voice guidance with multi-language support, traffic alerts,
@@ -357,12 +356,14 @@ class EnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNavigat
   }
 
   /// Dispose resources
-  Future<void> dispose() async {
+  @override
+  void dispose() {
     try {
-      await _voiceService.dispose();
+      _voiceService.dispose();
       debugPrint('🔊 [ENHANCED-VOICE-NAV] Enhanced voice navigation disposed');
     } catch (e) {
       debugPrint('❌ [ENHANCED-VOICE-NAV] Error disposing: $e');
     }
+    super.dispose();
   }
 }

@@ -3,8 +3,8 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:gigaeats/src/features/drivers/data/services/batch_analytics_service.dart';
-import 'package:gigaeats/src/features/drivers/data/models/batch_analytics_models.dart';
+import 'package:gigaeats_app/src/features/drivers/data/services/batch_analytics_service.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/batch_analytics_models.dart';
 
 import '../../../../test_helpers/test_data.dart';
 

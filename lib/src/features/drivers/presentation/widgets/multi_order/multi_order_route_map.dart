@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../../data/models/delivery_batch.dart';
 import '../../../data/models/route_optimization_models.dart';
 import '../../../data/models/batch_operation_results.dart';
 import '../../../data/models/navigation_models.dart';

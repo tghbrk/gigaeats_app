@@ -126,7 +126,7 @@ class Geofence extends Equatable {
     String? description,
   }) {
     return Geofence(
-      id: 'waypoint_${waypointId}',
+      id: 'waypoint_$waypointId',
       center: location,
       radius: radius,
       events: [GeofenceEventType.enter, GeofenceEventType.exit],

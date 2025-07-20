@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/route_optimization_models.dart';
+import '../../../data/models/navigation_models.dart';
 
 /// Route optimization controls for managing route calculation and preferences
 /// Provides interface for optimization criteria and manual reoptimization

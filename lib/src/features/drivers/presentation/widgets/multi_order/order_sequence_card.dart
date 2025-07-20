@@ -87,7 +87,7 @@ class _OrderSequenceCardState extends ConsumerState<OrderSequenceCard>
             feedback: Material(
               elevation: 8,
               borderRadius: BorderRadius.circular(12),
-              child: Container(
+              child: SizedBox(
                 width: MediaQuery.of(context).size.width - 32,
                 child: _buildCardContent(theme, order, isDragging: true),
               ),
@@ -216,7 +216,7 @@ class _OrderSequenceCardState extends ConsumerState<OrderSequenceCard>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    order.vendorName ?? 'Unknown Vendor',
+                    order.vendorName,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.outline,
                     ),

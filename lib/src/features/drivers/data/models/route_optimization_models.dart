@@ -1,8 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-import '../../../orders/data/models/order.dart';
 import 'navigation_models.dart';
 
 part 'route_optimization_models.g.dart';

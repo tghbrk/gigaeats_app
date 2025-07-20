@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/driver_workflow_logger.dart';
 import '../../../../core/monitoring/performance_monitor.dart';
-import '../models/driver_order.dart';
 
 /// Enhanced logging integration service for comprehensive driver workflow monitoring
 /// Provides automated logging, performance tracking, and debugging capabilities

@@ -1,31 +1,21 @@
 import 'dart:async';
-import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../../../core/utils/driver_workflow_logger.dart';
-import '../models/driver_order.dart';
 import 'driver_workflow_error_handler.dart';
 import 'network_failure_recovery_service.dart';
 
 /// Comprehensive testing service for error handling and network failure recovery
 /// Simulates various error scenarios and validates recovery mechanisms
 class ErrorRecoveryTestingService {
-  final SupabaseClient _supabase;
   final DriverWorkflowErrorHandler _errorHandler;
   final NetworkFailureRecoveryService _recoveryService;
-  final Connectivity _connectivity;
 
   ErrorRecoveryTestingService({
-    required SupabaseClient supabase,
     required DriverWorkflowErrorHandler errorHandler,
     required NetworkFailureRecoveryService recoveryService,
-    required Connectivity connectivity,
-  }) : _supabase = supabase,
-       _errorHandler = errorHandler,
-       _recoveryService = recoveryService,
-       _connectivity = connectivity;
+  }) : _errorHandler = errorHandler,
+       _recoveryService = recoveryService;
 
   /// Run comprehensive error handling tests
   Future<ErrorRecoveryTestResults> runComprehensiveTests({
@@ -491,10 +481,8 @@ class ErrorRecoveryTestingService {
     final retryTimes = <DateTime>[];
     
     try {
-      int attempts = 0;
       await _errorHandler.handleWorkflowOperation(
         operation: () async {
-          attempts++;
           retryTimes.add(DateTime.now());
           throw const SocketException('Simulated failure');
         },

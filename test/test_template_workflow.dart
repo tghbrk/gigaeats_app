@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import '../lib/src/features/menu/presentation/utils/template_test_execution.dart';
-import '../lib/src/features/menu/presentation/utils/template_debug_logger.dart';
+import 'package:gigaeats_app/src/features/menu/presentation/utils/template_test_execution.dart';
+import 'package:gigaeats_app/src/features/menu/presentation/utils/template_debug_logger.dart';
 
 /// Standalone test execution for template-only workflow
 void main() async {

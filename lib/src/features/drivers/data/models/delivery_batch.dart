@@ -1,8 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-import '../../../orders/data/models/order.dart';
-
 part 'delivery_batch.g.dart';
 
 /// Batch status enumeration
@@ -369,5 +367,5 @@ class BatchOrder extends Equatable {
       ];
 
   @override
-  String toString() => 'BatchOrder(id: $id, orderId: $orderId, pickup: ${pickupSequence}, delivery: ${deliverySequence})';
+  String toString() => 'BatchOrder(id: $id, orderId: $orderId, pickup: $pickupSequence, delivery: $deliverySequence)';
 }

@@ -1,82 +1,91 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import 'package:gigaeats/src/features/drivers/presentation/providers/multi_order_batch_provider.dart';
-import 'package:gigaeats/src/features/drivers/presentation/providers/route_optimization_provider.dart';
-import 'package:gigaeats/src/features/drivers/presentation/providers/batch_analytics_provider.dart';
-import 'package:gigaeats/src/features/drivers/presentation/providers/enhanced_voice_navigation_provider.dart';
+import 'package:gigaeats_app/src/features/drivers/presentation/providers/multi_order_batch_provider.dart';
+import 'package:gigaeats_app/src/features/drivers/presentation/providers/route_optimization_provider.dart';
+import 'package:gigaeats_app/src/features/drivers/presentation/providers/batch_analytics_provider.dart';
+import 'package:gigaeats_app/src/features/drivers/presentation/providers/enhanced_voice_navigation_provider.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/route_optimization_models.dart';
+import 'package:gigaeats_app/src/features/orders/data/models/order.dart';
 
 /// Mock providers for comprehensive testing
 /// Provides controlled state management for testing multi-order workflow components
 
 /// Mock Multi-Order Batch Provider
-class MockMultiOrderBatchNotifier extends StateNotifier<MultiOrderBatchState> 
+class MockMultiOrderBatchNotifier extends StateNotifier<MultiOrderBatchState>
     with Mock implements MultiOrderBatchNotifier {
   MockMultiOrderBatchNotifier() : super(const MultiOrderBatchState());
 
   @override
-  Future<void> initialize() async {
+  Future<void> loadActiveBatch(String driverId) async {
+    state = state.copyWith(isLoading: true);
+
+    // Simulate loading
+    await Future.delayed(const Duration(milliseconds: 100));
+
     state = state.copyWith(
-      isInitialized: true,
       isLoading: false,
+      activeBatch: null, // No active batch for testing
     );
   }
 
   @override
-  Future<void> createBatch({
+  Future<bool> createOptimizedBatch({
     required String driverId,
-    required List<dynamic> orders,
-    int maxOrdersPerBatch = 5,
+    required List<String> orderIds,
+    int maxOrders = 3,
+    double maxDeviationKm = 5.0,
   }) async {
     state = state.copyWith(isLoading: true);
-    
+
     // Simulate batch creation
     await Future.delayed(const Duration(milliseconds: 100));
-    
-    final mockBatch = {
-      'id': 'mock-batch-${DateTime.now().millisecondsSinceEpoch}',
-      'driverId': driverId,
-      'orders': orders.take(maxOrdersPerBatch).toList(),
-      'status': 'created',
-      'createdAt': DateTime.now(),
-    };
-    
+
     state = state.copyWith(
       isLoading: false,
-      currentBatch: mockBatch,
-      batches: [...state.batches, mockBatch],
+      successMessage: 'Mock batch created successfully',
     );
+
+    return true;
   }
 
   @override
-  Future<void> updateBatchStatus({
-    required String batchId,
-    required String status,
-  }) async {
+  Future<bool> startBatch() async {
     state = state.copyWith(isLoading: true);
-    
+
     await Future.delayed(const Duration(milliseconds: 50));
-    
-    if (state.currentBatch?['id'] == batchId) {
-      final updatedBatch = Map<String, dynamic>.from(state.currentBatch!);
-      updatedBatch['status'] = status;
-      updatedBatch['updatedAt'] = DateTime.now();
-      
-      state = state.copyWith(
-        isLoading: false,
-        currentBatch: updatedBatch,
-      );
-    }
+
+    state = state.copyWith(
+      isLoading: false,
+      successMessage: 'Mock batch started',
+    );
+
+    return true;
   }
 
   @override
-  Future<void> completeBatch(String batchId) async {
-    await updateBatchStatus(batchId: batchId, status: 'completed');
+  Future<bool> completeBatch() async {
+    state = state.copyWith(isLoading: true);
+
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    state = state.copyWith(
+      isLoading: false,
+      successMessage: 'Mock batch completed',
+    );
+
+    return true;
   }
 
   @override
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  @override
+  void clearSuccessMessage() {
+    state = state.copyWith(successMessage: null);
   }
 }
 
@@ -86,119 +95,51 @@ class MockRouteOptimizationNotifier extends StateNotifier<RouteOptimizationState
   MockRouteOptimizationNotifier() : super(const RouteOptimizationState());
 
   @override
-  Future<void> initialize() async {
-    state = state.copyWith(
-      isInitialized: true,
-      isLoading: false,
-    );
-  }
-
-  @override
-  Future<void> optimizeRoute({
-    required List<dynamic> orders,
-    required Map<String, dynamic> driverLocation,
-    Map<String, dynamic>? criteria,
+  Future<bool> calculateOptimalRoute({
+    required List<Order> orders,
+    required LatLng driverLocation,
+    OptimizationCriteria? criteria,
   }) async {
-    state = state.copyWith(isLoading: true);
-    
+    state = state.copyWith(isOptimizing: true);
+
     // Simulate route optimization
     await Future.delayed(const Duration(milliseconds: 200));
-    
-    final mockOptimizedRoute = {
-      'id': 'route-${DateTime.now().millisecondsSinceEpoch}',
-      'orderSequence': orders.map((o) => o['id']).toList(),
-      'waypoints': _generateMockWaypoints(orders),
-      'totalDistance': 15.5 + (orders.length * 2.0),
-      'totalDuration': Duration(minutes: 30 + (orders.length * 8)),
-      'optimizationScore': 0.85,
-      'efficiency': 0.92,
-      'trafficConditions': {'average': 'moderate'},
-      'optimizationMetrics': {
-        'distance_priority': criteria?['prioritizeDistance'] ?? false,
-        'time_priority': criteria?['prioritizeTime'] ?? false,
-        'traffic_priority': criteria?['prioritizeTraffic'] ?? false,
-        'traffic_considered': true,
-        'traffic_weight': criteria?['trafficWeight'] ?? 0.2,
-      },
-    };
-    
+
     state = state.copyWith(
-      isLoading: false,
-      currentRoute: mockOptimizedRoute,
-      optimizationHistory: [...state.optimizationHistory, mockOptimizedRoute],
+      isOptimizing: false,
+      successMessage: 'Mock route optimized successfully',
     );
+
+    return true;
   }
 
   @override
-  Future<void> reoptimizeRoute({
-    required Map<String, dynamic> currentRoute,
-    required Map<String, dynamic> newDriverLocation,
-    required List<String> completedWaypoints,
-    Map<String, dynamic>? updatedTrafficConditions,
-  }) async {
-    state = state.copyWith(isLoading: true);
-    
-    await Future.delayed(const Duration(milliseconds: 150));
-    
-    final remainingWaypoints = (currentRoute['waypoints'] as List)
-        .where((w) => !completedWaypoints.contains(w['id']))
-        .toList();
-    
-    final reoptimizedRoute = Map<String, dynamic>.from(currentRoute);
-    reoptimizedRoute['waypoints'] = remainingWaypoints;
-    reoptimizedRoute['totalDistance'] = (currentRoute['totalDistance'] as double) * 0.8;
-    reoptimizedRoute['updatedAt'] = DateTime.now();
-    
-    state = state.copyWith(
-      isLoading: false,
-      currentRoute: reoptimizedRoute,
-    );
-  }
-
-  List<Map<String, dynamic>> _generateMockWaypoints(List<dynamic> orders) {
-    final waypoints = <Map<String, dynamic>>[];
-    
-    for (int i = 0; i < orders.length; i++) {
-      final order = orders[i];
-      
-      // Pickup waypoint
-      waypoints.add({
-        'id': 'pickup-${order['id']}',
-        'type': 'pickup',
-        'orderId': order['id'],
-        'location': {
-          'latitude': order['vendorLatitude'],
-          'longitude': order['vendorLongitude'],
-        },
-        'address': order['vendorAddress'],
-        'estimatedArrival': DateTime.now().add(Duration(minutes: 15 + (i * 10))),
-        'preparationTime': Duration(minutes: order['preparationTimeMinutes'] ?? 20),
-      });
-      
-      // Delivery waypoint
-      waypoints.add({
-        'id': 'delivery-${order['id']}',
-        'type': 'delivery',
-        'orderId': order['id'],
-        'location': {
-          'latitude': order['deliveryLatitude'],
-          'longitude': order['deliveryLongitude'],
-        },
-        'address': order['deliveryAddress'],
-        'estimatedArrival': DateTime.now().add(Duration(minutes: 35 + (i * 15))),
-        'deliveryWindow': order['deliveryWindowStart'] != null ? {
-          'start': order['deliveryWindowStart'],
-          'end': order['deliveryWindowEnd'],
-        } : null,
-      });
-    }
-    
-    return waypoints;
+  Future<void> updateOptimizationCriteria(OptimizationCriteria criteria) async {
+    state = state.copyWith(criteria: criteria);
   }
 
   @override
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  @override
+  void clearSuccessMessage() {
+    state = state.copyWith(successMessage: null);
+  }
+
+  @override
+  Future<bool> reoptimizeRoute() async {
+    state = state.copyWith(isReoptimizing: true);
+
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    state = state.copyWith(
+      isReoptimizing: false,
+      successMessage: 'Mock route reoptimized successfully',
+    );
+
+    return true;
   }
 }
 

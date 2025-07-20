@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../drivers/data/models/driver_order.dart';
@@ -13,16 +12,15 @@ final enhancedButtonStateProvider = StateNotifierProvider.autoDispose.family<
   EnhancedButtonState,
   String
 >((ref, orderId) {
-  return EnhancedButtonStateNotifier(ref, orderId);
+  return EnhancedButtonStateNotifier(orderId);
 });
 
 /// Enhanced button state notifier with comprehensive state management
 class EnhancedButtonStateNotifier extends StateNotifier<EnhancedButtonState> {
-  final Ref _ref;
   final String _orderId;
   Timer? _validationTimer;
 
-  EnhancedButtonStateNotifier(this._ref, this._orderId) 
+  EnhancedButtonStateNotifier(this._orderId)
       : super(EnhancedButtonState.initial(_orderId)) {
     _initializeButtonState();
   }

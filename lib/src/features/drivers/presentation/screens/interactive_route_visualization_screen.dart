@@ -6,6 +6,7 @@ import '../../../../data/models/user_role.dart';
 import '../providers/multi_order_batch_provider.dart';
 import '../providers/route_optimization_provider.dart';
 import '../providers/enhanced_navigation_provider.dart';
+import '../../data/models/navigation_models.dart';
 import '../widgets/multi_order/multi_order_route_map.dart';
 import '../widgets/multi_order/navigation_instruction_overlay.dart';
 import '../widgets/multi_order/route_reorder_dialog.dart';
@@ -27,7 +28,7 @@ class _InteractiveRouteVisualizationScreenState extends ConsumerState<Interactiv
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authState = ref.watch(authProvider);
+    final authState = ref.watch(authStateProvider);
     final batchState = ref.watch(multiOrderBatchProvider);
     final routeState = ref.watch(routeOptimizationProvider);
     final navState = ref.watch(enhancedNavigationProvider);
@@ -331,8 +332,18 @@ class _InteractiveRouteVisualizationScreenState extends ConsumerState<Interactiv
   }
 
   void _toggleVoiceGuidance() {
+    final navState = ref.read(enhancedNavigationProvider);
     final navNotifier = ref.read(enhancedNavigationProvider.notifier);
-    navNotifier.toggleVoiceGuidance();
+
+    // Get current preferences or create default ones
+    final currentPreferences = navState.currentSession?.preferences ?? const NavigationPreferences();
+
+    // Toggle voice guidance
+    final updatedPreferences = currentPreferences.copyWith(
+      voiceGuidanceEnabled: !currentPreferences.voiceGuidanceEnabled,
+    );
+
+    navNotifier.updatePreferences(updatedPreferences);
   }
 
   void _startNavigation() {

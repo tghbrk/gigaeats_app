@@ -182,7 +182,7 @@ class GeofenceEvent extends Equatable {
       ];
 
   @override
-  String toString() => 'GeofenceEvent(id: $id, geofence: $geofenceId, type: ${typeDisplayName}, time: $timestamp)';
+  String toString() => 'GeofenceEvent(id: $id, geofence: $geofenceId, type: $typeDisplayName, time: $timestamp)';
 }
 
 /// Geofence event statistics for analytics

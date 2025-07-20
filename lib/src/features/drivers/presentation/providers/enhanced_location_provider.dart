@@ -78,13 +78,12 @@ class EnhancedLocationState {
 /// Enhanced location provider with geofencing and battery optimization
 class EnhancedLocationNotifier extends StateNotifier<EnhancedLocationState> {
   final EnhancedLocationService _locationService = EnhancedLocationService();
-  final Ref _ref;
   
   StreamSubscription<GeofenceEvent>? _geofenceSubscription;
   StreamSubscription<int>? _batterySubscription;
   Timer? _positionUpdateTimer;
 
-  EnhancedLocationNotifier(this._ref) : super(const EnhancedLocationState()) {
+  EnhancedLocationNotifier() : super(const EnhancedLocationState()) {
     _initialize();
   }
 
@@ -286,31 +285,7 @@ class EnhancedLocationNotifier extends StateNotifier<EnhancedLocationState> {
     );
   }
 
-  /// Handle geofence events
-  void _handleGeofenceEvent(GeofenceEvent event) {
-    debugPrint('🎯 [ENHANCED-LOCATION-PROVIDER] Geofence event: ${event.typeDisplayName} for ${event.geofenceId}');
-    
-    // Add to recent events (keep last 10)
-    final updatedEvents = List<GeofenceEvent>.from(state.recentEvents);
-    updatedEvents.insert(0, event);
-    if (updatedEvents.length > 10) {
-      updatedEvents.removeLast();
-    }
-    
-    state = state.copyWith(recentEvents: updatedEvents);
-  }
 
-  /// Handle battery level changes
-  void _handleBatteryLevelChange(int batteryLevel) {
-    debugPrint('🔋 [ENHANCED-LOCATION-PROVIDER] Battery level changed: $batteryLevel%');
-
-    final isLowBattery = batteryLevel <= 20;
-
-    state = state.copyWith(
-      batteryLevel: batteryLevel,
-      isLowBattery: isLowBattery,
-    );
-  }
 
   /// Start periodic position updates
   void _startPositionUpdates() {
@@ -339,7 +314,7 @@ class EnhancedLocationNotifier extends StateNotifier<EnhancedLocationState> {
 
 /// Enhanced location provider
 final enhancedLocationProvider = StateNotifierProvider<EnhancedLocationNotifier, EnhancedLocationState>((ref) {
-  return EnhancedLocationNotifier(ref);
+  return EnhancedLocationNotifier();
 });
 
 /// Current position provider

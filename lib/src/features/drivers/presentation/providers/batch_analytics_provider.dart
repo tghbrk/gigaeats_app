@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/services/batch_analytics_service.dart';
 import '../../data/services/automated_customer_notification_service.dart';
 import '../../data/models/batch_analytics_models.dart';
-import '../../data/models/notification_models.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 /// Batch analytics provider for Phase 4.2
@@ -85,7 +84,7 @@ class BatchAnalyticsNotifier extends StateNotifier<BatchAnalyticsState> {
       await _notificationService.initialize();
 
       // Get current user for driver-specific analytics
-      final authState = _ref.read(authProvider);
+      final authState = _ref.read(authStateProvider);
       if (authState.user != null) {
         await _startDriverAnalytics(authState.user!.id);
       }
@@ -377,7 +376,7 @@ class BatchAnalyticsNotifier extends StateNotifier<BatchAnalyticsState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final authState = _ref.read(authProvider);
+      final authState = _ref.read(authStateProvider);
       if (authState.user != null) {
         await _loadDriverMetrics(authState.user!.id);
       }
@@ -401,13 +400,16 @@ class BatchAnalyticsNotifier extends StateNotifier<BatchAnalyticsState> {
   }
 
   /// Dispose resources
-  Future<void> dispose() async {
+  @override
+  void dispose() {
     try {
-      await _analyticsService.dispose();
-      await _notificationService.dispose();
+      // Dispose services asynchronously without await since dispose() is not async
+      _analyticsService.dispose();
+      _notificationService.dispose();
       debugPrint('📊 [BATCH-ANALYTICS-PROVIDER] Analytics provider disposed');
     } catch (e) {
       debugPrint('❌ [BATCH-ANALYTICS-PROVIDER] Error disposing: $e');
     }
+    super.dispose();
   }
 }

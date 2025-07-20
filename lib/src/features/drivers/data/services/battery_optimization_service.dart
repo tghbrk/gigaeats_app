@@ -18,7 +18,7 @@ class BatteryOptimizationService {
   // Current state
   int _currentBatteryLevel = 100;
   BatteryState _currentBatteryState = BatteryState.unknown;
-  bool _isLowPowerMode = false;
+  final bool _isLowPowerMode = false;
   bool _isCharging = false;
   
   // Device capabilities

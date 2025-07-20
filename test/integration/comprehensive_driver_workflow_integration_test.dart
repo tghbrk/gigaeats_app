@@ -25,7 +25,6 @@ void main() {
     late String testOrderId;
     late String testDriverId;
     late ProviderContainer container;
-    late DriverWorkflowLogger logger;
     late EnhancedWorkflowIntegrationService workflowService;
     late DriverWorkflowErrorHandler errorHandler;
 
@@ -38,7 +37,6 @@ void main() {
       supabase = Supabase.instance.client;
       
       // Initialize test services
-      logger = DriverWorkflowLogger();
       workflowService = EnhancedWorkflowIntegrationService();
       errorHandler = DriverWorkflowErrorHandler();
       

@@ -14,7 +14,6 @@ void main() {
     
     // Test data from the original issue
     const driverId = '087132e7-e38b-4d3f-b28c-7c34b75e86c4';
-    const driverUserId = '5a400967-c68e-48fa-a222-ef25249de974';
     const testOrderId = 'b84ea515-9452-49d1-852f-1479ee6fb4bc';
 
     setUpAll(() async {

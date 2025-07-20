@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../../data/models/driver_order.dart';
 import '../../data/models/geofence.dart';
 import '../providers/enhanced_location_provider.dart';
 

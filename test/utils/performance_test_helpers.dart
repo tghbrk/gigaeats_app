@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -267,17 +266,21 @@ class PerformanceTestHelpers {
       'successRate': successCount / operations.length,
       'averageTimePerOperation': totalDuration.inMilliseconds / operations.length,
       'errors': errors,
-      'isPerformant': successRate > 0.9 && totalDuration.inSeconds < 30,
+      'isPerformant': (successCount / operations.length) > 0.9 && totalDuration.inSeconds < 30,
     };
   }
 
-  /// Android emulator testing utilities
-  static class AndroidEmulatorTestHelpers {
+}
+
+/// Android emulator testing utilities
+class AndroidEmulatorTestHelpers {
+    static const MethodChannel _performanceChannel = MethodChannel('gigaeats/performance');
+
     /// Check if running on Android emulator
     static Future<bool> isRunningOnEmulator() async {
       try {
         if (!Platform.isAndroid) return false;
-        
+
         final result = await _performanceChannel.invokeMethod<bool>('isEmulator');
         return result ?? false;
       } catch (e) {
@@ -346,102 +349,5 @@ class PerformanceTestHelpers {
         'memoryDelta': (endMetrics['memoryUsage'] ?? 0.0) - (startMetrics['memoryUsage'] ?? 0.0),
       };
     }
-  }
-
-  /// Performance assertion helpers
-  static void assertPerformanceThreshold({
-    required int actualTime,
-    required int thresholdMs,
-    required String operationName,
-  }) {
-    expect(
-      actualTime,
-      lessThan(thresholdMs),
-      reason: '$operationName took ${actualTime}ms, expected less than ${thresholdMs}ms',
-    );
-  }
-
-  static void assertMemoryUsage({
-    required int actualMemory,
-    required int maxMemoryMB,
-    required String operationName,
-  }) {
-    final actualMB = actualMemory / (1024 * 1024);
-    expect(
-      actualMB,
-      lessThan(maxMemoryMB),
-      reason: '$operationName used ${actualMB.toStringAsFixed(2)}MB, expected less than ${maxMemoryMB}MB',
-    );
-  }
-
-  static void assertBatteryOptimization({
-    required double drainRate,
-    required double maxDrainRate,
-    required String operationName,
-  }) {
-    expect(
-      drainRate,
-      lessThan(maxDrainRate),
-      reason: '$operationName drained ${drainRate.toStringAsFixed(2)}%/min, expected less than ${maxDrainRate}%/min',
-    );
-  }
-
-  /// Generate performance report
-  static Map<String, dynamic> generatePerformanceReport({
-    required List<Map<String, dynamic>> testResults,
-    required String testSuiteName,
-  }) {
-    final totalTests = testResults.length;
-    final passedTests = testResults.where((r) => r['success'] == true).length;
-    final failedTests = totalTests - passedTests;
-    
-    final executionTimes = testResults
-        .map((r) => r['duration'] as int? ?? 0)
-        .where((t) => t > 0)
-        .toList();
-    
-    final avgExecutionTime = executionTimes.isNotEmpty
-        ? executionTimes.reduce((a, b) => a + b) / executionTimes.length
-        : 0.0;
-    
-    final maxExecutionTime = executionTimes.isNotEmpty
-        ? executionTimes.reduce((a, b) => a > b ? a : b)
-        : 0;
-    
-    return {
-      'testSuiteName': testSuiteName,
-      'timestamp': DateTime.now().toIso8601String(),
-      'totalTests': totalTests,
-      'passedTests': passedTests,
-      'failedTests': failedTests,
-      'successRate': passedTests / totalTests,
-      'averageExecutionTime': avgExecutionTime,
-      'maxExecutionTime': maxExecutionTime,
-      'testResults': testResults,
-      'summary': {
-        'performance': passedTests / totalTests > 0.9 ? 'GOOD' : 'NEEDS_IMPROVEMENT',
-        'recommendations': _generateRecommendations(testResults),
-      },
-    };
-  }
-
-  static List<String> _generateRecommendations(List<Map<String, dynamic>> testResults) {
-    final recommendations = <String>[];
-    
-    final slowTests = testResults.where((r) => (r['duration'] as int? ?? 0) > 5000).toList();
-    if (slowTests.isNotEmpty) {
-      recommendations.add('Optimize slow operations: ${slowTests.map((t) => t['testName']).join(', ')}');
-    }
-    
-    final failedTests = testResults.where((r) => r['success'] != true).toList();
-    if (failedTests.isNotEmpty) {
-      recommendations.add('Fix failing tests: ${failedTests.map((t) => t['testName']).join(', ')}');
-    }
-    
-    if (recommendations.isEmpty) {
-      recommendations.add('Performance is within acceptable thresholds');
-    }
-    
-    return recommendations;
   }
 }

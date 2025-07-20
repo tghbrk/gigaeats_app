@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/models/batch_operation_results.dart';
 import '../../../data/models/delivery_batch.dart';
 
 /// Batch overview card displaying key metrics and status information
@@ -41,7 +40,7 @@ class BatchOverviewCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(theme, batch!),
+            _buildHeader(context, theme, batch!),
             const SizedBox(height: 16),
             _buildMetricsRow(theme, batch!),
             const SizedBox(height: 16),
@@ -54,7 +53,7 @@ class BatchOverviewCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(ThemeData theme, DeliveryBatch batch) {
+  Widget _buildHeader(BuildContext context, ThemeData theme, DeliveryBatch batch) {
     return Row(
       children: [
         Container(

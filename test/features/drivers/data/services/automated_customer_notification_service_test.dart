@@ -3,9 +3,9 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:gigaeats/src/features/drivers/data/services/automated_customer_notification_service.dart';
-import 'package:gigaeats/src/features/drivers/data/models/notification_models.dart';
-import 'package:gigaeats/src/core/services/notification_service.dart';
+import 'package:gigaeats_app/src/features/drivers/data/services/automated_customer_notification_service.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/notification_models.dart';
+import 'package:gigaeats_app/src/core/services/notification_service.dart';
 
 import '../../../../test_helpers/test_data.dart';
 

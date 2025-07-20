@@ -1,16 +1,11 @@
 import 'dart:async';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import '../../../../core/utils/driver_workflow_logger.dart';
-import '../models/driver_order.dart';
 
 /// Comprehensive Android emulator testing service for driver workflow validation
 /// Provides systematic testing with hot restart methodology and edge case validation
 class AndroidEmulatorTestingService {
   static const String _emulatorId = 'emulator-5554';
-  static const Duration _defaultTimeout = Duration(seconds: 30);
   static const Duration _hotRestartDelay = Duration(seconds: 3);
 
   final List<TestResult> _testResults = [];

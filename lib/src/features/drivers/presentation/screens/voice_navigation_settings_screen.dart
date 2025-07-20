@@ -49,7 +49,7 @@ class _VoiceNavigationSettingsScreenState extends ConsumerState<VoiceNavigationS
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authState = ref.watch(authProvider);
+    final authState = ref.watch(authStateProvider);
     final voiceState = ref.watch(enhancedVoiceNavigationProvider);
 
     // Check authentication and role

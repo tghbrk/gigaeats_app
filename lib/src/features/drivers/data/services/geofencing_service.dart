@@ -21,9 +21,7 @@ class GeofencingService {
   Stream<GeofenceEvent> get eventStream => _eventController.stream;
   
   // Configuration
-  static const double _defaultRadius = 100.0; // meters
   static const Duration _dwellThreshold = Duration(seconds: 30);
-  static const Duration _exitCooldown = Duration(seconds: 10);
   
   bool _isInitialized = false;
 
@@ -293,7 +291,7 @@ class GeofencingService {
       );
       
       // Distance to geofence boundary
-      final distanceToBoundary = max(0, distance - geofence.radius);
+      final distanceToBoundary = max(0.0, distance - geofence.radius);
       minDistance = min(minDistance, distanceToBoundary);
     }
     

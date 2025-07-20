@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/delivery_batch.dart';
 import '../models/batch_analytics_models.dart';
 import '../../../../core/monitoring/performance_monitor.dart';
 import '../../../../core/utils/logger.dart';

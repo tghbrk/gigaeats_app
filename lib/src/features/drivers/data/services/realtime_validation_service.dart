@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/utils/driver_workflow_logger.dart';
@@ -291,7 +290,6 @@ class RealtimeValidationService {
           .single();
 
       final initialStatus = initialResponse['status'] as String;
-      final initialUpdatedAt = initialResponse['updated_at'] as String;
 
       // Test status update trigger
       final testStatus = 'picked_up';
@@ -384,13 +382,13 @@ class RealtimeValidationService {
   }) {
     final eventsReceived = events.length;
     final eventsExpected = testStatuses.length;
-    final successfulUpdates = updateResults.values.where((success) => success).length;
     final successRate = eventsExpected > 0 ? (eventsReceived / eventsExpected) : 0.0;
 
     // Calculate latency statistics
     final latencies = <double>[];
     for (final event in events) {
-      final timestamp = DateTime.parse(event['timestamp'] as String);
+      // Parse timestamp for potential future use
+      DateTime.parse(event['timestamp'] as String);
       // Approximate latency (would need more precise timing in real implementation)
       latencies.add(100.0); // Placeholder
     }
@@ -419,7 +417,6 @@ class RealtimeValidationService {
     required Duration testDuration,
   }) {
     final eventsReceived = events.length;
-    final expectedEvents = testDuration.inSeconds; // Rough estimate
     final averageLatencyMs = events.isNotEmpty ? 50.0 : 0.0; // Placeholder calculation
 
     return StreamTestResult(

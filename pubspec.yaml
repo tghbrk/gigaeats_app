@@ -108,6 +108,7 @@ dependencies:
   image: ^4.3.0
   rxdart: ^0.28.0
   connectivity_plus: ^6.1.4
+  audio_session: ^0.2.2
 
 dev_dependencies:
   flutter_test:

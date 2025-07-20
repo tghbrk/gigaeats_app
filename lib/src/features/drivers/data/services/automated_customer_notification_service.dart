@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/delivery_batch.dart';
+import '../models/batch_operation_results.dart';
 import '../models/notification_models.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/utils/logger.dart';

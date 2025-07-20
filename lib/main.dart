@@ -12,7 +12,6 @@ import 'src/core/constants/app_constants.dart';
 import 'src/core/theme/app_theme.dart';
 import 'src/core/router/app_router.dart';
 import 'src/core/config/supabase_config.dart';
-import 'src/features/auth/presentation/providers/auth_provider.dart';
 import 'src/features/shared/providers/app_providers.dart' as app_providers;
 
 void main() async {

@@ -451,6 +451,12 @@ async function isCustomerOwner(supabase: any, userId: string, customerId: string
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   )
 
+  // Check if the userId matches the customerId directly (for orders where customer_id is user_id)
+  // OR if the userId has a customer profile with the given customerId
+  if (userId === customerId) {
+    return true
+  }
+
   const { data: customerProfile } = await serviceRoleClient
     .from('customer_profiles')
     .select('id')

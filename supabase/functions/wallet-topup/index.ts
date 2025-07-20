@@ -52,13 +52,17 @@ serve(async (req) => {
         .insert({
           wallet_id: '00000000-0000-0000-0000-000000000000', // Placeholder
           transaction_type: 'adjustment',
-          amount: 0,
+          amount: 0.01, // Small amount to satisfy CHECK constraint
           currency: 'MYR',
+          balance_before: 0,
+          balance_after: 0,
+          reference_type: 'debug',
+          reference_id: `debug-${timestamp}`,
           description: `Function called V7-${timestamp}`,
-          payment_method: 'debug',
-          payment_reference: `debug-${timestamp}`,
-          status: 'completed',
-          metadata: { debug: true, version: 'V7', timestamp }
+          processed_by: user.id,
+          processing_fee: 0,
+          metadata: { debug: true, version: 'V7', timestamp, payment_method: 'debug' },
+          processed_at: new Date().toISOString()
         });
       console.log(`📝 [WALLET-TOPUP-V7-${timestamp}] Debug log inserted to database`);
     } catch (debugError) {
@@ -233,29 +237,36 @@ serve(async (req) => {
         throw new Error(`Failed to update wallet: ${updateError.message}`);
       }
 
-      // Create transaction record
+      // Create transaction record in the correct wallet_transactions table
       const { error: transactionError } = await supabaseClient
-        .from('customer_wallet_transactions')
+        .from('wallet_transactions')
         .insert({
           wallet_id: wallet.id,
-          user_id: user.id,
           transaction_type: 'credit',
           amount: amount,
           currency: currency.toUpperCase(),
-          description: 'Wallet top-up',
-          payment_method: 'stripe',
-          payment_reference: paymentIntent.id,
-          status: 'completed',
+          balance_before: wallet.available_balance,
+          balance_after: wallet.available_balance + amount,
+          reference_type: 'wallet_topup',
+          reference_id: null, // Don't use reference_id for Stripe Payment Intent ID (it's UUID type)
+          description: 'Wallet top-up via Stripe',
+          processed_by: user.id,
+          processing_fee: 0,
           metadata: {
             stripe_payment_intent_id: paymentIntent.id,
             stripe_payment_method_id: payment_method_id,
-            created_via: 'wallet_topup_v5'
-          }
+            created_via: 'wallet_topup_v7',
+            payment_method: 'stripe'
+          },
+          processed_at: new Date().toISOString()
         });
 
       if (transactionError) {
-        console.error(`❌ [WALLET-TOPUP-V4] Failed to create transaction: ${transactionError.message}`);
-        // Don't throw here as the payment succeeded, just log the error
+        console.error(`❌ [WALLET-TOPUP-V7] Failed to create transaction: ${transactionError.message}`);
+        console.error(`❌ [WALLET-TOPUP-V7] Transaction error details:`, transactionError);
+        // Still don't throw here as the payment succeeded, but log more details for debugging
+      } else {
+        console.log(`✅ [WALLET-TOPUP-V7] Transaction record created successfully`);
       }
 
       console.log(`✅ [WALLET-TOPUP-V4] Wallet top-up completed successfully`);

@@ -22,6 +22,7 @@ interface OrderData {
   scheduled_delivery_time?: string
   delivery_address: any
   delivery_method?: string
+  payment_method?: string
   items: OrderItem[]
   special_instructions?: string
   contact_phone?: string
@@ -342,6 +343,13 @@ async function createOrderInDatabase(
   userId: string
 ) {
   console.log('💾 Creating order in database')
+  console.log('🔑 Using service role client to bypass RLS')
+
+  // Create a service role client to bypass RLS
+  const serviceRoleClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
 
   // Generate order number
   const orderNumber = `GE${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`
@@ -388,14 +396,18 @@ async function createOrderInDatabase(
 
   // Prepare delivery method and metadata
   const deliveryMethod = orderData.delivery_method || 'own_fleet'
+  const paymentMethod = orderData.payment_method
+  console.log(`💳 Payment method received: ${paymentMethod}`)
+
   const metadata = {
     delivery_method: deliveryMethod, // Store in metadata for backward compatibility
+    payment_method: paymentMethod, // Store in metadata for backward compatibility
     created_via: 'edge_function_v3',
     ...(orderData.metadata || {})
   }
 
   // Start a transaction
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await serviceRoleClient
     .from('orders')
     .insert({
       order_number: orderNumber,
@@ -403,11 +415,12 @@ async function createOrderInDatabase(
       vendor_name: vendorName,
       customer_id: orderData.customer_id,
       customer_name: customerName,
-      sales_agent_id: orderData.sales_agent_id || userId,
+      sales_agent_id: orderData.sales_agent_id || null, // Don't set customer as sales agent
       delivery_date: orderData.delivery_date,
       scheduled_delivery_time: orderData.scheduled_delivery_time,
       delivery_address: orderData.delivery_address,
       delivery_method: deliveryMethod,
+      payment_method: orderData.payment_method,
       subtotal: totals.subtotal,
       delivery_fee: totals.delivery_fee,
       sst_amount: totals.sst_amount,
@@ -427,6 +440,7 @@ async function createOrderInDatabase(
   }
 
   console.log('✅ Order created with ID:', order.id)
+  console.log('💾 Payment method stored in database:', order.payment_method)
 
   // Insert order items
   const orderItems = orderData.items.map(item => ({
@@ -440,14 +454,14 @@ async function createOrderInDatabase(
     notes: item.notes
   }))
 
-  const { error: itemsError } = await supabase
+  const { error: itemsError } = await serviceRoleClient
     .from('order_items')
     .insert(orderItems)
 
   if (itemsError) {
     console.error('❌ Failed to create order items:', itemsError)
     // Rollback order creation
-    await supabase.from('orders').delete().eq('id', order.id)
+    await serviceRoleClient.from('orders').delete().eq('id', order.id)
     throw new Error(`Failed to create order items: ${itemsError.message}`)
   }
 

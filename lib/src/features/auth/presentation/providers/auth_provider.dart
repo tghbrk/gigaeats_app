@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../../../user_management/domain/user.dart';
@@ -8,11 +7,7 @@ import '../../../../data/models/user_role.dart';
 import '../../../../data/repositories/base_repository.dart';
 import '../../data/datasources/supabase_auth_service.dart';
 import '../../../../core/utils/logger.dart';
-
-// Shared Preferences Provider
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError();
-});
+import '../../../shared/providers/app_providers.dart' show sharedPreferencesProvider;
 
 // Supabase Auth Service Provider
 final supabaseAuthServiceProvider = Provider<SupabaseAuthService>((ref) {

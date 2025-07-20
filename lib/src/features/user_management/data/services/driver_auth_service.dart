@@ -265,7 +265,8 @@ class DriverAuthService {
     Map<String, dynamic>? lastLocation,
   }) async {
     try {
-      debugPrint('DriverAuthService: Updating driver status: $driverId -> $status');
+      debugPrint('🔄 [DRIVER-AUTH] Updating driver status');
+      debugPrint('🔄 [DRIVER-AUTH] Driver: $driverId, New Status: $status');
 
       final updateData = <String, dynamic>{
         'status': status,
@@ -275,6 +276,14 @@ class DriverAuthService {
 
       if (lastLocation != null) {
         updateData['last_location'] = lastLocation;
+        debugPrint('🔄 [DRIVER-AUTH] Including location update in status change');
+      }
+
+      // Clear delivery status when driver goes offline
+      if (status == 'offline') {
+        updateData['current_delivery_status'] = null;
+        debugPrint('🧹 [DRIVER-AUTH] Clearing driver delivery status for offline transition');
+        debugPrint('🧹 [DRIVER-AUTH] Driver $driverId going offline - cleaning up workflow state');
       }
 
       await _supabase

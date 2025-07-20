@@ -170,7 +170,8 @@ class _CustomerRestaurantDetailsScreenState extends ConsumerState<CustomerRestau
             ),
           ),
         ),
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+        titlePadding: const EdgeInsets.only(bottom: 16),
+        centerTitle: true,
         background: Stack(
           fit: StackFit.expand,
           children: [

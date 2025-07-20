@@ -46,8 +46,8 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
           return Scaffold(
             appBar: AppBar(
               title: const Text('Item Not Found'),
-              backgroundColor: theme.colorScheme.surface,
-              foregroundColor: theme.colorScheme.onSurface,
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
             ),
             body: Center(
               child: Column(
@@ -102,8 +102,8 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
     return Scaffold(
       appBar: AppBar(
         title: const Text('Loading...'),
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
       ),
       body: const LoadingWidget(message: 'Loading menu item...'),
     );
@@ -113,8 +113,8 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
     return Scaffold(
       appBar: AppBar(
         title: const Text('Error'),
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
       ),
       body: CustomErrorWidget(
         message: 'Failed to load menu item: $error',
@@ -129,8 +129,8 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
     return Scaffold(
       appBar: AppBar(
         title: Text(product.name),
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         elevation: 0,
       ),
       body: Column(

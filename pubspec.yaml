@@ -76,6 +76,7 @@ dependencies:
   geocoding: ^3.0.0
   google_maps_flutter: ^2.5.0
   battery_plus: ^6.0.2
+  device_info_plus: ^10.1.2
 
   # Payment Gateways
   flutter_stripe: ^11.1.0

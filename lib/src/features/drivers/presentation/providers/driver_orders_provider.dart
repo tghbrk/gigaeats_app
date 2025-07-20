@@ -12,12 +12,21 @@ final authServiceProvider = Provider<AuthService>((ref) {
 final activeDriverOrdersProvider = FutureProvider<List<Order>>((ref) async {
   final authService = ref.watch(authServiceProvider);
   final user = authService.currentUser;
-  
+
   if (user == null) return [];
-  
+
   try {
     final supabase = Supabase.instance.client;
-    
+
+    // Get the driver ID for the current user (CRITICAL FIX)
+    final driverResponse = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+    final driverId = driverResponse['id'] as String;
+
     // Get orders assigned to this driver that are active
     final response = await supabase
         .from('orders')
@@ -36,7 +45,7 @@ final activeDriverOrdersProvider = FutureProvider<List<Order>>((ref) async {
             business_address
           )
         ''')
-        .eq('assigned_driver_id', user.id)
+        .eq('assigned_driver_id', driverId)
         .inFilter('status', [
           'assigned',
           'confirmed',
@@ -114,17 +123,26 @@ final driverOrderHistoryProvider = FutureProvider.family<List<Order>, String>((r
 final driverStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final authService = ref.watch(authServiceProvider);
   final user = authService.currentUser;
-  
+
   if (user == null) return {};
-  
+
   try {
     final supabase = Supabase.instance.client;
-    
+
+    // Get the driver ID for the current user (CRITICAL FIX)
+    final driverResponse = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+    final driverId = driverResponse['id'] as String;
+
     // Get all orders for this driver
     final response = await supabase
         .from('orders')
         .select('id, total_amount, status, created_at, delivered_at')
-        .eq('assigned_driver_id', user.id);
+        .eq('assigned_driver_id', driverId);
 
     final totalOrders = response.length;
     final completedOrders = response.where((o) => o['status'] == 'delivered').toList();

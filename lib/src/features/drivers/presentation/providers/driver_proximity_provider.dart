@@ -10,6 +10,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../orders/data/models/order.dart';
 import '../../../../data/models/user_role.dart';
 import 'driver_orders_provider.dart';
+import '../../../shared/providers/app_providers.dart' show sharedPreferencesProvider;
 
 /// Provider for geocoding service
 final geocodingServiceProvider = Provider<GeocodingService>((ref) {

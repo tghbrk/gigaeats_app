@@ -80,76 +80,54 @@ final enhancedCurrentDriverOrderProvider = StreamProvider.autoDispose<DriverOrde
     // Get initial current order using driver ID
     // For granular workflow, we need to get orders assigned to this driver
     // regardless of order status, since granular status is tracked in drivers table
-    final initialResponse = await supabase
-        .from('orders')
-        .select('''
-          id,
-          order_id:id,
-          order_number,
-          status,
-          vendor_id,
-          customer_id,
-          sales_agent_id,
-          delivery_date,
-          delivery_address,
-          subtotal,
-          delivery_fee,
-          sst_amount,
-          total_amount,
-          commission_amount,
-          payment_status,
-          payment_method,
-          payment_reference,
-          notes,
-          metadata,
-          created_at,
-          updated_at,
-          estimated_delivery_time,
-          actual_delivery_time,
-          preparation_started_at,
-          ready_at,
-          out_for_delivery_at,
-          delivery_zone,
-          special_instructions,
-          contact_phone,
-          delivery_proof_id,
-          assigned_driver_id,
-          order_items:order_items(
-            id,
-            quantity,
-            unit_price,
-            total_price,
-            customizations,
-            notes,
-            menu_item:menu_items!order_items_menu_item_id_fkey(
+    debugPrint('🚗 [ENHANCED-WORKFLOW] Executing simplified query to fix regression...');
+
+    // TEMPORARY FIX: Use simplified query to resolve regression
+    List<Map<String, dynamic>> initialResponse;
+    try {
+      debugPrint('🚗 [ENHANCED-WORKFLOW] About to execute Supabase query...');
+      initialResponse = await supabase
+          .from('orders')
+          .select('''
+            *,
+            order_items:order_items(
+              *,
+              menu_item:menu_items(
+                id,
+                name,
+                image_url,
+                base_price
+              )
+            ),
+            vendors:vendors(
+              business_name,
+              business_address
+            ),
+            drivers:drivers(
               id,
-              name,
-              image_url,
-              base_price
+              current_delivery_status
             )
-          ),
-          vendors:vendors!orders_vendor_id_fkey(
-            business_name,
-            business_address
-          ),
-          drivers:drivers!orders_assigned_driver_id_fkey(
-            id,
-            current_delivery_status
-          )
-        ''')
-        .eq('assigned_driver_id', driverId)
-        .inFilter('status', [
-          'assigned',
-          'on_route_to_vendor',
-          'arrived_at_vendor',
-          'picked_up',
-          'on_route_to_customer',
-          'arrived_at_customer',
-          'out_for_delivery', // Include legacy status for real-time updates
-          'ready' // Include ready status for order pickup
-        ])
-        .order('created_at', ascending: false)
-        .limit(1);
+          ''')
+          .eq('assigned_driver_id', driverId)
+          .inFilter('status', [
+            'assigned',
+            'on_route_to_vendor',
+            'arrived_at_vendor',
+            'picked_up',
+            'on_route_to_customer',
+            'arrived_at_customer',
+            'out_for_delivery', // Include legacy status for real-time updates
+            'ready' // Include ready status for order pickup
+          ])
+          .order('created_at', ascending: false)
+          .limit(1);
+      debugPrint('🚗 [ENHANCED-WORKFLOW] Query executed successfully');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [ENHANCED-WORKFLOW] Query failed with error: $e');
+      debugPrint('❌ [ENHANCED-WORKFLOW] Stack trace: $stackTrace');
+      yield null;
+      return;
+    }
 
     debugPrint('🚗 [ENHANCED-WORKFLOW] Initial query returned ${initialResponse.length} orders');
     debugPrint('🚗 [ENHANCED-WORKFLOW] Query filter: assigned_driver_id = $driverId, status in [ready, out_for_delivery, on_route_to_customer, ...]');
@@ -162,13 +140,32 @@ final enhancedCurrentDriverOrderProvider = StreamProvider.autoDispose<DriverOrde
 
       // Check if driver has granular delivery status
       final driverDeliveryStatus = orderData['drivers']?['current_delivery_status'];
-      debugPrint('🚗 [ENHANCED-WORKFLOW] Order status: ${orderData['status']}, Driver delivery status: $driverDeliveryStatus');
+      final orderStatus = orderData['status'];
+      debugPrint('🔍 [STATUS-CALCULATION] Analyzing status for effective status calculation');
+      debugPrint('🔍 [STATUS-CALCULATION] Order status: $orderStatus');
+      debugPrint('🔍 [STATUS-CALCULATION] Driver delivery status: $driverDeliveryStatus');
 
-      // Use driver delivery status for granular workflow if available
+      // IMPROVED LOGIC: Use driver delivery status only if it's more advanced than order status
+      // This prevents using stale driver status from previous orders
+      String effectiveStatus = orderStatus;
+
       if (driverDeliveryStatus != null && driverDeliveryStatus.toString().isNotEmpty) {
-        debugPrint('🚗 [ENHANCED-WORKFLOW] Using driver delivery status: $driverDeliveryStatus');
-        orderData['status'] = driverDeliveryStatus;
+        debugPrint('🔍 [STATUS-CALCULATION] Driver delivery status is not null/empty, checking compatibility');
+        // Only use driver delivery status if it makes sense for the current order status
+        if (_shouldUseDriverDeliveryStatus(orderStatus, driverDeliveryStatus.toString())) {
+          debugPrint('✅ [STATUS-CALCULATION] Using driver delivery status: $driverDeliveryStatus (more advanced than order status)');
+          effectiveStatus = driverDeliveryStatus.toString();
+        } else {
+          debugPrint('⚠️ [STATUS-CALCULATION] Ignoring driver delivery status: $driverDeliveryStatus (not compatible with order status: $orderStatus)');
+          debugPrint('⚠️ [STATUS-CALCULATION] This could indicate stale data from a previous order');
+        }
+      } else {
+        debugPrint('🔍 [STATUS-CALCULATION] Driver delivery status is null/empty, using order status');
       }
+
+      debugPrint('🎯 [STATUS-CALCULATION] Final effective status: $effectiveStatus');
+
+      orderData['status'] = effectiveStatus;
 
       final initialOrder = _transformToDriverOrder(orderData, orderData['status']);
       debugPrint('🚗 [ENHANCED-WORKFLOW] Current order ${initialOrder.orderNumber}: ${initialOrder.status.displayName}');
@@ -278,13 +275,29 @@ final enhancedCurrentDriverOrderProvider = StreamProvider.autoDispose<DriverOrde
 
           // Check if driver has granular delivery status
           final driverDeliveryStatus = orderData['drivers']?['current_delivery_status'];
-          debugPrint('🚗 [ENHANCED-WORKFLOW] Stream - Order status: ${orderData['status']}, Driver delivery status: $driverDeliveryStatus');
+          final orderStatus = orderData['status'];
+          debugPrint('🔍 [STREAM-STATUS-CALCULATION] Real-time status update received');
+          debugPrint('🔍 [STREAM-STATUS-CALCULATION] Order status: $orderStatus');
+          debugPrint('🔍 [STREAM-STATUS-CALCULATION] Driver delivery status: $driverDeliveryStatus');
 
-          // Use driver delivery status for granular workflow if available
+          // IMPROVED LOGIC: Use driver delivery status only if it's more advanced than order status
+          String effectiveStatus = orderStatus;
+
           if (driverDeliveryStatus != null && driverDeliveryStatus.toString().isNotEmpty) {
-            debugPrint('🚗 [ENHANCED-WORKFLOW] Stream - Using driver delivery status: $driverDeliveryStatus');
-            orderData['status'] = driverDeliveryStatus;
+            debugPrint('🔍 [STREAM-STATUS-CALCULATION] Driver delivery status present, checking compatibility');
+            if (_shouldUseDriverDeliveryStatus(orderStatus, driverDeliveryStatus.toString())) {
+              debugPrint('✅ [STREAM-STATUS-CALCULATION] Using driver delivery status: $driverDeliveryStatus (more advanced)');
+              effectiveStatus = driverDeliveryStatus.toString();
+            } else {
+              debugPrint('⚠️ [STREAM-STATUS-CALCULATION] Ignoring driver delivery status: $driverDeliveryStatus (incompatible with order status)');
+            }
+          } else {
+            debugPrint('🔍 [STREAM-STATUS-CALCULATION] No driver delivery status, using order status');
           }
+
+          debugPrint('🎯 [STREAM-STATUS-CALCULATION] Final effective status: $effectiveStatus');
+
+          orderData['status'] = effectiveStatus;
 
           final order = _transformToDriverOrder(orderData, orderData['status']);
           debugPrint('🚗 [ENHANCED-WORKFLOW] Current order ${order.orderNumber}: ${order.status.displayName}');
@@ -623,6 +636,13 @@ class EnhancedDriverWorkflowNotifier extends StateNotifier<AsyncValue<EnhancedDr
 
 /// Transform raw database response to DriverOrder model
 DriverOrder _transformToDriverOrder(Map<String, dynamic> response, String effectiveStatus) {
+  final orderId = response['id']?.toString() ?? '';
+  final orderNumber = response['order_number']?.toString() ?? '';
+
+  debugPrint('🔄 [TRANSFORM] Starting transformation for order $orderNumber (ID: ${orderId.substring(0, 8)}...)');
+  debugPrint('🔄 [TRANSFORM] Raw database status: $effectiveStatus');
+  debugPrint('🔄 [TRANSFORM] Full response keys: ${response.keys.toList()}');
+
   // Parse delivery address safely
   String deliveryAddressStr = '';
   if (response['delivery_address'] != null) {
@@ -651,10 +671,11 @@ DriverOrder _transformToDriverOrder(Map<String, dynamic> response, String effect
     driverId = response['drivers']['id']?.toString() ?? '';
   }
 
-  return DriverOrder.fromJson({
-    'id': response['id']?.toString() ?? '',
-    'order_id': response['id']?.toString() ?? '',
-    'order_number': response['order_number']?.toString() ?? '',
+  // Create the JSON payload for DriverOrder.fromJson
+  final driverOrderJson = {
+    'id': orderId,
+    'order_id': orderId,
+    'order_number': orderNumber,
     'driver_id': driverId,
     'vendor_id': response['vendor_id']?.toString() ?? '',
     'vendor_name': vendorName,
@@ -687,7 +708,22 @@ DriverOrder _transformToDriverOrder(Map<String, dynamic> response, String effect
     'delivered_at': response['actual_delivery_time']?.toString(),
     'created_at': response['created_at']?.toString() ?? DateTime.now().toIso8601String(),
     'updated_at': response['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
-  });
+  };
+
+  debugPrint('🔄 [TRANSFORM] Created JSON payload with status: ${driverOrderJson['status']}');
+  debugPrint('🔄 [TRANSFORM] JSON payload keys: ${driverOrderJson.keys.toList()}');
+
+  try {
+    final driverOrder = DriverOrder.fromJson(driverOrderJson);
+    debugPrint('✅ [TRANSFORM] Successfully created DriverOrder with status: ${driverOrder.status.value}');
+    debugPrint('✅ [TRANSFORM] DriverOrder status display name: ${driverOrder.status.displayName}');
+    return driverOrder;
+  } catch (e, stackTrace) {
+    debugPrint('❌ [TRANSFORM] Error creating DriverOrder: $e');
+    debugPrint('❌ [TRANSFORM] Stack trace: $stackTrace');
+    debugPrint('❌ [TRANSFORM] Problematic JSON: $driverOrderJson');
+    rethrow;
+  }
 }
 
 /// Safely convert a value to double
@@ -699,4 +735,51 @@ double _safeToDouble(dynamic value) {
     return double.tryParse(value) ?? 0.0;
   }
   return 0.0;
+}
+
+/// Determine if driver delivery status should be used over order status
+/// This prevents using stale driver status from previous orders
+bool _shouldUseDriverDeliveryStatus(String orderStatus, String driverDeliveryStatus) {
+  // Define the workflow progression order
+  const statusProgression = [
+    'pending',
+    'confirmed',
+    'preparing',
+    'ready',
+    'assigned',
+    'on_route_to_vendor',
+    'arrived_at_vendor',
+    'picked_up',
+    'on_route_to_customer',
+    'arrived_at_customer',
+    'delivered',
+    'cancelled'
+  ];
+
+  final orderIndex = statusProgression.indexOf(orderStatus);
+  final driverIndex = statusProgression.indexOf(driverDeliveryStatus);
+
+  // If either status is not found, don't use driver status
+  if (orderIndex == -1 || driverIndex == -1) {
+    debugPrint('🚗 [STATUS-LOGIC] Unknown status - Order: $orderStatus, Driver: $driverDeliveryStatus');
+    return false;
+  }
+
+  // STRICT LOGIC: Only use driver status if it's a reasonable progression from order status
+  // If driver status is significantly more advanced than order status, it's likely stale
+  final maxAllowedGap = 2; // Allow at most 2 steps ahead
+  final statusGap = driverIndex - orderIndex;
+
+  // Don't use driver status if:
+  // 1. Order is not yet assigned to driver (before 'assigned' status)
+  // 2. Driver status is too far ahead (likely from previous order)
+  // 3. Driver status is behind order status (shouldn't happen but be safe)
+  final shouldUse = orderIndex >= statusProgression.indexOf('assigned') &&
+                   statusGap >= 0 &&
+                   statusGap <= maxAllowedGap;
+
+  debugPrint('🚗 [STATUS-LOGIC] Order: $orderStatus (index: $orderIndex), Driver: $driverDeliveryStatus (index: $driverIndex)');
+  debugPrint('🚗 [STATUS-LOGIC] Status gap: $statusGap, Max allowed: $maxAllowedGap, Use driver status: $shouldUse');
+
+  return shouldUse;
 }

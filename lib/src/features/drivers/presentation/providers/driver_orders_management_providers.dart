@@ -398,42 +398,85 @@ final historyOrdersStreamProvider = StreamProvider.autoDispose<List<Order>>((ref
   }
 });
 
-/// Provider for accepting an order
+/// Provider for accepting an order with enhanced debugging and race condition handling
 final acceptOrderProvider = FutureProvider.family<bool, String>((ref, orderId) async {
   final authState = ref.read(authStateProvider);
-  
+
   if (authState.user?.role != UserRole.driver) {
+    DriverWorkflowLogger.logError(
+      operation: 'Order Acceptance',
+      error: 'Only drivers can accept orders',
+      orderId: orderId,
+      context: 'PROVIDER',
+    );
     throw Exception('Only drivers can accept orders');
   }
 
   final userId = authState.user?.id;
   if (userId == null) {
+    DriverWorkflowLogger.logError(
+      operation: 'Order Acceptance',
+      error: 'User not authenticated',
+      orderId: orderId,
+      context: 'PROVIDER',
+    );
     throw Exception('User not authenticated');
   }
+
+  final startTime = DateTime.now();
 
   try {
     final supabase = Supabase.instance.client;
 
-    debugPrint('🚗 Accepting order: $orderId for user: $userId');
+    DriverWorkflowLogger.logDatabaseOperation(
+      operation: 'ORDER_ACCEPTANCE_START',
+      orderId: orderId,
+      data: {'user_id': userId},
+      context: 'PROVIDER',
+    );
 
-    // First, get the driver ID for the current user
+    // First, get the driver ID and validate current status
     final driverResponse = await supabase
         .from('drivers')
-        .select('id, is_active')
+        .select('id, is_active, status, current_delivery_status')
         .eq('user_id', userId)
         .single();
 
     final driverId = driverResponse['id'] as String;
     final isActive = driverResponse['is_active'] as bool;
+    final currentDriverStatus = driverResponse['status'] as String;
+    final currentDeliveryStatus = driverResponse['current_delivery_status'] as String?;
+
+    DriverWorkflowLogger.logValidation(
+      validationType: 'Driver Availability Check',
+      isValid: isActive && currentDriverStatus == 'online',
+      orderId: orderId,
+      context: 'PROVIDER',
+      reason: 'Active: $isActive, Status: $currentDriverStatus, Delivery Status: $currentDeliveryStatus',
+    );
 
     if (!isActive) {
       throw Exception('Driver account is not active');
     }
 
-    debugPrint('🚗 Driver ID: $driverId, accepting order: $orderId');
+    // Validate driver is available for new orders
+    if (currentDriverStatus == 'on_delivery' && currentDeliveryStatus != null) {
+      throw Exception('Driver is already on a delivery and cannot accept new orders');
+    }
 
-    // Update order with assigned driver and status
-    // Use 'assigned' status (enhanced workflow: ready → assigned → on_route_to_vendor → ...)
+    DriverWorkflowLogger.logDatabaseOperation(
+      operation: 'ORDER_ASSIGNMENT_ATTEMPT',
+      orderId: orderId,
+      data: {
+        'driver_id': driverId,
+        'from_status': 'ready',
+        'to_status': 'assigned',
+      },
+      context: 'PROVIDER',
+    );
+
+    // ATOMIC OPERATION: Update order with assigned driver and status
+    // Use conditional update to prevent race conditions
     final updateResponse = await supabase
         .from('orders')
         .update({
@@ -444,16 +487,70 @@ final acceptOrderProvider = FutureProvider.family<bool, String>((ref, orderId) a
         .eq('id', orderId)
         .eq('status', 'ready') // Only accept if still ready
         .isFilter('assigned_driver_id', null) // Only if no driver assigned
+        .eq('delivery_method', 'own_fleet') // Additional safety check
         .select();
 
     if (updateResponse.isEmpty) {
+      DriverWorkflowLogger.logError(
+        operation: 'Order Assignment',
+        error: 'Order may have already been assigned to another driver or is no longer available',
+        orderId: orderId,
+        context: 'PROVIDER',
+      );
       throw Exception('Order may have already been assigned to another driver or is no longer available');
     }
 
-    debugPrint('🚗 Order accepted successfully: $orderId, status updated to assigned (enhanced workflow)');
+    DriverWorkflowLogger.logDatabaseOperation(
+      operation: 'ORDER_ASSIGNMENT_SUCCESS',
+      orderId: orderId,
+      isSuccess: true,
+      data: updateResponse.first,
+      context: 'PROVIDER',
+    );
+
+    // CRITICAL: Update driver's status in a separate operation
+    // This ensures proper workflow state synchronization
+    await supabase
+        .from('drivers')
+        .update({
+          'status': 'on_delivery',
+          'current_delivery_status': 'assigned', // Initialize workflow
+          'last_seen': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', driverId);
+
+    final duration = DateTime.now().difference(startTime);
+    DriverWorkflowLogger.logPerformance(
+      operation: 'Order Acceptance',
+      duration: duration,
+      orderId: orderId,
+      context: 'PROVIDER',
+    );
+
+    DriverWorkflowLogger.logStatusTransition(
+      orderId: orderId,
+      fromStatus: 'ready',
+      toStatus: 'assigned',
+      driverId: driverId,
+      context: 'PROVIDER',
+    );
+
     return true;
   } catch (e) {
-    debugPrint('❌ Error accepting order: $e');
+    final duration = DateTime.now().difference(startTime);
+    DriverWorkflowLogger.logError(
+      operation: 'Order Acceptance',
+      error: e.toString(),
+      orderId: orderId,
+      context: 'PROVIDER',
+    );
+    DriverWorkflowLogger.logPerformance(
+      operation: 'Order Acceptance (Failed)',
+      duration: duration,
+      orderId: orderId,
+      context: 'PROVIDER',
+    );
     throw Exception('Failed to accept order: $e');
   }
 });
@@ -650,9 +747,14 @@ final updateDriverWorkflowStatusProvider = FutureProvider.family<bool, ({String 
 
 /// Validate driver status transitions based on workflow rules with legacy status support
 bool _validateDriverStatusTransition(String fromStatus, String toStatus) {
+  debugPrint('🔍 [TRANSITION-VALIDATION] Validating status transition');
+  debugPrint('🔍 [TRANSITION-VALIDATION] From: $fromStatus → To: $toStatus');
+
   // Normalize legacy statuses to granular workflow statuses
   String normalizedFromStatus = _normalizeLegacyStatus(fromStatus);
   String normalizedToStatus = _normalizeLegacyStatus(toStatus);
+
+  debugPrint('🔍 [TRANSITION-VALIDATION] Normalized: $normalizedFromStatus → $normalizedToStatus');
 
   const validTransitions = {
     'assigned': ['on_route_to_vendor', 'cancelled'],
@@ -668,7 +770,14 @@ bool _validateDriverStatusTransition(String fromStatus, String toStatus) {
   final allowedTransitions = validTransitions[normalizedFromStatus] ?? [];
   final isValid = allowedTransitions.contains(normalizedToStatus);
 
-  debugPrint('🚗 [VALIDATION] Transition $fromStatus → $toStatus (normalized: $normalizedFromStatus → $normalizedToStatus): ${isValid ? 'VALID' : 'INVALID'}');
+  debugPrint('🔍 [TRANSITION-VALIDATION] Allowed transitions from $normalizedFromStatus: $allowedTransitions');
+  debugPrint('🔍 [TRANSITION-VALIDATION] Target status $normalizedToStatus is ${isValid ? 'ALLOWED' : 'NOT ALLOWED'}');
+  debugPrint('${isValid ? '✅' : '❌'} [TRANSITION-VALIDATION] Transition $fromStatus → $toStatus: ${isValid ? 'VALID' : 'INVALID'}');
+
+  if (!isValid) {
+    debugPrint('⚠️ [TRANSITION-VALIDATION] Invalid transition detected - this may indicate a workflow issue');
+  }
+
   return isValid;
 }
 

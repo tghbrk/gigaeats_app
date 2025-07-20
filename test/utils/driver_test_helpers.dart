@@ -180,6 +180,21 @@ class DriverTestHelpers {
     }
   }
 
+  /// Get complete test order data from database
+  static Future<Map<String, dynamic>> getTestOrder(
+    SupabaseClient supabase,
+    String orderId,
+  ) async {
+    final response = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
+    return response;
+  }
+
+
+
   /// Verify driver delivery status in database
   static Future<String?> getDriverDeliveryStatus(
     SupabaseClient supabase,

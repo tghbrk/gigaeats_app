@@ -38,6 +38,7 @@ class _CustomerWalletTransactionHistoryWidgetState
     
     // Load initial transactions
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('🔍 [TRANSACTION-HISTORY-WIDGET] Initializing and loading transactions');
       ref.read(customerWalletTransactionsProvider.notifier).loadTransactions(refresh: true);
     });
 
@@ -230,6 +231,10 @@ class _CustomerWalletTransactionHistoryWidgetState
         ? state.transactions
         : state.transactions.take(widget.maxItems).toList();
 
+    debugPrint('🔍 [TRANSACTION-HISTORY-WIDGET] Building list with ${displayTransactions.length} transactions');
+    final topUpCount = displayTransactions.where((t) => t.type == CustomerTransactionType.topUp).length;
+    debugPrint('🔍 [TRANSACTION-HISTORY-WIDGET] Top-up transactions in display: $topUpCount');
+
     // For paginated view, use a scrollable list that fills available space
     if (widget.enablePagination) {
       return CustomScrollView(
@@ -240,6 +245,7 @@ class _CustomerWalletTransactionHistoryWidgetState
               (context, index) {
                 if (index < displayTransactions.length) {
                   final transaction = displayTransactions[index];
+                  debugPrint('🔍 [TRANSACTION-TILE] Rendering transaction $index: ${transaction.type.displayName} - ${transaction.description}');
                   return Column(
                     children: [
                       CustomerWalletTransactionTile(transaction: transaction),
@@ -294,6 +300,7 @@ class _CustomerWalletTransactionHistoryWidgetState
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final transaction = displayTransactions[index];
+              debugPrint('🔍 [TRANSACTION-TILE] Rendering transaction $index: ${transaction.type.displayName} - ${transaction.description}');
               return CustomerWalletTransactionTile(transaction: transaction);
             },
           ),
@@ -329,6 +336,8 @@ class CustomerWalletTransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    debugPrint('🔍 [TRANSACTION-TILE] Building tile for: ${transaction.type.displayName} - ${transaction.description} - Amount: ${transaction.formattedAmount}');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),

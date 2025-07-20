@@ -43,6 +43,58 @@ class _CustomerWalletScreenState extends ConsumerState<CustomerWalletScreen> {
     await ref.read(customerWalletProvider.notifier).refreshWallet();
   }
 
+  PreferredSizeWidget _buildCustomAppBar() {
+    debugPrint('🔍 [CUSTOM-APPBAR] Building custom AppBar with color: ${AppTheme.primaryColor}');
+
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight),
+      child: Material(
+        color: AppTheme.primaryColor,
+        elevation: 0,
+        child: SafeArea(
+          child: Container(
+            height: kToolbarHeight,
+            color: AppTheme.primaryColor,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    color: Colors.white,
+                    onPressed: () {
+                      debugPrint('🔍 [CUSTOM-APPBAR] Back button pressed');
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'My Wallet',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    color: Colors.white,
+                    onPressed: () {
+                      debugPrint('🔍 [CUSTOM-APPBAR] Refresh button pressed');
+                      _refreshData();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -75,18 +127,7 @@ class _CustomerWalletScreenState extends ConsumerState<CustomerWalletScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Wallet'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-          ),
-        ],
-      ),
+      appBar: _buildCustomAppBar(),
       body: RefreshIndicator(
         onRefresh: _refreshData,
         child: SingleChildScrollView(

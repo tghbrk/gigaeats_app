@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../providers/customer_wallet_provider.dart';
 import '../providers/customer_transaction_management_provider.dart';
 import '../widgets/enhanced_wallet_balance_card.dart';
@@ -165,21 +166,33 @@ class _EnhancedCustomerWalletDashboardState extends ConsumerState<EnhancedCustom
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return AppBar(
       title: const Text('My Wallet'),
-      backgroundColor: theme.colorScheme.surface,
-      foregroundColor: theme.colorScheme.onSurface,
+      backgroundColor: AppTheme.primaryColor,
+      foregroundColor: Colors.white,
       elevation: 0,
+      surfaceTintColor: Colors.transparent, // Disable Material 3 surface tinting
+      shadowColor: Colors.transparent,
+      iconTheme: const IconThemeData(color: Colors.white),
+      actionsIconTheme: const IconThemeData(color: Colors.white),
+      titleTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_outlined),
+          color: Colors.white,
           onPressed: () => _navigateToNotifications(),
           tooltip: 'Notifications',
         ),
         IconButton(
           icon: const Icon(Icons.help_outline),
+          color: Colors.white,
           onPressed: () => _navigateToHelp(),
           tooltip: 'Help & Support',
         ),
         PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: Colors.white),
           onSelected: _handleMenuAction,
           itemBuilder: (context) => [
             const PopupMenuItem(

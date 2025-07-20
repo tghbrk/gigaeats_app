@@ -81,15 +81,22 @@ class _CustomerWalletTopupScreenState extends ConsumerState<CustomerWalletTopupS
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final walletState = ref.watch(customerWalletProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Top Up Wallet'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
         elevation: 0,
+        surfaceTintColor: Colors.transparent, // Disable Material 3 surface tinting
+        shadowColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

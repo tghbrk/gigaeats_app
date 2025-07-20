@@ -5,7 +5,7 @@ import '../providers/customer_transaction_management_provider.dart';
 import '../../data/models/customer_wallet.dart';
 
 /// Recent transactions preview widget
-class RecentTransactionsPreview extends ConsumerWidget {
+class RecentTransactionsPreview extends ConsumerStatefulWidget {
   final VoidCallback? onViewAllPressed;
   final Function(String)? onTransactionPressed;
   final int limit;
@@ -18,9 +18,29 @@ class RecentTransactionsPreview extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RecentTransactionsPreview> createState() => _RecentTransactionsPreviewState();
+}
+
+class _RecentTransactionsPreviewState extends ConsumerState<RecentTransactionsPreview> {
+  bool _hasInitialized = false;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final transactionState = ref.watch(customerTransactionManagementProvider);
+
+    // Initialize transactions loading on first build
+    if (!_hasInitialized && !transactionState.isLoading && transactionState.transactions.isEmpty) {
+      debugPrint('🔍 [RECENT-TRANSACTIONS-PREVIEW] Initializing transaction loading');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(customerTransactionManagementProvider.notifier).loadTransactions(refresh: true);
+      });
+      _hasInitialized = true;
+    }
+
+    debugPrint('🔍 [RECENT-TRANSACTIONS-PREVIEW] Building with ${transactionState.transactions.length} transactions');
+    final topUpCount = transactionState.transactions.where((t) => t.type == CustomerTransactionType.topUp).length;
+    debugPrint('🔍 [RECENT-TRANSACTIONS-PREVIEW] Top-up transactions available: $topUpCount');
 
     return Card(
       elevation: 0,
@@ -44,9 +64,9 @@ class RecentTransactionsPreview extends ConsumerWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (onViewAllPressed != null)
+                if (widget.onViewAllPressed != null)
                   TextButton(
-                    onPressed: onViewAllPressed,
+                    onPressed: widget.onViewAllPressed,
                     child: const Text('View All'),
                   ),
               ],
@@ -60,7 +80,7 @@ class RecentTransactionsPreview extends ConsumerWidget {
             else if (transactionState.isEmpty)
               _buildEmptyState(theme)
             else
-              _buildTransactionsList(theme, transactionState.transactions.take(limit).toList()),
+              _buildTransactionsList(theme, transactionState.transactions.take(widget.limit).toList()),
           ],
         ),
       ),
@@ -181,6 +201,10 @@ class RecentTransactionsPreview extends ConsumerWidget {
   }
 
   Widget _buildTransactionsList(ThemeData theme, List<CustomerWalletTransaction> transactions) {
+    debugPrint('🔍 [RECENT-TRANSACTIONS-PREVIEW] Building list with ${transactions.length} transactions');
+    final topUpCount = transactions.where((t) => t.type == CustomerTransactionType.topUp).length;
+    debugPrint('🔍 [RECENT-TRANSACTIONS-PREVIEW] Top-up transactions in list: $topUpCount');
+
     return Column(
       children: transactions.map((transaction) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -193,7 +217,7 @@ class RecentTransactionsPreview extends ConsumerWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => onTransactionPressed?.call(transaction.id),
+        onTap: () => widget.onTransactionPressed?.call(transaction.id),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),

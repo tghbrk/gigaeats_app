@@ -43,8 +43,18 @@ class _CustomerWalletTransferScreenState extends ConsumerState<CustomerWalletTra
         title: const Text('Transfer Money'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent, // Disable Material 3 surface tinting
+        shadowColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
+          color: Colors.white,
           onPressed: () => context.pop(),
         ),
       ),

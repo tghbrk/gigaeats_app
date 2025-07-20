@@ -78,6 +78,10 @@ dependencies:
   battery_plus: ^6.0.2
   device_info_plus: ^10.1.2
 
+  # Navigation & Voice
+  flutter_tts: ^4.1.0
+  google_polyline_algorithm: ^3.1.0
+
   # Payment Gateways
   flutter_stripe: ^11.1.0
   http: ^1.1.0

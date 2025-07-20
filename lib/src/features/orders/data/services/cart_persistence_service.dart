@@ -7,6 +7,7 @@ import '../models/enhanced_cart_models.dart';
 import '../models/customer_delivery_method.dart';
 import '../../../core/utils/logger.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../shared/providers/app_providers.dart' show sharedPreferencesProvider;
 
 /// Comprehensive cart persistence service with versioning and migration support
 class CartPersistenceService {
@@ -475,9 +476,4 @@ class CartMetadata {
 final cartPersistenceServiceProvider = Provider<CartPersistenceService>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return CartPersistenceService(prefs);
-});
-
-/// Shared preferences provider (if not already defined)
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('SharedPreferences must be initialized in main()');
 });

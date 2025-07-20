@@ -22,6 +22,7 @@ import '../../../../orders/presentation/widgets/checkout_fallback_widget.dart';
 import '../../../../orders/presentation/widgets/enhanced_delivery_method_picker.dart';
 import '../../../../marketplace_wallet/data/models/customer_payment_method.dart';
 import '../../../../marketplace_wallet/presentation/providers/customer_payment_methods_provider.dart';
+import '../../../../marketplace_wallet/presentation/providers/customer_wallet_provider.dart';
 import '../../../../user_management/domain/customer_profile.dart';
 
 import '../../../../../shared/widgets/custom_button.dart';
@@ -38,6 +39,7 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
   bool _isProcessing = false;
   bool _isAutoPopulating = false;
   bool _hasAutoPopulated = false;
+  bool _hasUserSelectedPaymentMethod = false; // Track if user has manually selected a payment method
   final TextEditingController _promoCodeController = TextEditingController();
   double _discount = 0.0;
   stripe.CardFieldInputDetails? _cardDetails;
@@ -234,6 +236,10 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
       });
     }
 
+    // Load wallet data for potential wallet payments
+    debugPrint('💳 [CHECKOUT-SCREEN] Loading wallet data during initialization');
+    ref.read(customerWalletProvider.notifier).loadWallet();
+
     // Complete auto-population before allowing validation to run
     await _autoPopulateCheckoutDefaults();
 
@@ -409,7 +415,8 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
 
       if (defaults.hasPaymentMethod && defaults.defaultPaymentMethod != null) {
         // Check if payment method is already set to avoid overriding user selection
-        if (_selectedPaymentMethod != 'card' || _savedPaymentMethod == null) {
+        // ONLY auto-populate if user hasn't made any payment method selection
+        if ((_selectedPaymentMethod != 'card' || _savedPaymentMethod == null) && !_hasUserSelectedPaymentMethod) {
           String paymentMethodValue;
           switch (defaults.defaultPaymentMethod!.type) {
             case CustomerPaymentMethodType.card:
@@ -509,10 +516,12 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
       debugPrint('🔍 [CHECKOUT-SCREEN-REACTIVE] Current state: _savedPaymentMethod=${_savedPaymentMethod?.displayName ?? 'null'}, _useSavedPaymentMethod=$_useSavedPaymentMethod, _selectedPaymentMethod=$_selectedPaymentMethod');
 
       // Check if payment methods just became available and we haven't auto-populated yet
+      // ONLY auto-populate if user hasn't made any payment method selection
       if (checkoutDefaults.hasPaymentMethod &&
           checkoutDefaults.defaultPaymentMethod != null &&
           _savedPaymentMethod == null &&
-          !_useSavedPaymentMethod) {
+          !_useSavedPaymentMethod &&
+          !_hasUserSelectedPaymentMethod) {
 
         debugPrint('🔄 [CHECKOUT-SCREEN-REACTIVE] Payment methods now available, triggering auto-population');
         debugPrint('🔄 [CHECKOUT-SCREEN-REACTIVE] Auto-populating with payment method: ${checkoutDefaults.defaultPaymentMethod!.displayName}');
@@ -579,10 +588,12 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
       debugPrint('🔍 [CHECKOUT-SCREEN] Current state: _savedPaymentMethod=${_savedPaymentMethod?.displayName ?? 'null'}, _useSavedPaymentMethod=$_useSavedPaymentMethod, _selectedPaymentMethod=$_selectedPaymentMethod');
 
       // Check if payment methods just became available and we haven't auto-populated yet
+      // ONLY auto-populate if user hasn't made any payment method selection
       if (defaults.hasPaymentMethod &&
           defaults.defaultPaymentMethod != null &&
           _savedPaymentMethod == null &&
-          !_useSavedPaymentMethod) {
+          !_useSavedPaymentMethod &&
+          !_hasUserSelectedPaymentMethod) {
 
         debugPrint('🔄 [CHECKOUT-SCREEN] Payment methods now available, triggering auto-population');
         debugPrint('🔄 [CHECKOUT-SCREEN] Auto-populating with payment method: ${defaults.defaultPaymentMethod!.displayName}');
@@ -1195,7 +1206,11 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
           value: 'card',
           groupValue: _selectedPaymentMethod,
           onChanged: (value) async {
-            setState(() => _selectedPaymentMethod = value!);
+            setState(() {
+              _selectedPaymentMethod = value!;
+              // Mark that user has manually selected a payment method
+              _hasUserSelectedPaymentMethod = true;
+            });
             ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
             // Sync to enhanced cart provider with resilient error handling
             await _syncPaymentMethodToEnhancedCart(value);
@@ -1217,10 +1232,19 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
           value: 'cash',
           groupValue: _selectedPaymentMethod,
           onChanged: (value) async {
-            setState(() => _selectedPaymentMethod = value!);
+            setState(() {
+              _selectedPaymentMethod = value!;
+              // Clear saved payment method state when selecting cash
+              _useSavedPaymentMethod = false;
+              _savedPaymentMethod = null;
+              // Mark that user has manually selected a payment method
+              _hasUserSelectedPaymentMethod = true;
+            });
             ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
             // Sync to enhanced cart provider with resilient error handling
             await _syncPaymentMethodToEnhancedCart(value);
+
+            debugPrint('💳 [CHECKOUT] Selected cash payment - cleared saved payment method state');
           },
           contentPadding: EdgeInsets.zero,
         ),
@@ -1231,13 +1255,34 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
           value: 'wallet',
           groupValue: _selectedPaymentMethod,
           onChanged: (value) async {
-            setState(() => _selectedPaymentMethod = value!);
+            setState(() {
+              _selectedPaymentMethod = value!;
+              // Clear saved payment method state when selecting wallet
+              _useSavedPaymentMethod = false;
+              _savedPaymentMethod = null;
+              // Mark that user has manually selected a payment method
+              _hasUserSelectedPaymentMethod = true;
+            });
             ref.read(customerCartProvider.notifier).setPaymentMethod(value!);
             // Sync to enhanced cart provider with resilient error handling
             await _syncPaymentMethodToEnhancedCart(value);
+
+            // Load wallet data when wallet payment is selected
+            if (value == 'wallet') {
+              debugPrint('💳 [CHECKOUT] Loading wallet data for wallet payment selection');
+              ref.read(customerWalletProvider.notifier).loadWallet();
+            }
+
+            debugPrint('💳 [CHECKOUT] Selected wallet payment - cleared saved payment method state');
           },
           contentPadding: EdgeInsets.zero,
         ),
+
+        // Show wallet balance info when wallet is selected
+        if (_selectedPaymentMethod == 'wallet') ...[
+          const SizedBox(height: 12),
+          _buildWalletBalanceInfo(theme),
+        ],
       ],
     );
   }
@@ -1462,6 +1507,13 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
         } else {
           throw Exception('No payment method available');
         }
+      } else if (_selectedPaymentMethod == 'wallet') {
+        // Validate wallet balance before proceeding
+        final isValid = await _validateWalletBalance();
+        if (!isValid) {
+          // Validation failed, dialog already shown
+          return;
+        }
       }
 
       // Create order and process payment
@@ -1609,6 +1661,42 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
 
   /// Show enhanced error dialog for wallet payment failures
   void _showWalletPaymentErrorDialog(String errorMessage) {
+    // Check if this is an insufficient balance error
+    if (errorMessage.toLowerCase().contains('insufficient') &&
+        errorMessage.toLowerCase().contains('balance')) {
+      // Extract balance information if available
+      final regex = RegExp(r'RM\s*([\d.]+)');
+      final matches = regex.allMatches(errorMessage);
+
+      if (matches.length >= 2) {
+        // Try to extract available balance and required amount
+        final amounts = matches.map((m) => double.tryParse(m.group(1) ?? '0') ?? 0.0).toList();
+
+        // Show the proper insufficient balance dialog
+        _showInsufficientBalanceDialog(amounts[0], amounts[1]);
+        return;
+      } else {
+        // Fallback: show insufficient balance dialog with current wallet state
+        final walletState = ref.read(customerWalletProvider);
+        final cartState = ref.read(customerCartProvider); // Use same provider as Place Order button
+        if (walletState.wallet != null) {
+          final fallbackWalletBalance = walletState.wallet!.availableBalance;
+          final fallbackOrderTotal = cartState.totalAmount - _discount; // Apply discount like the Place Order button
+
+          debugPrint('🔍 [ERROR-DIALOG-ROUTING] === FALLBACK DIALOG ROUTING ===');
+          debugPrint('🔍 [ERROR-DIALOG-ROUTING] Fallback wallet balance: RM ${fallbackWalletBalance.toStringAsFixed(2)}');
+          debugPrint('🔍 [ERROR-DIALOG-ROUTING] Fallback order total: RM ${fallbackOrderTotal.toStringAsFixed(2)}');
+          debugPrint('🔍 [ERROR-DIALOG-ROUTING] Discount applied: RM ${_discount.toStringAsFixed(2)}');
+
+          _showInsufficientBalanceDialog(
+            fallbackWalletBalance,
+            fallbackOrderTotal,
+          );
+          return;
+        }
+      }
+    }
+
     // Parse error message to extract error code and guidance
     final lines = errorMessage.split('\n');
     final mainError = lines.first.replaceFirst('Payment failed: ', '');
@@ -1794,6 +1882,279 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
         }
       }
     }
+  }
+
+  /// Build wallet balance info widget
+  Widget _buildWalletBalanceInfo(ThemeData theme) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final walletState = ref.watch(customerWalletProvider);
+        final cartState = ref.watch(enhancedCartProvider);
+
+        if (walletState.isLoading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (walletState.hasError || walletState.wallet == null) {
+          return Card(
+            color: Colors.red.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red.shade700),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Wallet not available. Please choose another payment method.',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final wallet = walletState.wallet!;
+        final walletBalance = wallet.availableBalance;
+        final orderTotal = cartState.totalAmount;
+        final hasSufficientBalance = walletBalance >= orderTotal;
+
+        return Card(
+          color: hasSufficientBalance ? Colors.green.shade50 : Colors.orange.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet,
+                      color: hasSufficientBalance ? Colors.green : Colors.orange,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Wallet Balance: RM ${walletBalance.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: hasSufficientBalance ? Colors.green.shade700 : Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (!hasSufficientBalance) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Order Total: RM ${orderTotal.toStringAsFixed(2)}',
+                    style: TextStyle(color: Colors.orange.shade700),
+                  ),
+                  Text(
+                    'Shortfall: RM ${(orderTotal - walletBalance).toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: Colors.orange.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          context.go('/customer/wallet/top-up');
+                        },
+                        child: const Text('Top Up Wallet'),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Validate wallet balance for current order
+  Future<bool> _validateWalletBalance() async {
+    try {
+      setState(() => _isProcessing = true);
+
+      // Get wallet state
+      final walletState = ref.read(customerWalletProvider);
+      if (walletState.isLoading) {
+        // Wait for wallet to load
+        await Future.delayed(const Duration(seconds: 1));
+      }
+
+      // Check if wallet exists
+      if (walletState.wallet == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Wallet not found. Please choose another payment method.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return false;
+      }
+
+      // Get cart total and wallet balance
+      final cartState = ref.read(customerCartProvider); // Use same provider as Place Order button
+      final cartTotalBeforeDiscount = cartState.totalAmount;
+      final discountAmount = _discount;
+      final orderTotal = cartTotalBeforeDiscount - discountAmount; // Apply discount like the Place Order button
+      final walletBalance = walletState.wallet!.availableBalance;
+
+      // Debug logging for amount verification
+      debugPrint('🔍 [CHECKOUT-VALIDATION] === WALLET BALANCE VALIDATION ===');
+      debugPrint('🔍 [CHECKOUT-VALIDATION] Cart total (before discount): RM ${cartTotalBeforeDiscount.toStringAsFixed(2)}');
+      debugPrint('🔍 [CHECKOUT-VALIDATION] Discount amount: RM ${discountAmount.toStringAsFixed(2)}');
+      debugPrint('🔍 [CHECKOUT-VALIDATION] Order total (after discount): RM ${orderTotal.toStringAsFixed(2)}');
+      debugPrint('🔍 [CHECKOUT-VALIDATION] Wallet balance: RM ${walletBalance.toStringAsFixed(2)}');
+      debugPrint('🔍 [CHECKOUT-VALIDATION] Shortfall: RM ${(orderTotal - walletBalance).toStringAsFixed(2)}');
+
+      // Check if balance is sufficient
+      if (walletBalance < orderTotal) {
+        debugPrint('❌ [CHECKOUT] Insufficient wallet balance: $walletBalance < $orderTotal');
+
+        if (mounted) {
+          _showInsufficientBalanceDialog(walletBalance, orderTotal);
+        }
+        return false;
+      }
+
+      debugPrint('✅ [CHECKOUT] Wallet balance sufficient: $walletBalance >= $orderTotal');
+      return true;
+    } catch (e) {
+      debugPrint('❌ [CHECKOUT] Error validating wallet balance: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error validating wallet: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return false;
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  /// Show insufficient wallet balance dialog
+  void _showInsufficientBalanceDialog(double walletBalance, double orderTotal) {
+    if (!mounted) return;
+
+    final shortfall = orderTotal - walletBalance;
+
+    // Debug logging for dialog parameters
+    debugPrint('🔍 [DIALOG-DISPLAY] === INSUFFICIENT BALANCE DIALOG ===');
+    debugPrint('🔍 [DIALOG-DISPLAY] Received wallet balance: RM ${walletBalance.toStringAsFixed(2)}');
+    debugPrint('🔍 [DIALOG-DISPLAY] Received order total: RM ${orderTotal.toStringAsFixed(2)}');
+    debugPrint('🔍 [DIALOG-DISPLAY] Calculated shortfall: RM ${shortfall.toStringAsFixed(2)}');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Insufficient Wallet Balance',
+          style: TextStyle(
+            color: Colors.orange,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: Colors.orange,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Your wallet balance is insufficient for this order.',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Current Balance: RM ${walletBalance.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        'Order Total: RM ${orderTotal.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'You need RM ${shortfall.toStringAsFixed(2)} more to complete this order.',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Return to payment method selection
+              setState(() {
+                _showFullPaymentMethodUI = true;
+                _selectedPaymentMethod = 'card';
+              });
+            },
+            child: const Text('Choose Different Payment'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Navigate to wallet top-up screen
+              context.go('/customer/wallet/top-up');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Top Up Wallet'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Build card payment section with saved payment method support

@@ -205,14 +205,20 @@ class OrderRepository extends BaseRepository {
             }
           }
 
-          debugPrint('🔍 [ANDROID-DEBUG] ===== PAYMENT FIELDS NOW HANDLED DIRECTLY =====');
-          debugPrint('🔍 [ANDROID-DEBUG] Order ID: ${orderData['id']}');
-          debugPrint('🔍 [ANDROID-DEBUG] Payment method: ${orderData['payment_method']}');
-          debugPrint('🔍 [ANDROID-DEBUG] Payment status: ${orderData['payment_status']}');
-          debugPrint('🔍 [ANDROID-DEBUG] Payment reference: ${orderData['payment_reference']}');
+          debugPrint('🔍 [ORDER-REPOSITORY] ===== PAYMENT FIELDS PROCESSING =====');
+          debugPrint('🔍 [ORDER-REPOSITORY] Order ID: ${orderData['id']}');
+          debugPrint('🔍 [ORDER-REPOSITORY] Raw payment_method from DB: "${orderData['payment_method']}"');
+          debugPrint('🔍 [ORDER-REPOSITORY] Payment_method type: ${orderData['payment_method']?.runtimeType}');
+          debugPrint('🔍 [ORDER-REPOSITORY] Payment status: ${orderData['payment_status']}');
+          debugPrint('🔍 [ORDER-REPOSITORY] Payment reference: ${orderData['payment_reference']}');
 
-          debugPrint('🔍 [ANDROID-DEBUG] About to call Order.fromJson...');
-          return Order.fromJson(orderData);
+          debugPrint('🔍 [ORDER-REPOSITORY] About to call Order.fromJson...');
+          final order = Order.fromJson(orderData);
+
+          debugPrint('🔍 [ORDER-REPOSITORY] Order parsed successfully');
+          debugPrint('🔍 [ORDER-REPOSITORY] Final order payment method: "${order.paymentMethod}"');
+
+          return order;
         } catch (e, stackTrace) {
           debugPrint('🔍 [ANDROID-DEBUG] ERROR in order processing: $e');
           debugPrint('🔍 [ANDROID-DEBUG] Stack trace: $stackTrace');

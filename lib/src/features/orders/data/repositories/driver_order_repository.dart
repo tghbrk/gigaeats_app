@@ -230,7 +230,9 @@ class DriverOrderRepository extends BaseRepository {
         }
 
         if (success) {
-          debugPrint('DriverOrderRepository: Order accepted successfully, updating driver status...');
+          debugPrint('✅ [ORDER-ACCEPTANCE] Order accepted successfully, initializing driver workflow');
+          debugPrint('🔄 [ORDER-ACCEPTANCE] Order: $orderId, Driver: $driverId');
+          debugPrint('🔄 [ORDER-ACCEPTANCE] Setting driver status to on_delivery and delivery status to assigned');
 
           // Update driver status to on_delivery and initialize delivery status
           await _supabase
@@ -243,9 +245,12 @@ class DriverOrderRepository extends BaseRepository {
               })
               .eq('id', driverId);
 
-          debugPrint('DriverOrderRepository: Driver status updated to on_delivery');
+          debugPrint('✅ [ORDER-ACCEPTANCE] Driver status updated to on_delivery');
+          debugPrint('✅ [ORDER-ACCEPTANCE] Driver delivery status initialized to assigned');
+          debugPrint('✅ [ORDER-ACCEPTANCE] Driver $driverId is ready to start workflow for order $orderId');
         } else {
-          debugPrint('DriverOrderRepository: Order acceptance failed - no rows updated');
+          debugPrint('❌ [ORDER-ACCEPTANCE] Order acceptance failed - no rows updated');
+          debugPrint('❌ [ORDER-ACCEPTANCE] Order: $orderId, Driver: $driverId');
         }
 
         return success;
@@ -284,18 +289,24 @@ class DriverOrderRepository extends BaseRepository {
             .eq('id', orderId)
             .eq('assigned_driver_id', driverId);
 
-        // Update driver status back to online if they were on delivery
+        // Update driver status back to online and clear delivery status
+        debugPrint('🧹 [ORDER-REJECTION] Cleaning up driver state after order rejection');
+        debugPrint('🧹 [ORDER-REJECTION] Order: $orderId, Driver: $driverId');
+        debugPrint('🧹 [ORDER-REJECTION] Setting driver to online and clearing delivery status');
+
         await _supabase
             .from('drivers')
             .update({
               'status': 'online',
+              'current_delivery_status': null, // Clear delivery status on rejection
               'last_seen': DateTime.now().toIso8601String(),
               'updated_at': DateTime.now().toIso8601String(),
             })
             .eq('id', driverId)
             .eq('status', 'on_delivery');
 
-        debugPrint('DriverOrderRepository: Order $orderId rejected by driver $driverId');
+        debugPrint('✅ [ORDER-REJECTION] Order $orderId rejected by driver $driverId');
+        debugPrint('✅ [ORDER-REJECTION] Driver $driverId is back online and ready for new orders');
         return true;
       } catch (e) {
         debugPrint('DriverOrderRepository: Error rejecting order: $e');
@@ -386,7 +397,9 @@ class DriverOrderRepository extends BaseRepository {
         if (status == DriverOrderStatus.arrivedAtCustomer || status == DriverOrderStatus.onRouteToCustomer) {
           // For granular driver statuses, we update the driver's delivery status
           // without changing the order status. This allows UI to progress.
-          debugPrint('DriverOrderRepository: Driver status ${status.value} - updating driver delivery status only');
+          debugPrint('🎯 [GRANULAR-STATUS] Granular workflow status detected: ${status.value}');
+          debugPrint('🎯 [GRANULAR-STATUS] Order: $orderId, Driver: $actualDriverId');
+          debugPrint('🎯 [GRANULAR-STATUS] Updating driver delivery status only (order status unchanged)');
 
           // Update driver delivery status to track granular state
           await _supabase
@@ -398,7 +411,8 @@ class DriverOrderRepository extends BaseRepository {
               })
               .eq('id', actualDriverId);
 
-          debugPrint('DriverOrderRepository: Driver status ${status.value} recorded successfully');
+          debugPrint('✅ [GRANULAR-STATUS] Driver granular status ${status.value} recorded successfully');
+          debugPrint('✅ [GRANULAR-STATUS] UI can now progress while order status remains unchanged');
           return true;
         }
 
@@ -430,6 +444,7 @@ class DriverOrderRepository extends BaseRepository {
 
         debugPrint('DriverOrderRepository: Calling RPC with params: orderId=$orderId, status=$orderStatus, driverId=$actualDriverId');
 
+        // Use the original function (v2 migration not applied yet)
         final response = await _supabase.rpc('update_driver_order_status', params: {
           'p_order_id': orderId,
           'p_new_status': orderStatus,
@@ -439,16 +454,52 @@ class DriverOrderRepository extends BaseRepository {
 
         debugPrint('DriverOrderRepository: RPC response: $response');
 
-        // Check if the response indicates success
+        // Check if the response indicates success (enhanced function returns JSON)
         if (response is Map && response['success'] == true) {
-          debugPrint('DriverOrderRepository: Order status updated successfully via database function');
+          debugPrint('DriverOrderRepository: Order status updated successfully via enhanced database function');
+          debugPrint('DriverOrderRepository: Status transition: ${response['old_status']} → ${response['new_status']}');
 
-          // Also update driver's delivery status for granular tracking
-          await _updateDriverDeliveryStatus(actualDriverId, status);
+          // CRITICAL FIX: Clear driver delivery status for terminal states
+          // This prevents stale data from interfering with future orders
+          if (status == DriverOrderStatus.delivered || status == DriverOrderStatus.cancelled) {
+            debugPrint('🧹 [STATUS-CLEANUP] Terminal state detected: ${status.value}');
+            debugPrint('🧹 [STATUS-CLEANUP] Order: $orderId, Driver: $actualDriverId');
+            debugPrint('🧹 [STATUS-CLEANUP] Clearing driver delivery status and resetting to online');
+
+            await _supabase
+                .from('drivers')
+                .update({
+                  'current_delivery_status': null, // Clear delivery status
+                  'status': 'online', // Reset driver to online status
+                  'last_seen': DateTime.now().toIso8601String(),
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', actualDriverId);
+
+            debugPrint('✅ [STATUS-CLEANUP] Driver delivery status cleared successfully');
+            debugPrint('✅ [STATUS-CLEANUP] Driver $actualDriverId is now online and ready for new orders');
+          } else {
+            // For non-terminal states, update driver delivery status to track workflow
+            debugPrint('🔄 [STATUS-UPDATE] Non-terminal state transition: ${status.value}');
+            debugPrint('🔄 [STATUS-UPDATE] Order: $orderId, Driver: $actualDriverId');
+            debugPrint('🔄 [STATUS-UPDATE] Updating driver delivery status to track workflow progress');
+
+            await _supabase
+                .from('drivers')
+                .update({
+                  'current_delivery_status': status.value, // Track current workflow status
+                  'last_seen': DateTime.now().toIso8601String(),
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', actualDriverId);
+
+            debugPrint('✅ [STATUS-UPDATE] Driver delivery status updated to: ${status.value}');
+            debugPrint('✅ [STATUS-UPDATE] Driver $actualDriverId workflow state synchronized');
+          }
 
           return true;
         } else {
-          final errorMessage = response is Map ? response['error'] : 'Unknown error';
+          final errorMessage = response is Map ? response['error'] : 'Unknown error: $response';
           debugPrint('DriverOrderRepository: Order status update failed: $errorMessage');
           throw Exception('Failed to update order status: $errorMessage');
         }
@@ -828,32 +879,7 @@ class DriverOrderRepository extends BaseRepository {
     });
   }
 
-  /// Update driver's delivery status for granular tracking
-  Future<void> _updateDriverDeliveryStatus(String driverId, DriverOrderStatus status) async {
-    try {
-      debugPrint('DriverOrderRepository: Updating driver delivery status to: ${status.value}');
 
-      // Clear delivery status when order is completed or cancelled
-      final deliveryStatus = (status == DriverOrderStatus.delivered || status == DriverOrderStatus.cancelled)
-          ? null
-          : status.value;
-
-      // Update driver's current delivery status
-      await _supabase
-          .from('drivers')
-          .update({
-            'current_delivery_status': deliveryStatus,
-            'last_seen': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', driverId);
-
-      debugPrint('DriverOrderRepository: Driver delivery status updated successfully');
-    } catch (e) {
-      debugPrint('DriverOrderRepository: Error updating driver delivery status: $e');
-      // Don't rethrow - this is supplementary tracking
-    }
-  }
 
   /// Cancel an order with reason
   Future<void> cancelOrder(String orderId, String reason) async {

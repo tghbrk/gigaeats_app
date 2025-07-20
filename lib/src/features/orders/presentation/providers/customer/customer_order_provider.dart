@@ -90,7 +90,7 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
       // }
 
       // Step 1: Create order
-      _logger.info('OrderCreationNotifier: Creating order');
+      _logger.info('OrderCreationNotifier: Creating order with payment method: $paymentMethod');
       final order = await _orderService.createOrderFromCart(
         cartState: cartState,
         paymentMethod: paymentMethod,
@@ -99,6 +99,7 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
 
       state = state.copyWith(order: order);
       _logger.info('OrderCreationNotifier: Order created with ID: ${order.id}');
+      _logger.info('OrderCreationNotifier: Order payment method stored: ${order.paymentMethod}');
 
       // Step 2: Process payment via CustomerOrderService
       _logger.info('OrderCreationNotifier: Processing payment method: $paymentMethod');
@@ -298,6 +299,16 @@ class CurrentCustomerOrdersNotifier extends AsyncNotifier<List<Order>> {
 
     for (final order in orders) {
       debugPrint('🔍 CurrentCustomerOrdersNotifier: Order ${order.orderNumber} - ${order.items.length} items');
+
+      // Debug: Log first few items for each order
+      for (int i = 0; i < order.items.length && i < 3; i++) {
+        final item = order.items[i];
+        debugPrint('🔍 CurrentCustomerOrdersNotifier: - Item ${i + 1}: ${item.name} (qty: ${item.quantity}, price: RM${item.unitPrice})');
+      }
+
+      if (order.items.isEmpty) {
+        debugPrint('🔍 CurrentCustomerOrdersNotifier: ⚠️ Order ${order.orderNumber} has NO ITEMS - this is the bug!');
+      }
     }
 
     debugPrint('🔍 CurrentCustomerOrdersNotifier: ===== RETURNING ${orders.length} ORDERS =====');

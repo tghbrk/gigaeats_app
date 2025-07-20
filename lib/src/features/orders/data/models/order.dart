@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
-
+import 'package:flutter/material.dart';
 
 import 'delivery_method.dart';
 
@@ -31,10 +31,16 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  fpx('fpx', 'FPX'),
+  cash('cash', 'Cash on Delivery'),
+  wallet('wallet', 'GigaEats Wallet'),
+  card('card', 'Credit/Debit Card'),
+  creditCard('credit_card', 'Credit Card'),
+  fpx('fpx', 'FPX Online Banking'),
   grabpay('grabpay', 'GrabPay'),
-  touchngo('touchngo', 'Touch \'n Go'),
-  creditCard('credit_card', 'Credit Card');
+  touchngo('touchngo', 'Touch \'n Go eWallet'),
+  boost('boost', 'Boost'),
+  shopeepay('shopeepay', 'ShopeePay'),
+  bankTransfer('bank_transfer', 'Bank Transfer');
 
   const PaymentMethod(this.value, this.displayName);
 
@@ -42,14 +48,53 @@ enum PaymentMethod {
   final String displayName;
 
   static PaymentMethod fromString(String value) {
-    return PaymentMethod.values.firstWhere(
-      (method) => method.value == value,
-      orElse: () => PaymentMethod.fpx,
-    );
+    debugPrint('🔍 [PAYMENT-METHOD] Parsing payment method from string: "$value"');
+
+    try {
+      final method = PaymentMethod.values.firstWhere(
+        (method) => method.value == value,
+        orElse: () {
+          debugPrint('⚠️ [PAYMENT-METHOD] Unknown payment method "$value", falling back to cash');
+          return PaymentMethod.cash;
+        },
+      );
+
+      debugPrint('✅ [PAYMENT-METHOD] Successfully parsed: ${method.value} -> ${method.displayName}');
+      return method;
+    } catch (e) {
+      debugPrint('❌ [PAYMENT-METHOD] Error parsing payment method "$value": $e');
+      return PaymentMethod.cash;
+    }
   }
 
   @override
   String toString() => value;
+
+  /// Get the appropriate icon for this payment method
+  IconData get icon {
+    switch (this) {
+      case PaymentMethod.cash:
+        return Icons.money;
+      case PaymentMethod.wallet:
+        return Icons.account_balance_wallet;
+      case PaymentMethod.card:
+        return Icons.credit_card;
+      case PaymentMethod.creditCard:
+        return Icons.credit_card;
+      case PaymentMethod.fpx:
+        return Icons.account_balance;
+      case PaymentMethod.grabpay:
+        return Icons.payment;
+      case PaymentMethod.touchngo:
+        return Icons.contactless;
+      case PaymentMethod.boost:
+        return Icons.payment;
+      case PaymentMethod.shopeepay:
+        return Icons.payment;
+      case PaymentMethod.bankTransfer:
+        return Icons.account_balance;
+    }
+  }
 }
 
 enum OrderStatus {
@@ -370,6 +415,10 @@ class Order extends Equatable {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    // Debug logging for payment method parsing
+    debugPrint('🔍 [ORDER-MODEL] Parsing order from JSON - Order ID: ${json['id']}');
+    debugPrint('🔍 [ORDER-MODEL] Raw payment_method from database: ${json['payment_method']}');
+    debugPrint('🔍 [ORDER-MODEL] Payment_method type: ${json['payment_method']?.runtimeType}');
 
     // Handle nested customer data from database joins
     if (json.containsKey('customers') && json['customers'] is List && (json['customers'] as List).isNotEmpty) {
@@ -397,7 +446,20 @@ class Order extends Equatable {
         if (itemJson is Map<String, dynamic>) {
           final processedItem = Map<String, dynamic>.from(itemJson);
 
-          // Flatten menu_item data into the order item
+          // Flatten menu_items data into the order item
+          if (processedItem.containsKey('menu_items') && processedItem['menu_items'] is Map) {
+            final menuItemData = processedItem['menu_items'] as Map<String, dynamic>;
+
+            // Copy menu item fields to order item if they don't already exist
+            processedItem['name'] ??= menuItemData['name'] ?? 'Unknown Item';
+            processedItem['description'] ??= menuItemData['description'] ?? '';
+            processedItem['image_url'] ??= menuItemData['image_url'];
+
+            // Remove the nested menu_items to avoid confusion
+            processedItem.remove('menu_items');
+          }
+
+          // Also handle legacy menu_item structure for backward compatibility
           if (processedItem.containsKey('menu_item') && processedItem['menu_item'] is Map) {
             final menuItemData = processedItem['menu_item'] as Map<String, dynamic>;
 
@@ -424,7 +486,16 @@ class Order extends Equatable {
       json['order_items'] = processedItems;
     }
 
-    return _$OrderFromJson(json);
+    // Parse the order using generated JSON serialization
+    final order = _$OrderFromJson(json);
+
+    // Debug logging for parsed payment method
+    debugPrint('🔍 [ORDER-MODEL] Parsed order successfully - Order ID: ${order.id}');
+    debugPrint('🔍 [ORDER-MODEL] Final payment method: ${order.paymentMethod}');
+    debugPrint('🔍 [ORDER-MODEL] Payment status: ${order.paymentStatus}');
+    debugPrint('🔍 [ORDER-MODEL] Payment reference: ${order.paymentReference}');
+
+    return order;
   }
 
   Map<String, dynamic> toJson() => _$OrderToJson(this);
@@ -585,6 +656,41 @@ class Order extends Equatable {
   bool get salesAgentCanMarkDelivered {
     // Sales agents can only mark delivered for sales agent pickup orders
     return isSalesAgentPickup;
+  }
+
+  /// Get payment method display name safely
+  String get paymentMethodDisplayName {
+    if (paymentMethod == null || paymentMethod!.isEmpty) {
+      return 'Payment method not specified';
+    }
+
+    try {
+      final method = PaymentMethod.fromString(paymentMethod!);
+      return method.displayName;
+    } catch (e) {
+      // Fallback to formatted raw value
+      return paymentMethod!
+          .split('_')
+          .map((word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+              : word)
+          .join(' ');
+    }
+  }
+
+  /// Get payment method icon safely
+  IconData get paymentMethodIcon {
+    if (paymentMethod == null || paymentMethod!.isEmpty) {
+      return Icons.payment;
+    }
+
+    try {
+      final method = PaymentMethod.fromString(paymentMethod!);
+      return method.icon;
+    } catch (e) {
+      // Fallback to default payment icon
+      return Icons.payment;
+    }
   }
 
   @override

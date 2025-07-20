@@ -494,19 +494,27 @@ class _DriverDeliveryConfirmationDialogState extends ConsumerState<DriverDeliver
   }
 
   Future<void> _capturePhoto() async {
+    debugPrint('📸 [DELIVERY-DIALOG] Starting photo capture process');
+    debugPrint('📋 [DELIVERY-DIALOG] Order ID: ${widget.order.id}');
+
     setState(() {
       _isCapturingPhoto = true;
     });
 
     try {
       // Check and request camera permissions
+      debugPrint('🔒 [DELIVERY-DIALOG] Checking camera permissions');
       final hasPermissions = await CameraPermissionService.handlePhotoPermissionRequest(context);
       if (!hasPermissions) {
+        debugPrint('❌ [DELIVERY-DIALOG] Camera permission denied');
         _showError('Camera permission is required to capture delivery photo');
         return;
       }
+      debugPrint('✅ [DELIVERY-DIALOG] Camera permissions granted');
 
       final ImagePicker picker = ImagePicker();
+      debugPrint('🔧 [DELIVERY-DIALOG] Opening camera with settings: 1920x1080, quality 85%, rear camera');
+
       final XFile? photo = await picker.pickImage(
         source: ImageSource.camera,
         maxWidth: 1920,
@@ -516,14 +524,22 @@ class _DriverDeliveryConfirmationDialogState extends ConsumerState<DriverDeliver
       );
 
       if (photo != null) {
+        debugPrint('✅ [DELIVERY-DIALOG] Photo captured successfully');
+        debugPrint('📊 [DELIVERY-DIALOG] Photo path: ${photo.path}');
+        debugPrint('📊 [DELIVERY-DIALOG] Photo size: ${await photo.length()} bytes');
+
         setState(() {
           _capturedPhoto = photo;
         });
 
         // Upload photo to Supabase storage
+        debugPrint('🚀 [DELIVERY-DIALOG] Starting photo upload to Supabase storage');
         await _uploadPhoto(photo);
+      } else {
+        debugPrint('🚫 [DELIVERY-DIALOG] Photo capture cancelled by user');
       }
     } catch (e) {
+      debugPrint('❌ [DELIVERY-DIALOG] Error capturing photo: $e');
       _showError('Failed to capture photo: $e');
     } finally {
       if (mounted) {
@@ -535,23 +551,35 @@ class _DriverDeliveryConfirmationDialogState extends ConsumerState<DriverDeliver
   }
 
   Future<void> _uploadPhoto(XFile photo) async {
+    debugPrint('☁️ [DELIVERY-DIALOG] Starting photo upload to Supabase storage');
+    debugPrint('📋 [DELIVERY-DIALOG] Order ID: ${widget.order.id}');
+
     try {
       final fileUploadService = ref.read(fileUploadServiceProvider);
 
       // Create unique filename for delivery proof
       final fileName = 'delivery_proof_${widget.order.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      debugPrint('📁 [DELIVERY-DIALOG] Generated filename: $fileName');
+      debugPrint('🪣 [DELIVERY-DIALOG] Target bucket: ${SupabaseConfig.deliveryProofsBucket}');
 
       // Upload to delivery-proofs bucket
+      debugPrint('🚀 [DELIVERY-DIALOG] Uploading photo to storage...');
       final photoUrl = await fileUploadService.uploadFile(
         photo,
         bucketName: SupabaseConfig.deliveryProofsBucket,
         fileName: fileName,
       );
 
+      debugPrint('✅ [DELIVERY-DIALOG] Photo uploaded successfully');
+      debugPrint('🔗 [DELIVERY-DIALOG] Photo URL: $photoUrl');
+
       setState(() {
         _photoUrl = photoUrl;
       });
+
+      debugPrint('🔧 [DELIVERY-DIALOG] Photo URL saved to state - delivery confirmation ready');
     } catch (e) {
+      debugPrint('❌ [DELIVERY-DIALOG] Photo upload failed: $e');
       _showError('Failed to upload photo: $e');
       setState(() {
         _capturedPhoto = null;
@@ -590,14 +618,30 @@ class _DriverDeliveryConfirmationDialogState extends ConsumerState<DriverDeliver
   }
 
   Future<void> _confirmDelivery() async {
+    debugPrint('🎯 [DELIVERY-DIALOG] Starting delivery confirmation process');
+    debugPrint('📋 [DELIVERY-DIALOG] Order ID: ${widget.order.id}');
+    debugPrint('📸 [DELIVERY-DIALOG] Photo URL: $_photoUrl');
+    debugPrint('📍 [DELIVERY-DIALOG] Location: ${_currentLocation?.latitude}, ${_currentLocation?.longitude}');
+    debugPrint('👤 [DELIVERY-DIALOG] Recipient: ${_recipientController.text.trim()}');
+    debugPrint('📝 [DELIVERY-DIALOG] Notes: ${_notesController.text.trim()}');
+
     if (!_canConfirmDelivery) {
+      debugPrint('❌ [DELIVERY-DIALOG] Cannot confirm delivery - missing required fields');
       _showError('Please complete all required fields before confirming delivery');
       return;
     }
 
+    debugPrint('✅ [DELIVERY-DIALOG] All required fields validated successfully');
+
     // Show final confirmation summary before submitting
+    debugPrint('🔍 [DELIVERY-DIALOG] Showing final confirmation summary to user');
     final shouldProceed = await _showFinalDeliveryConfirmationSummary();
-    if (!shouldProceed) return;
+    if (!shouldProceed) {
+      debugPrint('🚫 [DELIVERY-DIALOG] User cancelled delivery confirmation in summary');
+      return;
+    }
+
+    debugPrint('✅ [DELIVERY-DIALOG] User confirmed delivery in summary - proceeding');
 
     setState(() {
       _isSubmitting = true;
@@ -618,14 +662,19 @@ class _DriverDeliveryConfirmationDialogState extends ConsumerState<DriverDeliver
         confirmedBy: 'driver', // TODO: Get actual driver info
       );
 
+      debugPrint('✅ [DELIVERY-DIALOG] Delivery confirmation object created successfully');
+      debugPrint('🔧 [DELIVERY-DIALOG] Confirmation details: ${confirmation.toJson()}');
+
       // Simulate network delay for processing
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (mounted) {
+        debugPrint('🚀 [DELIVERY-DIALOG] Closing dialog and triggering confirmation callback');
         Navigator.of(context).pop();
         widget.onConfirmed(confirmation);
       }
     } catch (e) {
+      debugPrint('❌ [DELIVERY-DIALOG] Error in delivery confirmation: $e');
       _showError('Failed to confirm delivery: $e');
     } finally {
       if (mounted) {

@@ -17,11 +17,24 @@ class CurrentOrderSection extends ConsumerWidget {
     final currentOrderAsync = ref.watch(enhancedCurrentDriverOrderProvider);
 
     return currentOrderAsync.when(
-      data: (order) => order != null
-          ? _buildCurrentOrderCard(theme, order)
-          : _buildNoOrderCard(theme),
-      loading: () => _buildLoadingCard(theme),
-      error: (error, stack) => _buildErrorCard(theme, error.toString()),
+      data: (order) {
+        if (order != null) {
+          debugPrint('🚗 [CURRENT-ORDER] Displaying current order: ${order.orderNumber} (ID: ${order.id.substring(0, 8)}...)');
+          debugPrint('🚗 [CURRENT-ORDER] Order status: ${order.status.value} (${order.status.displayName})');
+          return _buildCurrentOrderCard(theme, order);
+        } else {
+          debugPrint('🚗 [CURRENT-ORDER] No current order found');
+          return _buildNoOrderCard(theme);
+        }
+      },
+      loading: () {
+        debugPrint('🚗 [CURRENT-ORDER] Loading current order...');
+        return _buildLoadingCard(theme);
+      },
+      error: (error, stack) {
+        debugPrint('❌ [CURRENT-ORDER] Error loading current order: $error');
+        return _buildErrorCard(theme, error.toString());
+      },
     );
   }
 

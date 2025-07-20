@@ -1373,49 +1373,30 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
 
       if (result.isSuccess) {
         debugPrint('DriverDeliveryWorkflow: Delivery confirmation submitted successfully');
+        debugPrint('🔧 DriverDeliveryWorkflow: Database trigger has automatically updated order status to delivered');
 
-        // Complete delivery using the enhanced workflow provider with photo proof
-        final actions = ref.read(realtimeDriverOrderActionsProvider);
-        final statusResult = await actions.completeDeliveryWithPhoto(
-          confirmation.orderId,
-          confirmation.photoUrl
-        );
+        // Refresh the order details to show updated status from database trigger
+        ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
+        debugPrint('🔄 DriverDeliveryWorkflow: Order data refreshed to show updated status');
 
-        statusResult.when(
-          success: (success) {
-            debugPrint('DriverDeliveryWorkflow: Delivery completed successfully with photo proof');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 Delivery completed successfully! Photo proof uploaded.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
 
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('🎉 Delivery completed successfully! Photo proof uploaded.'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 4),
-                ),
-              );
-            }
-
-            // Refresh the order details to show updated status
-            ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
-
-            // Navigate back to dashboard after successful delivery
+        // Navigate back to dashboard after successful delivery
+        if (context.mounted) {
+          Future.delayed(const Duration(seconds: 1), () {
             if (context.mounted) {
               context.go('/driver');
             }
-          },
-          error: (error) {
-            debugPrint('DriverDeliveryWorkflow: Failed to update order status: ${error.userFriendlyMessage}');
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Delivery confirmed but status update failed: ${error.userFriendlyMessage}'),
-                  backgroundColor: Colors.orange,
-                  duration: const Duration(seconds: 4),
-                ),
-              );
-            }
-          },
-        );
+          });
+        }
       } else {
         debugPrint('DriverDeliveryWorkflow: Failed to submit delivery confirmation: ${result.errorMessage}');
         if (context.mounted) {
@@ -1430,12 +1411,59 @@ class DriverDeliveryWorkflowScreen extends ConsumerWidget {
       }
     } catch (e) {
       debugPrint('DriverDeliveryWorkflow: Error processing delivery confirmation: $e');
+
+      // Enhanced error handling for duplicate delivery scenarios
+      String userFriendlyMessage;
+      Color snackBarColor = Colors.red;
+
+      if (e.toString().contains('already been completed') ||
+          e.toString().contains('duplicate key value') ||
+          e.toString().contains('unique_order_proof')) {
+        debugPrint('🔍 DriverDeliveryWorkflow: Detected duplicate delivery completion attempt');
+        userFriendlyMessage = 'This delivery has already been completed. Returning to dashboard.';
+        snackBarColor = Colors.orange;
+
+        // Refresh the order data and navigate back
+        try {
+          ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
+          debugPrint('🔄 DriverDeliveryWorkflow: Order data refreshed after duplicate detection');
+
+          // Navigate back to dashboard since delivery is already complete
+          if (context.mounted) {
+            Future.delayed(const Duration(seconds: 2), () {
+              if (context.mounted) {
+                context.go('/driver');
+              }
+            });
+          }
+        } catch (refreshError) {
+          debugPrint('⚠️ DriverDeliveryWorkflow: Failed to refresh order data: $refreshError');
+        }
+      } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+        debugPrint('🌐 DriverDeliveryWorkflow: Network error detected');
+        userFriendlyMessage = 'Network error. Please check your connection and try again.';
+      } else if (e.toString().contains('permission') || e.toString().contains('unauthorized')) {
+        debugPrint('🔒 DriverDeliveryWorkflow: Permission error detected');
+        userFriendlyMessage = 'You don\'t have permission to complete this delivery. Please contact support.';
+      } else {
+        debugPrint('❌ DriverDeliveryWorkflow: Unknown error type');
+        userFriendlyMessage = 'Error processing delivery confirmation. Please try again or contact support.';
+      }
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error processing delivery confirmation: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            content: Text(userFriendlyMessage),
+            backgroundColor: snackBarColor,
+            duration: const Duration(seconds: 5),
+            action: snackBarColor == Colors.orange ? null : SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () {
+                // Retry the delivery confirmation
+                _processDeliveryConfirmation(context, ref, confirmation);
+              },
+            ),
           ),
         );
       }

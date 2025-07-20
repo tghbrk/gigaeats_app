@@ -342,30 +342,58 @@ class AvailableOrdersSection extends ConsumerWidget {
 
   Future<void> _acceptOrder(Order order, WidgetRef ref) async {
     try {
+      debugPrint('🚗 [ACCEPT] Starting order acceptance for ${order.orderNumber} (ID: ${order.id.substring(0, 8)}...)');
+      debugPrint('🚗 [ACCEPT] Current order status: ${order.status.value}');
+
       final authState = ref.read(authStateProvider);
       final userId = authState.user?.id;
-      
+
       if (userId == null) {
+        debugPrint('❌ [ACCEPT] User not authenticated');
         throw Exception('User not authenticated');
       }
 
+      debugPrint('🚗 [ACCEPT] Driver ID: $userId');
       final supabase = Supabase.instance.client;
-      
+
+      debugPrint('🚗 [ACCEPT] Updating order status from ${order.status.value} to assigned');
+
       // Assign the order to this driver using enhanced workflow
-      await supabase
+      final updateResult = await supabase
           .from('orders')
           .update({
             'assigned_driver_id': userId,
             'status': 'assigned', // Enhanced workflow: ready → assigned
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', order.id);
+          .eq('id', order.id)
+          .select(); // Add select to get updated data back
 
+      debugPrint('🚗 [ACCEPT] Database update result: ${updateResult.length} rows affected');
+      if (updateResult.isNotEmpty) {
+        debugPrint('🚗 [ACCEPT] Updated order data: ${updateResult.first}');
+      }
+
+      // CRITICAL FIX: Update driver's current_delivery_status to match the order workflow
+      debugPrint('🚗 [ACCEPT] Updating driver delivery status to assigned for proper workflow progression');
+      await supabase
+          .from('drivers')
+          .update({
+            'status': 'on_delivery',
+            'current_delivery_status': 'assigned', // Reset to start of workflow
+            'last_seen': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', userId);
+
+      debugPrint('✅ [ACCEPT] Driver delivery status updated to assigned');
+
+      debugPrint('🚗 [ACCEPT] Invalidating providers to refresh data');
       // Refresh data
       ref.invalidate(availableOrdersProvider);
       ref.invalidate(currentDriverOrderProvider);
-      
-      debugPrint('🚗 Order ${order.orderNumber} accepted by driver');
+
+      debugPrint('✅ [ACCEPT] Order ${order.orderNumber} accepted by driver $userId');
       
     } catch (e) {
       debugPrint('Error accepting order: $e');

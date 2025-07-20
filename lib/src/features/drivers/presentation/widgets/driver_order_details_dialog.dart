@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 
 import '../../../../core/utils/driver_workflow_logger.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../orders/data/models/order.dart';
 import '../../../orders/data/models/driver_order_state_machine.dart';
 import '../../data/models/driver_order.dart';
@@ -558,12 +559,73 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
   Widget _buildActionButtons(BuildContext context, ThemeData theme) {
     return Consumer(
       builder: (context, ref, child) {
+        debugPrint('🚗 [DIALOG] === BUILDING ACTION BUTTONS ===');
+        debugPrint('🚗 [DIALOG] Order ID: ${order.id}');
+        debugPrint('🚗 [DIALOG] Order status from model: ${order.status.value}');
+        debugPrint('🚗 [DIALOG] Order assigned driver ID: ${order.assignedDriverId}');
+
         // Get the enhanced status from the provider instead of the parsed enum
         final rawStatus = _getEnhancedOrderStatus(ref);
+        debugPrint('🚗 [DIALOG] Raw status from enhanced provider: "$rawStatus"');
+
+        // Check if this is an unassigned order that needs to be accepted first
+        final isUnassignedOrder = order.assignedDriverId == null && rawStatus == 'ready';
+        if (isUnassignedOrder) {
+          debugPrint('🚗 [DIALOG] Unassigned order - showing Accept Order button');
+          debugPrint('🚗 [DIALOG] === END BUILDING ACTION BUTTONS ===');
+
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handleTakeAction(context, ref),
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Accept Order'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         final currentDriverStatus = _mapStringToDriverStatus(rawStatus);
+        debugPrint('🚗 [DIALOG] Current driver status: ${currentDriverStatus.name} (${currentDriverStatus.value})');
+
         final availableActions = DriverOrderStateMachine.getAvailableActions(currentDriverStatus);
+        debugPrint('🚗 [DIALOG] Available actions: ${availableActions.map((a) => a.name).join(', ')}');
+
         final hasActions = availableActions.isNotEmpty;
+        debugPrint('🚗 [DIALOG] Has actions: $hasActions');
+
         final actionText = hasActions ? _getActionButtonText(ref) : 'No Action Available';
+        debugPrint('🚗 [DIALOG] Action button text: "$actionText"');
+
+        // Check if any status update is in progress
+        final isUpdating = ref.watch(updateDriverWorkflowStatusProvider((
+          orderId: order.id,
+          fromStatus: rawStatus,
+          toStatus: _getNextStatusForOrder(ref),
+        ))).isLoading;
 
         // Get appropriate icon for the action
         IconData actionIcon = Icons.navigation;
@@ -593,6 +655,8 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
           }
         }
 
+        debugPrint('🚗 [DIALOG] === END BUILDING ACTION BUTTONS ===');
+
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -608,6 +672,24 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
               // Workflow progress indicator
               if (hasActions) _buildWorkflowProgress(theme, currentDriverStatus),
 
+              // Refresh button for troubleshooting
+              if (!hasActions || rawStatus == 'assigned')
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: TextButton.icon(
+                    onPressed: () {
+                      debugPrint('🚗 [DIALOG] Manual refresh triggered');
+                      ref.invalidate(enhancedCurrentDriverOrderProvider);
+                      ref.invalidate(activeOrdersStreamProvider);
+                    },
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Refresh Status'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+
               // Action buttons
               Row(
                 children: [
@@ -621,13 +703,23 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
                   Expanded(
                     child: Consumer(
                       builder: (context, ref, child) {
+                        final isButtonEnabled = hasActions && !isUpdating;
                         return ElevatedButton.icon(
-                          onPressed: hasActions ? () => _handleTakeAction(context, ref) : null,
-                          icon: Icon(actionIcon, size: 18),
-                          label: Text(actionText),
+                          onPressed: isButtonEnabled ? () => _handleTakeAction(context, ref) : null,
+                          icon: isUpdating
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Icon(actionIcon, size: 18),
+                          label: Text(isUpdating ? 'Updating...' : actionText),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: hasActions ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
-                            foregroundColor: hasActions ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+                            backgroundColor: isButtonEnabled ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
+                            foregroundColor: isButtonEnabled ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
                           ),
                         );
                       },
@@ -779,23 +871,39 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
   /// Get the text for the action button based on current order status
   String _getActionButtonText(WidgetRef ref) {
     final rawStatus = _getEnhancedOrderStatus(ref);
-    final currentDriverStatus = _mapStringToDriverStatus(rawStatus);
-    final availableActions = DriverOrderStateMachine.getAvailableActions(currentDriverStatus);
+    debugPrint('🚗 [DIALOG] === ACTION BUTTON TEXT GENERATION ===');
+    debugPrint('🚗 [DIALOG] Raw status from provider: "$rawStatus"');
+    debugPrint('🚗 [DIALOG] Order assigned driver ID: ${order.assignedDriverId}');
 
-    debugPrint('🚗 [DIALOG] Getting action button text for status: ${currentDriverStatus.value}');
-    debugPrint('🚗 [DIALOG] Available actions: ${availableActions.map((a) => a.displayName).join(', ')}');
+    // Check if this is an unassigned order that needs to be accepted first
+    if (order.assignedDriverId == null && rawStatus == 'ready') {
+      debugPrint('🚗 [DIALOG] ✅ Unassigned order with ready status - showing Accept Order');
+      debugPrint('🚗 [DIALOG] === END ACTION BUTTON TEXT GENERATION ===');
+      return 'Accept Order';
+    }
+
+    final currentDriverStatus = _mapStringToDriverStatus(rawStatus);
+    debugPrint('🚗 [DIALOG] Mapped driver status: ${currentDriverStatus.name} (${currentDriverStatus.value})');
+    debugPrint('🚗 [DIALOG] Driver status display name: ${currentDriverStatus.displayName}');
+
+    final availableActions = DriverOrderStateMachine.getAvailableActions(currentDriverStatus);
+    debugPrint('🚗 [DIALOG] Available actions count: ${availableActions.length}');
+    debugPrint('🚗 [DIALOG] Available actions: ${availableActions.map((a) => '${a.name}(${a.displayName})').join(', ')}');
 
     if (availableActions.isEmpty) {
-      debugPrint('🚗 [DIALOG] No actions available for status: ${currentDriverStatus.name}');
+      debugPrint('🚗 [DIALOG] ❌ No actions available for status: ${currentDriverStatus.name}');
       return 'No Action Available';
     }
 
     final primaryAction = availableActions.first;
-    debugPrint('🚗 [DIALOG] Primary action button text: ${primaryAction.displayName}');
+    debugPrint('🚗 [DIALOG] ✅ Primary action: ${primaryAction.name}');
+    debugPrint('🚗 [DIALOG] ✅ Primary action display name: ${primaryAction.displayName}');
+    debugPrint('🚗 [DIALOG] ✅ Primary action target status: ${primaryAction.targetStatus.name}');
 
     // Log the expected workflow progression for debugging
     _logExpectedWorkflowProgression(currentDriverStatus, primaryAction);
 
+    debugPrint('🚗 [DIALOG] === END ACTION BUTTON TEXT GENERATION ===');
     return primaryAction.displayName;
   }
 
@@ -818,9 +926,16 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
 
   /// Handle the take action button press with enhanced workflow support
   Future<void> _handleTakeAction(BuildContext context, WidgetRef ref) async {
+    debugPrint('🚗 [DIALOG] === HANDLE TAKE ACTION STARTED ===');
+
     // Use enhanced status from provider instead of parsed enum
     final currentStatus = _getEnhancedOrderStatus(ref);
     final actionText = _getActionButtonText(ref);
+
+    debugPrint('🚗 [DIALOG] Button clicked: "$actionText"');
+    debugPrint('🚗 [DIALOG] Current status: "$currentStatus"');
+    debugPrint('🚗 [DIALOG] Order ID: ${order.id}');
+    debugPrint('🚗 [DIALOG] Order assigned driver ID: ${order.assignedDriverId}');
 
     DriverWorkflowLogger.logButtonInteraction(
       buttonName: actionText,
@@ -830,26 +945,39 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
     );
 
     try {
-      // Get the current driver status and available actions
+      // Handle "Accept Order" action for unassigned orders
+      if (order.assignedDriverId == null && currentStatus == 'ready' && actionText == 'Accept Order') {
+        debugPrint('🚗 [DIALOG] Handling Accept Order action for unassigned order');
+        await _handleAcceptOrder(context, ref);
+        return;
+      }
+
+      // Get the current driver status and available actions for assigned orders
       final currentDriverStatus = _mapStringToDriverStatus(currentStatus);
       final availableActions = DriverOrderStateMachine.getAvailableActions(currentDriverStatus);
 
+      debugPrint('🚗 [DIALOG] Current driver status: ${currentDriverStatus.name}');
+      debugPrint('🚗 [DIALOG] Available actions: ${availableActions.map((a) => a.name).join(', ')}');
+
       if (availableActions.isEmpty) {
-        debugPrint('🚗 [DIALOG] No available actions for status: ${currentDriverStatus.name}');
+        debugPrint('🚗 [DIALOG] ❌ No available actions for status: ${currentDriverStatus.name}');
         return;
       }
 
       final primaryAction = availableActions.first;
       debugPrint('🚗 [DIALOG] Primary action: ${primaryAction.name}');
+      debugPrint('🚗 [DIALOG] Primary action target status: ${primaryAction.targetStatus.name}');
 
       // Handle special actions that require confirmation dialogs
       if (primaryAction == DriverOrderAction.confirmDeliveryWithPhoto) {
+        debugPrint('🚗 [DIALOG] Handling delivery confirmation with photo');
         await _handleDeliveryConfirmation(context, ref);
         return;
       }
 
       // For other actions, proceed with direct status update
       final nextStatus = _getNextStatusForOrder(ref);
+      debugPrint('🚗 [DIALOG] Next status calculated: "$nextStatus"');
 
       DriverWorkflowLogger.logStatusTransition(
         orderId: order.id,
@@ -868,6 +996,9 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
 
       final stopwatch = Stopwatch()..start();
 
+      debugPrint('🚗 [DIALOG] Calling updateDriverWorkflowStatusProvider...');
+      debugPrint('🚗 [DIALOG] Parameters: orderId=${order.id}, fromStatus=$currentStatus, toStatus=$nextStatus');
+
       // Use enhanced workflow provider for better validation and tracking
       await ref.read(updateDriverWorkflowStatusProvider((
         orderId: order.id,
@@ -876,6 +1007,9 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
       )).future);
 
       stopwatch.stop();
+
+      debugPrint('🚗 [DIALOG] ✅ Status update completed successfully!');
+      debugPrint('🚗 [DIALOG] Update took: ${stopwatch.elapsed.inMilliseconds}ms');
 
       DriverWorkflowLogger.logPerformance(
         operation: 'Status Update',
@@ -892,8 +1026,14 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
         isSuccess: true,
       );
 
+      debugPrint('🚗 [DIALOG] Invalidating providers to refresh UI...');
+      // Invalidate providers to force UI refresh
+      ref.invalidate(enhancedCurrentDriverOrderProvider);
+      ref.invalidate(activeOrdersStreamProvider);
+
       // Close dialog and show success message
       if (context.mounted) {
+        debugPrint('🚗 [DIALOG] Closing dialog and showing success message');
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -904,7 +1044,12 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
         );
       }
 
+      debugPrint('🚗 [DIALOG] === HANDLE TAKE ACTION COMPLETED SUCCESSFULLY ===');
+
     } catch (e) {
+      debugPrint('🚗 [DIALOG] ❌ Error during status update: $e');
+      debugPrint('🚗 [DIALOG] Error type: ${e.runtimeType}');
+
       DriverWorkflowLogger.logError(
         operation: 'Status Update',
         error: e.toString(),
@@ -913,11 +1058,88 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
       );
 
       if (context.mounted) {
+        debugPrint('🚗 [DIALOG] Showing error message to user');
+
+        // Provide more user-friendly error messages based on error type
+        String userMessage;
+        if (e.toString().contains('permission') || e.toString().contains('not have permission')) {
+          userMessage = 'Unable to update order status. Please contact support if this issue persists.';
+        } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+          userMessage = 'Network error. Please check your connection and try again.';
+        } else if (e.toString().contains('Invalid status transition')) {
+          userMessage = 'Invalid status update. Please refresh and try again.';
+        } else {
+          userMessage = 'Failed to update order. Please try again.';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update order: ${e.toString()}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(userMessage),
+                const SizedBox(height: 4),
+                Text(
+                  'Error: ${e.toString()}',
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                ),
+              ],
+            ),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _handleTakeAction(context, ref),
+            ),
+          ),
+        );
+      }
+
+      debugPrint('🚗 [DIALOG] === HANDLE TAKE ACTION FAILED ===');
+    }
+  }
+
+  /// Handle accepting an unassigned order
+  Future<void> _handleAcceptOrder(BuildContext context, WidgetRef ref) async {
+    debugPrint('🚗 [DIALOG] Starting order acceptance process');
+
+    try {
+      // Get current user ID
+      final authState = ref.read(authStateProvider);
+      final userId = authState.user?.id;
+
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      debugPrint('🚗 [DIALOG] Accepting order ${order.id} for driver $userId');
+
+      // Accept the order using the provider
+      await ref.read(acceptOrderProvider(order.id).future);
+
+      debugPrint('🚗 [DIALOG] Order acceptance completed successfully');
+
+      // Show success message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order accepted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Close the dialog
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('🚗 [DIALOG] Error accepting order: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to accept order: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -1046,36 +1268,41 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
   /// Map string status to driver order status for granular workflow support
   DriverOrderStatus _mapStringToDriverStatus(String statusString) {
     debugPrint('🚗 [DIALOG] Mapping string status "$statusString" to driver status');
+    debugPrint('🚗 [DIALOG] Input status (original): "$statusString"');
+    debugPrint('🚗 [DIALOG] Input status (lowercase): "${statusString.toLowerCase()}"');
 
-    switch (statusString.toLowerCase()) {
-      case 'assigned':
-        return DriverOrderStatus.assigned;
-      case 'on_route_to_vendor':
-      case 'onroutetovendor':
-        return DriverOrderStatus.onRouteToVendor;
-      case 'arrived_at_vendor':
-      case 'arrivedatvendor':
-        return DriverOrderStatus.arrivedAtVendor;
-      case 'picked_up':
-      case 'pickedup':
-        return DriverOrderStatus.pickedUp;
-      case 'on_route_to_customer':
-      case 'onroutetocustomer':
-        return DriverOrderStatus.onRouteToCustomer;
-      case 'arrived_at_customer':
-      case 'arrivedatcustomer':
-        return DriverOrderStatus.arrivedAtCustomer;
-      case 'out_for_delivery': // Legacy support (snake_case)
-      case 'outfordelivery': // Legacy support (lowercase and camelCase converted to lowercase)
-        return DriverOrderStatus.pickedUp; // Map legacy status to picked up so driver can navigate to customer
-      case 'delivered':
-        return DriverOrderStatus.delivered;
-      case 'cancelled':
-        return DriverOrderStatus.cancelled;
-      default:
-        debugPrint('🚗 [DIALOG] Unknown status "$statusString", mapping to pickedUp for legacy compatibility');
-        return DriverOrderStatus.pickedUp; // Map unknown statuses to picked up so driver can navigate to customer
+    final mappedStatus = switch (statusString.toLowerCase()) {
+      'ready' => DriverOrderStatus.assigned, // Available orders should be treated as assigned
+      'assigned' => DriverOrderStatus.assigned,
+      'on_route_to_vendor' || 'onroutetovendor' => DriverOrderStatus.onRouteToVendor,
+      'arrived_at_vendor' || 'arrivedatvendor' => DriverOrderStatus.arrivedAtVendor,
+      'picked_up' || 'pickedup' => DriverOrderStatus.pickedUp,
+      'on_route_to_customer' || 'onroutetocustomer' => DriverOrderStatus.onRouteToCustomer,
+      'arrived_at_customer' || 'arrivedatcustomer' => DriverOrderStatus.arrivedAtCustomer,
+      'out_for_delivery' || 'outfordelivery' => DriverOrderStatus.pickedUp, // Legacy support
+      'delivered' => DriverOrderStatus.delivered,
+      'cancelled' => DriverOrderStatus.cancelled,
+      _ => DriverOrderStatus.pickedUp, // Default fallback
+    };
+
+    debugPrint('🚗 [DIALOG] Mapped "$statusString" → ${mappedStatus.name} (${mappedStatus.value})');
+    debugPrint('🚗 [DIALOG] Mapped status display name: ${mappedStatus.displayName}');
+
+    if (statusString.toLowerCase() != 'ready' &&
+        statusString.toLowerCase() != 'assigned' &&
+        statusString.toLowerCase() != 'on_route_to_vendor' &&
+        statusString.toLowerCase() != 'arrived_at_vendor' &&
+        statusString.toLowerCase() != 'picked_up' &&
+        statusString.toLowerCase() != 'on_route_to_customer' &&
+        statusString.toLowerCase() != 'arrived_at_customer' &&
+        statusString.toLowerCase() != 'delivered' &&
+        statusString.toLowerCase() != 'cancelled' &&
+        statusString.toLowerCase() != 'out_for_delivery' &&
+        statusString.toLowerCase() != 'outfordelivery') {
+      debugPrint('🚗 [DIALOG] ⚠️ Unknown status "$statusString" mapped to fallback: ${mappedStatus.name}');
     }
+
+    return mappedStatus;
   }
 
   /// Map driver order status to order status string
@@ -1136,12 +1363,17 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
     return enhancedOrderAsync.when(
       data: (enhancedOrder) {
         if (enhancedOrder != null && enhancedOrder.id == order.id) {
-          // Get the status value from the DriverOrderStatus enum
-          final rawStatus = enhancedOrder.status.name;
+          // Get the status value from the DriverOrderStatus enum - use .value instead of .name
+          final rawStatus = enhancedOrder.status.value;
           debugPrint('🚗 [DIALOG] Enhanced provider returned status: $rawStatus for order: ${order.id}');
+          debugPrint('🚗 [DIALOG] Enhanced order status enum name: ${enhancedOrder.status.name}');
+          debugPrint('🚗 [DIALOG] Enhanced order status enum value: ${enhancedOrder.status.value}');
+          debugPrint('🚗 [DIALOG] Enhanced order full details: id=${enhancedOrder.id}, orderNumber=${enhancedOrder.orderNumber}');
           return rawStatus;
         } else {
-          debugPrint('🚗 [DIALOG] Enhanced provider order mismatch or null, falling back to raw status inference');
+          debugPrint('🚗 [DIALOG] Enhanced provider order mismatch or null');
+          debugPrint('🚗 [DIALOG] Enhanced order: ${enhancedOrder?.id}, Expected: ${order.id}');
+          debugPrint('🚗 [DIALOG] Falling back to raw status inference');
           return _getRawOrderStatus();
         }
       },
@@ -1151,6 +1383,7 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
       },
       error: (error, stack) {
         debugPrint('🚗 [DIALOG] Enhanced provider error: $error, falling back to raw status inference');
+        debugPrint('🚗 [DIALOG] Error details: $error');
         return _getRawOrderStatus();
       },
     );

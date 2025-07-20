@@ -6,11 +6,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../orders/data/models/order.dart';
 import '../../../orders/data/models/driver_order_state_machine.dart';
 import '../../data/models/driver_order.dart';
+import '../../data/models/delivery_confirmation.dart';
 import '../providers/driver_orders_management_providers.dart';
 import '../providers/driver_realtime_providers.dart';
 import '../providers/enhanced_driver_workflow_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'driver_order_details_dialog.dart';
+import 'driver_delivery_confirmation_dialog.dart';
 
 /// Order card widget for driver order management with context-specific actions
 class DriverOrderManagementCard extends ConsumerStatefulWidget {
@@ -421,11 +423,11 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
         );
       case OrderStatus.outForDelivery:
         return _NextAction(
-          label: 'Mark Delivered',
-          icon: Icons.check_circle,
+          label: 'Complete Delivery',
+          icon: Icons.camera_alt,
           color: Colors.green,
           status: 'delivered',
-          isDriverAction: false,
+          isDriverAction: true, // ✅ CRITICAL FIX: Use driver workflow for photo capture
         );
       default:
         return null;
@@ -557,11 +559,19 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
   }
 
   Future<void> _acceptOrder() async {
+    debugPrint('🚗 [DRIVER-CARD] Starting order acceptance for ${widget.order.orderNumber} (ID: ${widget.order.id.substring(0, 8)}...)');
+    debugPrint('🚗 [DRIVER-CARD] Current order status: ${widget.order.status.value}');
+    debugPrint('🚗 [DRIVER-CARD] Order type: ${widget.type}');
+
     setState(() => _isProcessing = true);
-    
+
     try {
+      debugPrint('🚗 [DRIVER-CARD] Calling acceptOrderProvider...');
       await ref.read(acceptOrderProvider(widget.order.id).future);
-      
+
+      debugPrint('✅ [DRIVER-CARD] Order accepted successfully');
+      debugPrint('🚗 [DRIVER-CARD] Order should now transition from incoming to active');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -571,6 +581,7 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
         );
       }
     } catch (e) {
+      debugPrint('❌ [DRIVER-CARD] Error accepting order: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -644,6 +655,13 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
         await _openMapsToVendor();
       }
 
+      // ✅ CRITICAL FIX: Handle delivery completion with photo capture
+      if (status == 'delivered') {
+        debugPrint('🚗 [DRIVER-CARD] Handling delivery completion with photo capture');
+        await _handleDeliveryCompletionWithPhoto();
+        return;
+      }
+
       // Use enhanced driver workflow provider for status update
       final driverOrderStatus = DriverOrderStatus.fromString(status);
       final result = await ref.read(realtimeDriverOrderActionsProvider).updateOrderStatus(
@@ -692,6 +710,178 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
           ),
         );
       }
+    }
+  }
+
+  /// Handle delivery completion with mandatory photo capture
+  Future<void> _handleDeliveryCompletionWithPhoto() async {
+    debugPrint('🚗 [DRIVER-CARD] Starting delivery completion with photo capture');
+
+    try {
+      // Show delivery confirmation dialog with photo capture
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false, // Cannot be dismissed without completing
+        builder: (context) => DriverDeliveryConfirmationDialog(
+          order: _convertOrderToDriverOrder(widget.order),
+          onConfirmed: (confirmation) async {
+            await _processDeliveryConfirmation(confirmation);
+          },
+          onCancelled: () {
+            debugPrint('🚗 [DRIVER-CARD] Delivery confirmation cancelled by user');
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('🚗 [DRIVER-CARD] Error in delivery completion: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to complete delivery: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Process delivery confirmation after photo capture
+  Future<void> _processDeliveryConfirmation(DeliveryConfirmation confirmation) async {
+    try {
+      debugPrint('🚗 [DRIVER-CARD] Processing delivery confirmation');
+      debugPrint('🚗 [DRIVER-CARD] Photo URL: ${confirmation.photoUrl}');
+
+      // Submit delivery confirmation
+      final deliveryService = ref.read(deliveryConfirmationServiceProvider);
+      final result = await deliveryService.submitDeliveryConfirmation(confirmation);
+
+      if (result.isSuccess) {
+        debugPrint('🚗 [DRIVER-CARD] Delivery confirmation submitted successfully');
+        debugPrint('🔧 [DRIVER-CARD] Database trigger has automatically updated order status to delivered');
+
+        // Refresh provider to show updated status from database trigger
+        ref.invalidate(enhancedCurrentDriverOrderProvider);
+        debugPrint('🔄 [DRIVER-CARD] Order data refreshed to show updated status');
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Delivery completed successfully with photo proof!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Delivery confirmation failed: ${result.errorMessage}');
+      }
+    } catch (e) {
+      debugPrint('🚗 [DRIVER-CARD] Error processing delivery confirmation: $e');
+
+      // Enhanced error handling for duplicate delivery scenarios
+      String userFriendlyMessage;
+      Color snackBarColor = Colors.red;
+
+      if (e.toString().contains('already been completed') ||
+          e.toString().contains('duplicate key value') ||
+          e.toString().contains('unique_order_proof')) {
+        debugPrint('🔍 [DRIVER-CARD] Detected duplicate delivery completion attempt');
+        userFriendlyMessage = 'This delivery has already been completed. Refreshing order status.';
+        snackBarColor = Colors.orange;
+
+        // Refresh the order data to show current status
+        try {
+          ref.invalidate(enhancedCurrentDriverOrderProvider);
+          debugPrint('🔄 [DRIVER-CARD] Order data refreshed after duplicate detection');
+        } catch (refreshError) {
+          debugPrint('⚠️ [DRIVER-CARD] Failed to refresh order data: $refreshError');
+        }
+      } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+        debugPrint('🌐 [DRIVER-CARD] Network error detected');
+        userFriendlyMessage = 'Network error. Please check your connection and try again.';
+      } else if (e.toString().contains('permission') || e.toString().contains('unauthorized')) {
+        debugPrint('🔒 [DRIVER-CARD] Permission error detected');
+        userFriendlyMessage = 'You don\'t have permission to complete this delivery. Please contact support.';
+      } else {
+        debugPrint('❌ [DRIVER-CARD] Unknown error type');
+        userFriendlyMessage = 'Failed to complete delivery. Please try again or contact support.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userFriendlyMessage),
+            backgroundColor: snackBarColor,
+            duration: const Duration(seconds: 5),
+            action: snackBarColor == Colors.orange ? SnackBarAction(
+              label: 'Refresh',
+              textColor: Colors.white,
+              onPressed: () {
+                ref.invalidate(enhancedCurrentDriverOrderProvider);
+              },
+            ) : null,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Convert Order to DriverOrder for delivery confirmation dialog
+  DriverOrder _convertOrderToDriverOrder(Order order) {
+    return DriverOrder.fromJson({
+      'id': order.id,
+      'order_id': order.id,
+      'order_number': order.orderNumber,
+      'driver_id': order.assignedDriverId ?? '',
+      'vendor_id': order.vendorId,
+      'vendor_name': order.vendorName,
+      'customer_id': order.customerId,
+      'customer_name': order.customerName,
+      'status': _mapOrderStatusToDriverStatus(order.status),
+      'priority': 'normal',
+      'delivery_details': {
+        'pickup_address': '', // Not available in Order model
+        'delivery_address': order.deliveryAddress.fullAddress,
+        'contact_phone': order.contactPhone,
+      },
+      'order_earnings': {
+        'base_fee': 5.0,
+        'total_earnings': 8.50,
+      },
+      'order_items_count': order.items.length,
+      'order_total': order.totalAmount,
+      'payment_method': null,
+      'requires_cash_collection': false,
+      'assigned_at': DateTime.now().toIso8601String(),
+      'accepted_at': null,
+      'started_route_at': null,
+      'arrived_at_vendor_at': null,
+      'picked_up_at': null,
+      'arrived_at_customer_at': null,
+      'delivered_at': null,
+      'created_at': order.createdAt.toIso8601String(),
+      'updated_at': order.updatedAt.toIso8601String(),
+    });
+  }
+
+  /// Map Order status to valid DriverOrderStatus values
+  String _mapOrderStatusToDriverStatus(OrderStatus orderStatus) {
+    switch (orderStatus) {
+      case OrderStatus.pending:
+      case OrderStatus.confirmed:
+      case OrderStatus.preparing:
+      case OrderStatus.ready:
+        // For orders that haven't been assigned to driver yet, default to assigned
+        return 'assigned';
+      case OrderStatus.outForDelivery:
+        // Legacy status - map to picked_up for driver workflow
+        return 'picked_up';
+      case OrderStatus.delivered:
+        return 'delivered';
+      case OrderStatus.cancelled:
+        return 'cancelled';
     }
   }
 

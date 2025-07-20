@@ -284,6 +284,18 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
   Widget _buildOrderItems(Order order) {
     final theme = Theme.of(context);
 
+    debugPrint('🔍 [ORDER-DETAILS-UI] _buildOrderItems called for order ${order.orderNumber}');
+    debugPrint('🔍 [ORDER-DETAILS-UI] Order has ${order.items.length} items');
+
+    if (order.items.isEmpty) {
+      debugPrint('🔍 [ORDER-DETAILS-UI] ⚠️ Order ${order.orderNumber} has NO ITEMS - this is the bug!');
+    } else {
+      for (int i = 0; i < order.items.length; i++) {
+        final item = order.items[i];
+        debugPrint('🔍 [ORDER-DETAILS-UI] Item ${i + 1}: ${item.name} (qty: ${item.quantity})');
+      }
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -297,7 +309,7 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
               ),
             ),
             const SizedBox(height: 16),
-            
+
             ...order.items.map((item) => _buildOrderItem(item, theme)),
           ],
         ),
@@ -735,17 +747,20 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
   }
 
   String _getPaymentMethodDisplay(String paymentMethod) {
-    switch (paymentMethod.toLowerCase()) {
-      case 'credit_card':
-        return 'Credit Card';
-      case 'cash':
-        return 'Cash on Delivery';
-      case 'online_banking':
-        return 'Online Banking';
-      case 'e_wallet':
-        return 'E-Wallet';
-      default:
-        return paymentMethod.toUpperCase();
+    debugPrint('🔍 [CUSTOMER-ORDER-DETAILS] Getting payment method display for: "$paymentMethod"');
+
+    // Use the PaymentMethod enum for consistent display logic
+    try {
+      debugPrint('🔍 [CUSTOMER-ORDER-DETAILS] Attempting to parse payment method with enum: "$paymentMethod"');
+      final method = PaymentMethod.fromString(paymentMethod);
+      debugPrint('✅ [CUSTOMER-ORDER-DETAILS] Payment method parsed successfully: ${method.value} -> ${method.displayName}');
+      return method.displayName;
+    } catch (e) {
+      // Fallback to uppercase formatting if enum parsing fails
+      final fallbackDisplay = paymentMethod.toUpperCase();
+      debugPrint('⚠️ [CUSTOMER-ORDER-DETAILS] Enum parsing failed, using fallback display for "$paymentMethod": "$fallbackDisplay"');
+      debugPrint('⚠️ [CUSTOMER-ORDER-DETAILS] Error details: $e');
+      return fallbackDisplay;
     }
   }
 

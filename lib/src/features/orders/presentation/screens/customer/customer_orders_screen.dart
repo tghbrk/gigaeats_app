@@ -130,18 +130,42 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
   }
 
   List<Order> _getActiveOrders(List<Order> orders) {
-    return orders.where((order) => 
-        order.status != OrderStatus.delivered && 
+    debugPrint('🔍 [TAB-FILTER] _getActiveOrders called with ${orders.length} total orders');
+    final activeOrders = orders.where((order) =>
+        order.status != OrderStatus.delivered &&
         order.status != OrderStatus.cancelled
     ).toList();
+
+    debugPrint('🔍 [TAB-FILTER] Active orders: ${activeOrders.length}');
+    for (final order in activeOrders) {
+      debugPrint('🔍 [TAB-FILTER] Active - ${order.orderNumber} (${order.status.displayName}) - ${order.items.length} items');
+    }
+
+    return activeOrders;
   }
 
   List<Order> _getCompletedOrders(List<Order> orders) {
-    return orders.where((order) => order.status == OrderStatus.delivered).toList();
+    debugPrint('🔍 [TAB-FILTER] _getCompletedOrders called with ${orders.length} total orders');
+    final completedOrders = orders.where((order) => order.status == OrderStatus.delivered).toList();
+
+    debugPrint('🔍 [TAB-FILTER] Completed orders: ${completedOrders.length}');
+    for (final order in completedOrders) {
+      debugPrint('🔍 [TAB-FILTER] Completed - ${order.orderNumber} (${order.status.displayName}) - ${order.items.length} items');
+    }
+
+    return completedOrders;
   }
 
   List<Order> _getCancelledOrders(List<Order> orders) {
-    return orders.where((order) => order.status == OrderStatus.cancelled).toList();
+    debugPrint('🔍 [TAB-FILTER] _getCancelledOrders called with ${orders.length} total orders');
+    final cancelledOrders = orders.where((order) => order.status == OrderStatus.cancelled).toList();
+
+    debugPrint('🔍 [TAB-FILTER] Cancelled orders: ${cancelledOrders.length}');
+    for (final order in cancelledOrders) {
+      debugPrint('🔍 [TAB-FILTER] Cancelled - ${order.orderNumber} (${order.status.displayName}) - ${order.items.length} items');
+    }
+
+    return cancelledOrders;
   }
 
   Widget _buildOrdersList(List<Order> orders) {
@@ -514,10 +538,17 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
   }
 
   String _getOrderItemsPreview(Order order) {
-    if (order.items.isEmpty) return 'No items';
+    debugPrint('🔍 [CUSTOMER-ORDERS-UI] _getOrderItemsPreview called for order ${order.orderNumber}');
+    debugPrint('🔍 [CUSTOMER-ORDERS-UI] Order has ${order.items.length} items');
+
+    if (order.items.isEmpty) {
+      debugPrint('🔍 [CUSTOMER-ORDERS-UI] ⚠️ Order ${order.orderNumber} has NO ITEMS - returning "No items"');
+      return 'No items';
+    }
 
     // Show all items with quantities in comma-separated format
     final itemDescriptions = order.items.map((item) => '${item.quantity}x ${item.name}').toList();
+    debugPrint('🔍 [CUSTOMER-ORDERS-UI] Item descriptions: $itemDescriptions');
 
     // Join with commas, but limit display to avoid overly long text
     final preview = itemDescriptions.join(', ');
@@ -537,39 +568,30 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
 
   /// Converts payment method string to user-friendly display name
   String _getPaymentMethodDisplay(String? paymentMethod) {
+    debugPrint('🔍 [CUSTOMER-ORDERS] Getting payment method display for: "$paymentMethod"');
+
     if (paymentMethod == null || paymentMethod.isEmpty) {
+      debugPrint('❌ [CUSTOMER-ORDERS] Payment method is null or empty');
       return 'Payment method not specified';
     }
 
-    switch (paymentMethod.toLowerCase()) {
-      case 'credit_card':
-      case 'card':
-        return 'Credit/Debit Card';
-      case 'wallet':
-        return 'GigaEats Wallet';
-      case 'cash':
-        return 'Cash on Delivery';
-      case 'fpx':
-        return 'FPX Online Banking';
-      case 'grabpay':
-        return 'GrabPay';
-      case 'touchngo':
-      case 'tng':
-        return 'Touch \'n Go eWallet';
-      case 'boost':
-        return 'Boost';
-      case 'shopeepay':
-        return 'ShopeePay';
-      case 'bank_transfer':
-        return 'Bank Transfer';
-      default:
-        // Fallback: capitalize first letter and replace underscores with spaces
-        return paymentMethod
-            .split('_')
-            .map((word) => word.isNotEmpty
-                ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
-                : word)
-            .join(' ');
+    // Use the PaymentMethod enum for consistent display logic
+    try {
+      debugPrint('🔍 [CUSTOMER-ORDERS] Attempting to parse payment method with enum: "$paymentMethod"');
+      final method = PaymentMethod.fromString(paymentMethod);
+      debugPrint('✅ [CUSTOMER-ORDERS] Payment method parsed successfully: ${method.value} -> ${method.displayName}');
+      return method.displayName;
+    } catch (e) {
+      // Fallback to manual formatting if enum parsing fails
+      final fallbackDisplay = paymentMethod
+          .split('_')
+          .map((word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+              : word)
+          .join(' ');
+      debugPrint('⚠️ [CUSTOMER-ORDERS] Enum parsing failed, using fallback display for "$paymentMethod": "$fallbackDisplay"');
+      debugPrint('⚠️ [CUSTOMER-ORDERS] Error details: $e');
+      return fallbackDisplay;
     }
   }
 

@@ -598,8 +598,12 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
   }
 
   Widget _buildPaymentMethodInfo(Order order, ThemeData theme) {
+    debugPrint('🔍 [VENDOR-ORDERS] Building payment method info for order: ${order.id}');
+    debugPrint('🔍 [VENDOR-ORDERS] Payment method: "${order.paymentMethod}"');
+
     // Handle cases where payment method might be null or empty
     if (order.paymentMethod == null || order.paymentMethod!.isEmpty) {
+      debugPrint('❌ [VENDOR-ORDERS] No payment method data for order ${order.id}');
       return Row(
         children: [
           Icon(
@@ -622,11 +626,14 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
     // Get display name for payment method
     String paymentMethodDisplay;
     try {
+      debugPrint('🔍 [VENDOR-ORDERS] Parsing payment method: "${order.paymentMethod}"');
       final paymentMethod = PaymentMethod.fromString(order.paymentMethod!);
       paymentMethodDisplay = paymentMethod.displayName;
+      debugPrint('✅ [VENDOR-ORDERS] Payment method parsed: ${paymentMethod.value} -> $paymentMethodDisplay');
     } catch (e) {
       // Fallback to raw value if enum parsing fails
       paymentMethodDisplay = order.paymentMethod!.replaceAll('_', ' ').toUpperCase();
+      debugPrint('⚠️ [VENDOR-ORDERS] Payment method parsing failed, using fallback: $paymentMethodDisplay');
     }
 
     // Get payment status display

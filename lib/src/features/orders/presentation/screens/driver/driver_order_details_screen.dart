@@ -7,6 +7,9 @@ import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../../drivers/data/models/driver_order.dart';
 import '../../../../drivers/presentation/providers/driver_realtime_providers.dart';
+import '../../../../drivers/data/models/delivery_confirmation.dart';
+import '../../../../drivers/data/services/delivery_confirmation_service.dart';
+import '../../../../drivers/presentation/widgets/driver_delivery_confirmation_dialog.dart';
 
 import '../../../data/models/driver_order_state_machine.dart';
 
@@ -579,12 +582,31 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _handleDriverAction(BuildContext context, WidgetRef ref, DriverOrder order, DriverOrderAction action) async {
-    debugPrint('🚗 [ORDER-DETAILS] Handling driver action: ${action.displayName} for order: ${order.orderNumber}');
+    debugPrint('🎯 [ORDER-DETAILS-ACTION] ═══ DRIVER ACTION INITIATED ═══');
+    debugPrint('🎯 [ORDER-DETAILS-ACTION] Action: ${action.displayName}');
+    debugPrint('🎯 [ORDER-DETAILS-ACTION] Order ID: ${order.id}');
+    debugPrint('🎯 [ORDER-DETAILS-ACTION] Order Number: ${order.orderNumber}');
+    debugPrint('🎯 [ORDER-DETAILS-ACTION] Current Status: ${order.status.displayName}');
+    debugPrint('🎯 [ORDER-DETAILS-ACTION] Driver ID: ${order.assignedDriverId}');
+    debugPrint('🎯 [ORDER-DETAILS-ACTION] Action Source: Order Details Screen');
 
     try {
       switch (action) {
         case DriverOrderAction.navigateToVendor:
+          debugPrint('🧭 [NAVIGATE-TO-VENDOR] ═══ STARTING NAVIGATION TO RESTAURANT ═══');
+          debugPrint('🧭 [NAVIGATE-TO-VENDOR] Order: ${order.orderNumber} (${order.id})');
+          debugPrint('🧭 [NAVIGATE-TO-VENDOR] Current Status: ${order.status.displayName}');
+          debugPrint('🧭 [NAVIGATE-TO-VENDOR] Target Address: ${order.deliveryDetails.pickupAddress}');
+          debugPrint('🧭 [NAVIGATE-TO-VENDOR] Step 1: Updating status to on_route_to_vendor...');
+
+          // CRITICAL FIX: Update status first, then open navigation
+          // This matches the behavior of order cards for consistency
+          await _updateOrderStatus(context, ref, order, DriverOrderStatus.onRouteToVendor);
+          debugPrint('✅ [NAVIGATE-TO-VENDOR] Status update completed');
+
+          debugPrint('🧭 [NAVIGATE-TO-VENDOR] Step 2: Opening maps application...');
           await _openMaps(context, order.deliveryDetails.pickupAddress);
+          debugPrint('✅ [NAVIGATE-TO-VENDOR] Navigation to restaurant completed successfully');
           break;
         case DriverOrderAction.arrivedAtVendor:
           await _updateOrderStatus(context, ref, order, DriverOrderStatus.arrivedAtVendor);
@@ -593,7 +615,20 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
           await _confirmPickup(context, ref, order);
           break;
         case DriverOrderAction.navigateToCustomer:
+          debugPrint('🚚 [NAVIGATE-TO-CUSTOMER] ═══ STARTING NAVIGATION TO CUSTOMER ═══');
+          debugPrint('🚚 [NAVIGATE-TO-CUSTOMER] Order: ${order.orderNumber} (${order.id})');
+          debugPrint('🚚 [NAVIGATE-TO-CUSTOMER] Current Status: ${order.status.displayName}');
+          debugPrint('🚚 [NAVIGATE-TO-CUSTOMER] Target Address: ${order.deliveryDetails.deliveryAddress}');
+          debugPrint('🚚 [NAVIGATE-TO-CUSTOMER] Step 1: Updating status to on_route_to_customer...');
+
+          // CONSISTENCY FIX: Update status first, then open navigation
+          // This matches the behavior of order cards and navigateToVendor
+          await _updateOrderStatus(context, ref, order, DriverOrderStatus.onRouteToCustomer);
+          debugPrint('✅ [NAVIGATE-TO-CUSTOMER] Status update completed');
+
+          debugPrint('🚚 [NAVIGATE-TO-CUSTOMER] Step 2: Opening maps application...');
           await _openMaps(context, order.deliveryDetails.deliveryAddress);
+          debugPrint('✅ [NAVIGATE-TO-CUSTOMER] Navigation to customer completed successfully');
           break;
         case DriverOrderAction.arrivedAtCustomer:
           await _updateOrderStatus(context, ref, order, DriverOrderStatus.arrivedAtCustomer);
@@ -608,13 +643,40 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
           await _reportIssue(context, order);
           break;
         default:
-          debugPrint('🚗 [ORDER-DETAILS] Unhandled action: $action');
+          debugPrint('⚠️ [ORDER-DETAILS-ACTION] Unhandled action: ${action.displayName}');
+          debugPrint('⚠️ [ORDER-DETAILS-ACTION] This action is not implemented in Order Details Screen');
       }
+
+      debugPrint('✅ [ORDER-DETAILS-ACTION] Driver action ${action.displayName} completed successfully');
+      debugPrint('✅ [ORDER-DETAILS-ACTION] ═══ ACTION COMPLETED ═══');
+
     } catch (e) {
-      debugPrint('🚗 [ORDER-DETAILS] Error handling action: $e');
+      debugPrint('❌ [ORDER-DETAILS-ACTION] ═══ ACTION FAILED ═══');
+      debugPrint('❌ [ORDER-DETAILS-ACTION] Action: ${action.displayName}');
+      debugPrint('❌ [ORDER-DETAILS-ACTION] Order: ${order.orderNumber}');
+      debugPrint('❌ [ORDER-DETAILS-ACTION] Error: $e');
+      debugPrint('❌ [ORDER-DETAILS-ACTION] Stack trace: ${StackTrace.current}');
+
       if (context.mounted) {
+        // Provide specific error messages for navigation actions
+        String errorMessage;
+        if (action == DriverOrderAction.navigateToVendor) {
+          errorMessage = 'Failed to start navigation to restaurant. Please try again.';
+          debugPrint('❌ [ORDER-DETAILS-ACTION] Navigation to vendor failed - status update or maps error');
+        } else if (action == DriverOrderAction.navigateToCustomer) {
+          errorMessage = 'Failed to start navigation to customer. Please try again.';
+          debugPrint('❌ [ORDER-DETAILS-ACTION] Navigation to customer failed - status update or maps error');
+        } else {
+          errorMessage = 'Error performing ${action.displayName}: ${e.toString()}';
+          debugPrint('❌ [ORDER-DETAILS-ACTION] General action error: ${action.displayName}');
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
@@ -663,12 +725,14 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _updateOrderStatus(BuildContext context, WidgetRef ref, DriverOrder order, DriverOrderStatus newStatus) async {
-    debugPrint('🚗 [ORDER-DETAILS] ═══ STATUS UPDATE ═══');
-    debugPrint('🚗 [ORDER-DETAILS] Order ID: ${order.id}');
-    debugPrint('🚗 [ORDER-DETAILS] Order Number: ${order.orderNumber}');
-    debugPrint('🚗 [ORDER-DETAILS] Current Status: ${order.status.displayName} (${order.status.name})');
-    debugPrint('🚗 [ORDER-DETAILS] Target Status: ${newStatus.displayName} (${newStatus.name})');
-    debugPrint('🚗 [ORDER-DETAILS] Calling realtimeDriverOrderActionsProvider.updateOrderStatus...');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] ═══ STATUS UPDATE INITIATED ═══');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] Order ID: ${order.id}');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] Order Number: ${order.orderNumber}');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] Driver ID: ${order.assignedDriverId}');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] Current Status: ${order.status.displayName} (${order.status.name})');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] Target Status: ${newStatus.displayName} (${newStatus.name})');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] Update Source: Order Details Screen');
+    debugPrint('🔄 [ORDER-DETAILS-STATUS] Calling realtimeDriverOrderActionsProvider.updateOrderStatus...');
 
     try {
       // Use the enhanced driver workflow provider to update status
@@ -681,20 +745,33 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
 
       result.when(
         success: (success) {
-          debugPrint('🚗 [ORDER-DETAILS] ✅ Status update successful');
-          debugPrint('🚗 [ORDER-DETAILS] Provider should auto-invalidate and trigger UI refresh');
+          debugPrint('✅ [ORDER-DETAILS-STATUS] Status update successful');
+          debugPrint('✅ [ORDER-DETAILS-STATUS] Order ${order.orderNumber} status changed to ${newStatus.displayName}');
+          debugPrint('✅ [ORDER-DETAILS-STATUS] Provider auto-invalidation should trigger UI refresh');
+          debugPrint('✅ [ORDER-DETAILS-STATUS] Real-time updates should propagate to all screens');
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Status updated to ${newStatus.displayName}')),
+              SnackBar(
+                content: Text('Status updated to ${newStatus.displayName}'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
             );
           }
         },
         error: (error) {
-          debugPrint('🚗 [ORDER-DETAILS] ❌ Status update failed: ${error.message}');
-          debugPrint('🚗 [ORDER-DETAILS] Error type: ${error.type}');
+          debugPrint('❌ [ORDER-DETAILS-STATUS] Status update failed');
+          debugPrint('❌ [ORDER-DETAILS-STATUS] Error message: ${error.message}');
+          debugPrint('❌ [ORDER-DETAILS-STATUS] Error type: ${error.type}');
+          debugPrint('❌ [ORDER-DETAILS-STATUS] Order: ${order.orderNumber}');
+          debugPrint('❌ [ORDER-DETAILS-STATUS] Attempted transition: ${order.status.displayName} → ${newStatus.displayName}');
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to update status: ${error.message}')),
+              SnackBar(
+                content: Text('Failed to update status: ${error.message}'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
+              ),
             );
           }
         },
@@ -740,26 +817,110 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
   Future<void> _confirmDeliveryWithPhoto(BuildContext context, WidgetRef ref, DriverOrder order) async {
     debugPrint('🚗 [ORDER-DETAILS] Confirming delivery with photo for order: ${order.orderNumber}');
 
-    final confirmed = await showDialog<bool>(
+    // Show mandatory delivery confirmation dialog with photo capture
+    // This dialog cannot be dismissed without completing all requirements
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Complete Delivery'),
-        content: const Text('Have you delivered the order to the customer? A photo confirmation is required.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Complete Delivery'),
-          ),
-        ],
+      barrierDismissible: false, // Cannot be dismissed by tapping outside
+      builder: (context) => DriverDeliveryConfirmationDialog(
+        order: order,
+        onConfirmed: (confirmation) async {
+          await _processDeliveryConfirmation(context, ref, confirmation);
+        },
+        onCancelled: () {
+          // User cancelled delivery confirmation - no action taken
+          debugPrint('🚗 [ORDER-DETAILS] Delivery confirmation cancelled by user');
+        },
       ),
     );
+  }
 
-    if (confirmed == true) {
-      await _updateOrderStatus(context, ref, order, DriverOrderStatus.delivered);
+  /// Process the delivery confirmation after photo capture and GPS verification
+  Future<void> _processDeliveryConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    DeliveryConfirmation confirmation
+  ) async {
+    try {
+      debugPrint('🚗 [ORDER-DETAILS] Processing delivery confirmation for order ${confirmation.orderId}');
+      debugPrint('🚗 [ORDER-DETAILS] Photo URL: ${confirmation.photoUrl}');
+      debugPrint('🚗 [ORDER-DETAILS] GPS Location: ${confirmation.location.latitude}, ${confirmation.location.longitude}');
+
+      // Submit delivery confirmation through the service
+      // NOTE: This service handles both delivery proof creation AND order status update
+      // The database trigger automatically updates order status when proof is created
+      final deliveryService = ref.read(deliveryConfirmationServiceProvider);
+      final result = await deliveryService.submitDeliveryConfirmation(confirmation);
+
+      if (result.isSuccess) {
+        debugPrint('🚗 [ORDER-DETAILS] Delivery confirmation submitted successfully');
+        debugPrint('🔧 [ORDER-DETAILS] Database trigger has automatically updated order status to delivered');
+
+        // Refresh order data to reflect the updated status from database trigger
+        ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
+        debugPrint('🔄 [ORDER-DETAILS] Order data refreshed to show updated status');
+
+        // Show success message
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Delivery completed successfully with photo proof!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Delivery confirmation failed: ${result.errorMessage}');
+      }
+    } catch (e) {
+      debugPrint('🚗 [ORDER-DETAILS] Error processing delivery confirmation: $e');
+
+      // Enhanced error handling for duplicate delivery scenarios
+      String userFriendlyMessage;
+      Color snackBarColor = Colors.red;
+
+      if (e.toString().contains('already been completed') ||
+          e.toString().contains('duplicate key value') ||
+          e.toString().contains('unique_order_proof')) {
+        debugPrint('🔍 [ORDER-DETAILS] Detected duplicate delivery completion attempt');
+        userFriendlyMessage = 'This delivery has already been completed. Please refresh to see the updated status.';
+        snackBarColor = Colors.orange;
+
+        // Refresh the order data to show current status
+        try {
+          ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
+          debugPrint('🔄 [ORDER-DETAILS] Order data refreshed after duplicate detection');
+        } catch (refreshError) {
+          debugPrint('⚠️ [ORDER-DETAILS] Failed to refresh order data: $refreshError');
+        }
+      } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+        debugPrint('🌐 [ORDER-DETAILS] Network error detected');
+        userFriendlyMessage = 'Network error. Please check your connection and try again.';
+      } else if (e.toString().contains('permission') || e.toString().contains('unauthorized')) {
+        debugPrint('🔒 [ORDER-DETAILS] Permission error detected');
+        userFriendlyMessage = 'You don\'t have permission to complete this delivery. Please contact support.';
+      } else {
+        debugPrint('❌ [ORDER-DETAILS] Unknown error type');
+        userFriendlyMessage = 'Failed to complete delivery. Please try again or contact support.';
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userFriendlyMessage),
+            backgroundColor: snackBarColor,
+            duration: const Duration(seconds: 5),
+            action: snackBarColor == Colors.orange ? SnackBarAction(
+              label: 'Refresh',
+              textColor: Colors.white,
+              onPressed: () {
+                ref.invalidate(realtimeOrderDetailsProvider(confirmation.orderId));
+              },
+            ) : null,
+          ),
+        );
+      }
     }
   }
 
@@ -860,21 +1021,35 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _openMaps(BuildContext context, String address) async {
+    debugPrint('🗺️ [ORDER-DETAILS-MAPS] Opening navigation to address: $address');
+
     final encodedAddress = Uri.encodeComponent(address);
     final url = 'https://www.google.com/maps/search/?api=1&query=$encodedAddress';
 
+    debugPrint('🗺️ [ORDER-DETAILS-MAPS] Generated maps URL: $url');
+
     try {
+      debugPrint('🗺️ [ORDER-DETAILS-MAPS] Checking if URL can be launched...');
       if (await canLaunchUrl(Uri.parse(url))) {
+        debugPrint('🗺️ [ORDER-DETAILS-MAPS] Launching external maps application...');
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        debugPrint('✅ [ORDER-DETAILS-MAPS] Maps application launched successfully');
       } else {
+        debugPrint('❌ [ORDER-DETAILS-MAPS] Cannot launch maps URL');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open maps')),
+          const SnackBar(
+            content: Text('Could not open maps application'),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
     } catch (e) {
-      debugPrint('Error opening maps: $e');
+      debugPrint('❌ [ORDER-DETAILS-MAPS] Error opening maps: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error opening maps')),
+        SnackBar(
+          content: Text('Error opening maps: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }

@@ -1014,9 +1014,13 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
   }
 
   Widget _buildPaymentMethodRow(Order order, ThemeData theme) {
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Building payment method row for order: ${order.id}');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Order payment method: "${order.paymentMethod}"');
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment method type: ${order.paymentMethod?.runtimeType}');
+
     // Handle cases where payment method might be null or empty
     if (order.paymentMethod == null || order.paymentMethod!.isEmpty) {
-      debugPrint('🔍 [VENDOR-ORDER-DETAILS] No payment method data available');
+      debugPrint('❌ [VENDOR-ORDER-DETAILS] No payment method data available for order ${order.id}');
       return Row(
         children: [
           Icon(
@@ -1041,13 +1045,15 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
     // Get display name for payment method
     String paymentMethodDisplay;
     try {
+      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Attempting to parse payment method: "${order.paymentMethod}"');
       final paymentMethod = PaymentMethod.fromString(order.paymentMethod!);
       paymentMethodDisplay = paymentMethod.displayName;
-      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment method parsed: $paymentMethodDisplay');
+      debugPrint('✅ [VENDOR-ORDER-DETAILS] Payment method parsed successfully: ${paymentMethod.value} -> $paymentMethodDisplay');
     } catch (e) {
       // Fallback to raw value if enum parsing fails
       paymentMethodDisplay = order.paymentMethod!.replaceAll('_', ' ').toUpperCase();
-      debugPrint('🔍 [VENDOR-ORDER-DETAILS] Payment method fallback: $paymentMethodDisplay');
+      debugPrint('⚠️ [VENDOR-ORDER-DETAILS] Payment method parsing failed, using fallback: $paymentMethodDisplay');
+      debugPrint('⚠️ [VENDOR-ORDER-DETAILS] Error details: $e');
     }
 
     // Get payment status display
@@ -1173,23 +1179,41 @@ class _VendorOrderDetailsScreenState extends ConsumerState<VendorOrderDetailsScr
   }
 
   IconData _getPaymentMethodIcon(String paymentMethod) {
+    debugPrint('🔍 [VENDOR-ORDER-DETAILS] Getting icon for payment method: "$paymentMethod"');
+
     switch (paymentMethod.toLowerCase()) {
+      case 'cash':
+      case 'cod':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using money icon for cash payment');
+        return Icons.money;
+      case 'wallet':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using wallet icon for wallet payment');
+        return Icons.account_balance_wallet;
+      case 'credit_card':
+      case 'card':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using credit card icon');
+        return Icons.credit_card;
       case 'fpx':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using bank icon for FPX');
         return Icons.account_balance;
       case 'grabpay':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using payment icon for GrabPay');
         return Icons.payment;
       case 'touchngo':
       case 'touch_n_go':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using contactless icon for Touch n Go');
         return Icons.contactless;
-      case 'credit_card':
-      case 'card':
-        return Icons.credit_card;
-      case 'wallet':
-        return Icons.account_balance_wallet;
-      case 'cash':
-      case 'cod':
-        return Icons.money;
+      case 'boost':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using payment icon for Boost');
+        return Icons.payment;
+      case 'shopeepay':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using payment icon for ShopeePay');
+        return Icons.payment;
+      case 'bank_transfer':
+        debugPrint('✅ [VENDOR-ORDER-DETAILS] Using bank transfer icon');
+        return Icons.account_balance;
       default:
+        debugPrint('⚠️ [VENDOR-ORDER-DETAILS] Using default payment icon for: "$paymentMethod"');
         return Icons.payment;
     }
   }

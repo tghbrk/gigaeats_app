@@ -5,10 +5,16 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/customer_wallet.dart';
 import '../../data/models/customer_wallet_error.dart';
 import '../../data/repositories/customer_wallet_repository.dart';
+import '../../data/services/enhanced_customer_wallet_service.dart';
 
 /// Provider for customer wallet repository
 final customerWalletRepositoryProvider = Provider<CustomerWalletRepository>((ref) {
   return CustomerWalletRepository();
+});
+
+/// Provider for enhanced customer wallet service (with auto-creation)
+final enhancedCustomerWalletServiceProvider = Provider<EnhancedCustomerWalletService>((ref) {
+  return EnhancedCustomerWalletService();
 });
 
 /// Customer wallet state
@@ -112,7 +118,27 @@ class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
 
       debugPrint('🔍 [CUSTOMER-WALLET-PROVIDER] Loading customer wallet (retry: ${state.retryCount})');
 
-      final result = await _repository.getCustomerWallet();
+      // Try to get existing wallet first
+      final existingWalletResult = await _repository.getCustomerWallet();
+
+      final result = await existingWalletResult.fold(
+        (failure) async {
+          // If there's an error getting the wallet, return the failure
+          return existingWalletResult;
+        },
+        (existingWallet) async {
+          if (existingWallet != null) {
+            // Wallet exists, return it
+            debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Found existing wallet: ${existingWallet.formattedAvailableBalance}');
+            return existingWalletResult;
+          } else {
+            // Wallet doesn't exist, create it using enhanced service
+            debugPrint('🔧 [CUSTOMER-WALLET-PROVIDER] No wallet found, creating new wallet...');
+            final enhancedService = _ref.read(enhancedCustomerWalletServiceProvider);
+            return await enhancedService.getOrCreateCustomerWallet();
+          }
+        },
+      );
 
       result.fold(
         (failure) {
@@ -321,7 +347,7 @@ class CustomerWalletTransactionsState {
 /// Customer wallet transactions notifier
 class CustomerWalletTransactionsNotifier extends StateNotifier<CustomerWalletTransactionsState> {
   final CustomerWalletRepository _repository;
-  static const int _pageSize = 20;
+  static const int _pageSize = 50; // Increased to include older credit transactions
 
   CustomerWalletTransactionsNotifier(this._repository) : super(const CustomerWalletTransactionsState());
 
@@ -364,9 +390,23 @@ class CustomerWalletTransactionsNotifier extends StateNotifier<CustomerWalletTra
         },
         (newTransactions) {
           debugPrint('✅ [CUSTOMER-WALLET-TRANSACTIONS] Loaded ${newTransactions.length} transactions');
-          
-          final updatedTransactions = isFirstLoad 
-              ? newTransactions 
+
+          // Debug: Count transaction types
+          final topUpCount = newTransactions.where((t) => t.type == CustomerTransactionType.topUp).length;
+          final orderPaymentCount = newTransactions.where((t) => t.type == CustomerTransactionType.orderPayment).length;
+          final transferCount = newTransactions.where((t) => t.type == CustomerTransactionType.transfer).length;
+          final refundCount = newTransactions.where((t) => t.type == CustomerTransactionType.refund).length;
+          final adjustmentCount = newTransactions.where((t) => t.type == CustomerTransactionType.adjustment).length;
+
+          debugPrint('📊 [CUSTOMER-WALLET-TRANSACTIONS] Transaction breakdown:');
+          debugPrint('   - Top-ups: $topUpCount');
+          debugPrint('   - Order payments: $orderPaymentCount');
+          debugPrint('   - Transfers: $transferCount');
+          debugPrint('   - Refunds: $refundCount');
+          debugPrint('   - Adjustments: $adjustmentCount');
+
+          final updatedTransactions = isFirstLoad
+              ? newTransactions
               : [...state.transactions, ...newTransactions];
 
           state = state.copyWith(
@@ -375,6 +415,8 @@ class CustomerWalletTransactionsNotifier extends StateNotifier<CustomerWalletTra
             hasMore: newTransactions.length == _pageSize,
             currentPage: state.currentPage + 1,
           );
+
+          debugPrint('✅ [CUSTOMER-WALLET-TRANSACTIONS] Total transactions in state: ${updatedTransactions.length}');
         },
       );
     } catch (e) {

@@ -7,6 +7,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/customer_wallet_settings.dart';
 import '../../data/services/customer_wallet_settings_service.dart';
 import '../../data/repositories/customer_wallet_settings_repository.dart';
+import '../../../shared/providers/app_providers.dart' show sharedPreferencesProvider;
 
 /// Provider for customer wallet settings service
 final customerWalletSettingsServiceProvider = Provider<CustomerWalletSettingsService>((ref) {

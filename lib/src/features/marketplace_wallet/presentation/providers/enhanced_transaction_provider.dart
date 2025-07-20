@@ -128,7 +128,7 @@ class EnhancedTransactionState {
 /// Enhanced transaction notifier
 class EnhancedTransactionNotifier extends StateNotifier<EnhancedTransactionState> {
   final EnhancedTransactionService _service;
-  static const int _pageSize = 20;
+  static const int _pageSize = 50; // Increased to include older credit transactions
 
   EnhancedTransactionNotifier(this._service) : super(const EnhancedTransactionState());
 

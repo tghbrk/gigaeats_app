@@ -157,7 +157,7 @@ class CustomerTransactionManagementNotifier extends StateNotifier<CustomerTransa
   final EnhancedTransactionService _transactionService;
   final AppLogger _logger = AppLogger();
 
-  static const int _pageSize = 20;
+  static const int _pageSize = 50; // Increased to include older credit transactions
 
   CustomerTransactionManagementNotifier(this._transactionService)
       : super(CustomerTransactionManagementState(lastUpdated: DateTime.now()));
@@ -224,8 +224,22 @@ class CustomerTransactionManagementNotifier extends StateNotifier<CustomerTransa
         (newTransactions) {
           _logger.info('✅ [TRANSACTION-MGMT] Loaded ${newTransactions.length} transactions');
 
-          final allTransactions = refresh 
-              ? newTransactions 
+          // Debug: Count transaction types
+          final topUpCount = newTransactions.where((t) => t.type == CustomerTransactionType.topUp).length;
+          final orderPaymentCount = newTransactions.where((t) => t.type == CustomerTransactionType.orderPayment).length;
+          final transferCount = newTransactions.where((t) => t.type == CustomerTransactionType.transfer).length;
+          final refundCount = newTransactions.where((t) => t.type == CustomerTransactionType.refund).length;
+          final adjustmentCount = newTransactions.where((t) => t.type == CustomerTransactionType.adjustment).length;
+
+          _logger.info('📊 [TRANSACTION-MGMT] Transaction breakdown:');
+          _logger.info('   - Top-ups: $topUpCount');
+          _logger.info('   - Order payments: $orderPaymentCount');
+          _logger.info('   - Transfers: $transferCount');
+          _logger.info('   - Refunds: $refundCount');
+          _logger.info('   - Adjustments: $adjustmentCount');
+
+          final allTransactions = refresh
+              ? newTransactions
               : [...state.transactions, ...newTransactions];
 
           state = state.copyWith(

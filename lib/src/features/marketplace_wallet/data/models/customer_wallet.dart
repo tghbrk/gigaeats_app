@@ -279,6 +279,16 @@ class CustomerWalletTransaction extends Equatable {
         return CustomerTransactionType.refund;
       case 'adjustment':
         return CustomerTransactionType.adjustment;
+      case 'commission':
+        return CustomerTransactionType.adjustment;
+      case 'payout':
+        return CustomerTransactionType.transfer;
+      case 'bonus':
+        return CustomerTransactionType.adjustment;
+      case 'transfer_in':
+        return CustomerTransactionType.transfer;
+      case 'transfer_out':
+        return CustomerTransactionType.transfer;
       default:
         return CustomerTransactionType.adjustment;
     }

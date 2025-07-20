@@ -134,7 +134,7 @@ class CustomerWalletRepository extends BaseRepository {
 
   /// Get customer wallet transactions with pagination
   Future<Either<Failure, List<CustomerWalletTransaction>>> getCustomerTransactions({
-    int limit = 20,
+    int limit = 50, // Increased limit to include older credit transactions
     int offset = 0,
     CustomerTransactionType? type,
     DateTime? startDate,
@@ -154,6 +154,9 @@ class CustomerWalletRepository extends BaseRepository {
           }
 
           // Query transactions directly from database
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] Querying wallet_transactions for wallet_id: ${customerWallet.id}');
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] Query params - limit: $limit, offset: $offset');
+
           var queryBuilder = client
               .from('wallet_transactions')
               .select('*')
@@ -162,6 +165,11 @@ class CustomerWalletRepository extends BaseRepository {
 
           // Apply pagination
           final response = await queryBuilder.range(offset, offset + limit - 1);
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] Raw database response: ${response.length} transactions found');
+
+          if (response.isNotEmpty) {
+            debugPrint('🔍 [CUSTOMER-WALLET-REPO] Sample transaction types: ${response.take(3).map((t) => t['transaction_type']).toList()}');
+          }
 
           final customerTransactions = response
               .map((json) => CustomerWalletTransaction(
@@ -179,7 +187,11 @@ class CustomerWalletRepository extends BaseRepository {
                   ))
               .toList();
 
-          debugPrint('🔍 [CUSTOMER-WALLET-REPO] Found ${customerTransactions.length} customer transactions');
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] Mapped ${customerTransactions.length} customer transactions');
+          if (customerTransactions.isNotEmpty) {
+            final topUpTransactions = customerTransactions.where((t) => t.type == CustomerTransactionType.topUp).length;
+            debugPrint('🔍 [CUSTOMER-WALLET-REPO] Found $topUpTransactions top-up transactions');
+          }
           return customerTransactions;
         },
       );
@@ -280,6 +292,10 @@ class CustomerWalletRepository extends BaseRepository {
         return CustomerTransactionType.transfer;
       case 'bonus':
         return CustomerTransactionType.adjustment;
+      case 'transfer_in':
+        return CustomerTransactionType.transfer;
+      case 'transfer_out':
+        return CustomerTransactionType.transfer;
       default:
         return CustomerTransactionType.adjustment;
     }

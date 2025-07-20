@@ -11,7 +11,7 @@ class EnhancedTransactionService extends BaseRepository {
 
   /// Get customer transactions with advanced filtering
   Future<Either<Failure, List<CustomerWalletTransaction>>> getCustomerTransactions({
-    int limit = 20,
+    int limit = 50, // Increased limit to include older credit transactions
     int offset = 0,
     CustomerTransactionType? type,
     DateTime? startDate,
@@ -86,13 +86,19 @@ class EnhancedTransactionService extends BaseRepository {
           .toList();
 
       debugPrint('🔍 [ENHANCED-TRANSACTION-SERVICE] Found ${transactions.length} transactions');
+      if (transactions.isNotEmpty) {
+        final topUpCount = transactions.where((t) => t.type == CustomerTransactionType.topUp).length;
+        final orderPaymentCount = transactions.where((t) => t.type == CustomerTransactionType.orderPayment).length;
+        debugPrint('🔍 [ENHANCED-TRANSACTION-SERVICE] Transaction breakdown: $topUpCount top-ups, $orderPaymentCount payments');
+        debugPrint('🔍 [ENHANCED-TRANSACTION-SERVICE] Sample transaction types: ${transactions.take(3).map((t) => t.type.displayName).toList()}');
+      }
       return transactions;
     });
   }
 
   /// Get customer transactions stream for real-time updates
   Stream<Either<Failure, List<CustomerWalletTransaction>>> getCustomerTransactionsStream({
-    int limit = 20,
+    int limit = 50, // Increased limit to include older credit transactions
     CustomerTransactionType? type,
   }) {
     return executeStreamQuery(() async* {
@@ -161,7 +167,7 @@ class EnhancedTransactionService extends BaseRepository {
   /// Search transactions by description or reference
   Future<Either<Failure, List<CustomerWalletTransaction>>> searchTransactions({
     required String query,
-    int limit = 20,
+    int limit = 50, // Increased limit to include older credit transactions
     int offset = 0,
   }) async {
     return executeQuerySafe(() async {

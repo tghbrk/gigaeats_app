@@ -2,14 +2,26 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:audio_session/audio_session.dart';
 
 import '../models/navigation_models.dart';
 
-/// Voice navigation service with multi-language TTS support
+/// Traffic severity levels for enhanced voice announcements
+enum TrafficSeverity {
+  light,
+  moderate,
+  heavy,
+  severe,
+}
+
+/// Enhanced Voice navigation service with multi-language TTS support
 /// Provides voice guidance for turn-by-turn navigation with Malaysian language support
+/// Phase 4.1 enhancements: Advanced audio session management, battery optimization,
+/// traffic alert notifications, and improved multi-language support
 class VoiceNavigationService {
   final FlutterTts _tts = FlutterTts();
-  
+  AudioSession? _audioSession;
+
   // Current state
   String _currentLanguage = 'en-MY';
   bool _isEnabled = true;
@@ -17,6 +29,18 @@ class VoiceNavigationService {
   double _volume = 0.8;
   double _speechRate = 0.8;
   double _pitch = 1.0;
+
+  // Advanced features for Phase 4.1
+  bool _isDucking = false;
+  bool _isBackgroundMode = false;
+  Timer? _batteryOptimizationTimer;
+  int _consecutiveAnnouncementCount = 0;
+  DateTime? _lastAnnouncementTime;
+
+  // Audio session configuration
+  static const Duration _duckingDuration = Duration(milliseconds: 500);
+  static const Duration _batteryOptimizationInterval = Duration(minutes: 5);
+  static const int _maxConsecutiveAnnouncements = 3;
   
   // Voice settings for different languages
   static const Map<String, Map<String, dynamic>> _languageSettings = {
@@ -46,34 +70,178 @@ class VoiceNavigationService {
     },
   };
 
-  /// Initialize voice navigation service
+  /// Initialize voice navigation service with enhanced Phase 4.1 features
   Future<void> initialize({
     String language = 'en-MY',
     double volume = 0.8,
     double speechRate = 0.8,
     double pitch = 1.0,
+    bool enableBatteryOptimization = true,
   }) async {
     if (_isInitialized) return;
-    
-    debugPrint('🔊 [VOICE-NAV] Initializing voice navigation service');
-    
+
+    debugPrint('🔊 [VOICE-NAV] Initializing enhanced voice navigation service (Phase 4.1)');
+
     try {
       _currentLanguage = language;
       _volume = volume;
       _speechRate = speechRate;
       _pitch = pitch;
-      
-      // Configure TTS
+
+      // Initialize audio session for better audio management
+      await _initializeAudioSession();
+
+      // Configure TTS with enhanced settings
       await _configureTts();
-      
+
       // Set language-specific settings
       await _setLanguageSettings(language);
-      
+
+      // Start battery optimization if enabled
+      if (enableBatteryOptimization) {
+        _startBatteryOptimization();
+      }
+
       _isInitialized = true;
-      debugPrint('🔊 [VOICE-NAV] Voice navigation service initialized for language: $language');
+      debugPrint('🔊 [VOICE-NAV] Enhanced voice navigation service initialized for language: $language');
     } catch (e) {
       debugPrint('❌ [VOICE-NAV] Error initializing voice navigation: $e');
       throw Exception('Failed to initialize voice navigation: $e');
+    }
+  }
+
+  /// Initialize audio session for better audio management
+  Future<void> _initializeAudioSession() async {
+    try {
+      _audioSession = await AudioSession.instance;
+      await _audioSession!.configure(const AudioSessionConfiguration(
+        avAudioSessionCategory: AVAudioSessionCategory.playback,
+        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.duckOthers,
+        avAudioSessionMode: AVAudioSessionMode.spokenAudio,
+        avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
+        avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+        androidAudioAttributes: AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.speech,
+          flags: AndroidAudioFlags.audibilityEnforced,
+          usage: AndroidAudioUsage.assistanceNavigationGuidance,
+        ),
+        androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
+        androidWillPauseWhenDucked: false,
+      ));
+
+      debugPrint('🔊 [VOICE-NAV] Audio session configured for navigation guidance');
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error configuring audio session: $e');
+      // Continue without audio session if it fails
+    }
+  }
+
+  /// Start battery optimization timer
+  void _startBatteryOptimization() {
+    _batteryOptimizationTimer?.cancel();
+    _batteryOptimizationTimer = Timer.periodic(_batteryOptimizationInterval, (timer) {
+      _optimizeBatteryUsage();
+    });
+    debugPrint('🔋 [VOICE-NAV] Battery optimization started');
+  }
+
+  /// Optimize battery usage by managing audio session
+  void _optimizeBatteryUsage() {
+    if (!_isEnabled || !_isInitialized) return;
+
+    final now = DateTime.now();
+    final timeSinceLastAnnouncement = _lastAnnouncementTime != null
+        ? now.difference(_lastAnnouncementTime!)
+        : Duration.zero;
+
+    // If no announcements for 5 minutes, enter background mode
+    if (timeSinceLastAnnouncement.inMinutes >= 5 && !_isBackgroundMode) {
+      _enterBackgroundMode();
+    }
+
+    // Reset consecutive announcement count if it's been a while
+    if (timeSinceLastAnnouncement.inMinutes >= 2) {
+      _consecutiveAnnouncementCount = 0;
+    }
+
+    debugPrint('🔋 [VOICE-NAV] Battery optimization check completed');
+  }
+
+  /// Enter background mode to save battery
+  Future<void> _enterBackgroundMode() async {
+    _isBackgroundMode = true;
+
+    try {
+      // Reduce TTS settings for battery saving
+      await _tts.setVolume(_volume * 0.8);
+      await _tts.setSpeechRate(_speechRate * 0.9);
+
+      debugPrint('🔋 [VOICE-NAV] Entered background mode for battery optimization');
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error entering background mode: $e');
+    }
+  }
+
+  /// Exit background mode and restore full functionality
+  Future<void> _exitBackgroundMode() async {
+    if (!_isBackgroundMode) return;
+
+    _isBackgroundMode = false;
+
+    try {
+      // Restore original TTS settings
+      await _tts.setVolume(_volume);
+      await _tts.setSpeechRate(_speechRate);
+
+      debugPrint('🔋 [VOICE-NAV] Exited background mode');
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error exiting background mode: $e');
+    }
+  }
+
+  /// Check if announcement should be throttled to prevent spam
+  bool _shouldThrottleAnnouncement() {
+    if (_lastAnnouncementTime == null) return false;
+
+    final timeSinceLastAnnouncement = DateTime.now().difference(_lastAnnouncementTime!);
+
+    // Throttle if too many consecutive announcements in short time
+    if (_consecutiveAnnouncementCount >= _maxConsecutiveAnnouncements &&
+        timeSinceLastAnnouncement.inSeconds < 10) {
+      return true;
+    }
+
+    // Throttle if announcements are too frequent (less than 2 seconds apart)
+    if (timeSinceLastAnnouncement.inSeconds < 2) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Request audio focus and duck other audio
+  Future<void> _requestAudioFocus() async {
+    if (_audioSession == null || _isDucking) return;
+
+    try {
+      _isDucking = true;
+      await _audioSession!.setActive(true);
+      debugPrint('🔊 [VOICE-NAV] Audio focus requested');
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error requesting audio focus: $e');
+    }
+  }
+
+  /// Release audio focus
+  Future<void> _releaseAudioFocus() async {
+    if (_audioSession == null || !_isDucking) return;
+
+    try {
+      _isDucking = false;
+      await _audioSession!.setActive(false);
+      debugPrint('🔊 [VOICE-NAV] Audio focus released');
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error releasing audio focus: $e');
     }
   }
 
@@ -186,29 +354,89 @@ class VoiceNavigationService {
     debugPrint('🔊 [VOICE-NAV] Speech rate set to: $_speechRate');
   }
 
-  /// Announce navigation instruction
+  /// Announce navigation instruction with enhanced Phase 4.1 features
   Future<void> announceInstruction(NavigationInstruction instruction) async {
     if (!_isEnabled || !_isInitialized) return;
-    
+
     try {
+      // Exit background mode if active
+      if (_isBackgroundMode) {
+        await _exitBackgroundMode();
+      }
+
+      // Check for consecutive announcement throttling
+      if (_shouldThrottleAnnouncement()) {
+        debugPrint('🔊 [VOICE-NAV] Throttling announcement to prevent spam');
+        return;
+      }
+
+      // Request audio focus and duck other audio
+      await _requestAudioFocus();
+
       final text = _getLocalizedInstructionText(instruction);
       debugPrint('🔊 [VOICE-NAV] Announcing: $text');
-      
+
+      // Update tracking variables
+      _lastAnnouncementTime = DateTime.now();
+      _consecutiveAnnouncementCount++;
+
       await _tts.speak(text);
+
+      // Release audio focus after a delay
+      Timer(_duckingDuration, () => _releaseAudioFocus());
+
     } catch (e) {
       debugPrint('❌ [VOICE-NAV] Error announcing instruction: $e');
     }
   }
 
-  /// Announce traffic alert
-  Future<void> announceTrafficAlert(String message) async {
+  /// Announce traffic alert with enhanced Phase 4.1 features
+  Future<void> announceTrafficAlert(String message, {
+    TrafficSeverity severity = TrafficSeverity.moderate,
+    bool isUrgent = false,
+  }) async {
     if (!_isEnabled || !_isInitialized) return;
-    
+
     try {
-      final localizedMessage = _getLocalizedTrafficMessage(message);
-      debugPrint('🔊 [VOICE-NAV] Traffic alert: $localizedMessage');
-      
+      // Exit background mode for traffic alerts
+      if (_isBackgroundMode) {
+        await _exitBackgroundMode();
+      }
+
+      // Traffic alerts bypass normal throttling for urgent situations
+      if (!isUrgent && _shouldThrottleAnnouncement()) {
+        debugPrint('🔊 [VOICE-NAV] Throttling traffic alert (non-urgent)');
+        return;
+      }
+
+      // Request audio focus with higher priority for traffic alerts
+      await _requestAudioFocus();
+
+      final localizedMessage = _getLocalizedTrafficMessage(message, severity);
+      debugPrint('🔊 [VOICE-NAV] Traffic alert (${severity.name}): $localizedMessage');
+
+      // Adjust volume and speech rate based on severity
+      final originalVolume = _volume;
+      final originalSpeechRate = _speechRate;
+
+      if (severity == TrafficSeverity.severe || isUrgent) {
+        await _tts.setVolume((_volume * 1.2).clamp(0.0, 1.0));
+        await _tts.setSpeechRate(_speechRate * 0.9); // Slower for important alerts
+      }
+
+      // Update tracking variables
+      _lastAnnouncementTime = DateTime.now();
+      _consecutiveAnnouncementCount++;
+
       await _tts.speak(localizedMessage);
+
+      // Restore original settings
+      await _tts.setVolume(originalVolume);
+      await _tts.setSpeechRate(originalSpeechRate);
+
+      // Release audio focus after a longer delay for traffic alerts
+      Timer(const Duration(milliseconds: 1000), () => _releaseAudioFocus());
+
     } catch (e) {
       debugPrint('❌ [VOICE-NAV] Error announcing traffic alert: $e');
     }
@@ -312,17 +540,71 @@ class VoiceNavigationService {
     }
   }
 
-  /// Get localized traffic message
-  String _getLocalizedTrafficMessage(String message) {
+  /// Get localized traffic message with severity indication
+  String _getLocalizedTrafficMessage(String message, [TrafficSeverity? severity]) {
+    final severityPrefix = _getSeverityPrefix(severity);
+
     switch (_currentLanguage) {
       case 'ms-MY':
-        return 'Amaran trafik: $message';
+        return '$severityPrefix$message';
       case 'zh-CN':
-        return '交通警报：$message';
+        return '$severityPrefix$message';
       case 'ta-MY':
-        return 'போக்குவரத்து எச்சரிக்கை: $message';
+        return '$severityPrefix$message';
       default:
-        return 'Traffic alert: $message';
+        return '$severityPrefix$message';
+    }
+  }
+
+  /// Get severity prefix for traffic messages
+  String _getSeverityPrefix(TrafficSeverity? severity) {
+    severity ??= TrafficSeverity.moderate;
+
+    switch (_currentLanguage) {
+      case 'ms-MY':
+        switch (severity) {
+          case TrafficSeverity.light:
+            return 'Amaran trafik ringan: ';
+          case TrafficSeverity.moderate:
+            return 'Amaran trafik: ';
+          case TrafficSeverity.heavy:
+            return 'Amaran trafik teruk: ';
+          case TrafficSeverity.severe:
+            return 'AMARAN TRAFIK KRITIKAL: ';
+        }
+      case 'zh-CN':
+        switch (severity) {
+          case TrafficSeverity.light:
+            return '轻微交通警报：';
+          case TrafficSeverity.moderate:
+            return '交通警报：';
+          case TrafficSeverity.heavy:
+            return '严重交通警报：';
+          case TrafficSeverity.severe:
+            return '紧急交通警报：';
+        }
+      case 'ta-MY':
+        switch (severity) {
+          case TrafficSeverity.light:
+            return 'லேசான போக்குவரத்து எச்சரிக்கை: ';
+          case TrafficSeverity.moderate:
+            return 'போக்குவரத்து எச்சரிக்கை: ';
+          case TrafficSeverity.heavy:
+            return 'கடுமையான போக்குவரத்து எச்சரிக்கை: ';
+          case TrafficSeverity.severe:
+            return 'அவசர போக்குவரத்து எச்சரிக்கை: ';
+        }
+      default:
+        switch (severity) {
+          case TrafficSeverity.light:
+            return 'Light traffic alert: ';
+          case TrafficSeverity.moderate:
+            return 'Traffic alert: ';
+          case TrafficSeverity.heavy:
+            return 'Heavy traffic alert: ';
+          case TrafficSeverity.severe:
+            return 'CRITICAL TRAFFIC ALERT: ';
+        }
     }
   }
 
@@ -408,12 +690,37 @@ class VoiceNavigationService {
     }
   }
 
-  /// Dispose resources
+  /// Dispose resources with enhanced Phase 4.1 cleanup
   Future<void> dispose() async {
-    debugPrint('🔊 [VOICE-NAV] Disposing voice navigation service');
-    
+    debugPrint('🔊 [VOICE-NAV] Disposing enhanced voice navigation service');
+
+    // Cancel battery optimization timer
+    _batteryOptimizationTimer?.cancel();
+    _batteryOptimizationTimer = null;
+
+    // Release audio focus if held
+    if (_isDucking) {
+      await _releaseAudioFocus();
+    }
+
+    // Deactivate audio session
+    try {
+      await _audioSession?.setActive(false);
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error deactivating audio session: $e');
+    }
+
+    // Stop TTS
     await _tts.stop();
+
+    // Reset state
     _isInitialized = false;
+    _isBackgroundMode = false;
+    _isDucking = false;
+    _consecutiveAnnouncementCount = 0;
+    _lastAnnouncementTime = null;
+
+    debugPrint('🔊 [VOICE-NAV] Enhanced voice navigation service disposed');
   }
 
   // Getters

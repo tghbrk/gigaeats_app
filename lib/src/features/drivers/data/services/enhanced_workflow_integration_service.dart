@@ -262,7 +262,24 @@ class EnhancedWorkflowIntegrationService {
 
   // Helper methods for various integrations
   Future<void> _updateDriverStatus(String driverId, String status) async {
-    await _supabase.from('drivers').update({'status': status}).eq('id', driverId);
+    debugPrint('🔄 [WORKFLOW-INTEGRATION] Updating driver status');
+    debugPrint('🔄 [WORKFLOW-INTEGRATION] Driver: $driverId, New Status: $status');
+
+    final updateData = <String, dynamic>{
+      'status': status,
+      'last_seen': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    // Clear delivery status when driver goes back to online status
+    if (status == 'online') {
+      updateData['current_delivery_status'] = null;
+      debugPrint('🧹 [WORKFLOW-INTEGRATION] Clearing driver delivery status for online transition');
+      debugPrint('🧹 [WORKFLOW-INTEGRATION] Driver $driverId will be ready for new orders');
+    }
+
+    await _supabase.from('drivers').update(updateData).eq('id', driverId);
+    debugPrint('✅ [WORKFLOW-INTEGRATION] Driver status updated successfully to: $status');
   }
 
   Future<void> _sendNotification({

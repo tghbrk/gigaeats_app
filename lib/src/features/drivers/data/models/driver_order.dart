@@ -77,6 +77,7 @@ enum DriverOrderStatus {
   /// Create DriverOrderStatus from string value
   static DriverOrderStatus fromString(String value) {
     switch (value.toLowerCase()) {
+      case 'available': // Available orders should be treated as assigned for driver workflow
       case 'assigned':
         return DriverOrderStatus.assigned;
       case 'on_route_to_vendor':

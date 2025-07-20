@@ -178,13 +178,25 @@ class DriverDashboardService {
       debugPrint('DriverDashboardService: Driver ID: $driverId');
       debugPrint('DriverDashboardService: Current auth user: ${_supabase.auth.currentUser?.id}');
 
+      debugPrint('🔄 [DRIVER-DASHBOARD] Updating driver status');
+      debugPrint('🔄 [DRIVER-DASHBOARD] Driver: $driverId, New Status: ${status.name}');
+
+      final updateData = <String, dynamic>{
+        'status': status.name,
+        'last_seen': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      // Clear delivery status when driver goes offline
+      if (status == DriverStatus.offline) {
+        updateData['current_delivery_status'] = null;
+        debugPrint('🧹 [DRIVER-DASHBOARD] Clearing driver delivery status for offline transition');
+        debugPrint('🧹 [DRIVER-DASHBOARD] Driver $driverId going offline - cleaning up workflow state');
+      }
+
       final response = await _supabase
           .from('drivers')
-          .update({
-            'status': status.name,
-            'last_seen': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .update(updateData)
           .eq('id', driverId)
           .select();
 

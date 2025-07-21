@@ -274,80 +274,79 @@ class PerformanceTestHelpers {
 
 /// Android emulator testing utilities
 class AndroidEmulatorTestHelpers {
-    static const MethodChannel _performanceChannel = MethodChannel('gigaeats/performance');
+  static const MethodChannel _performanceChannel = MethodChannel('gigaeats/performance');
 
-    /// Check if running on Android emulator
-    static Future<bool> isRunningOnEmulator() async {
-      try {
-        if (!Platform.isAndroid) return false;
+  /// Check if running on Android emulator
+  static Future<bool> isRunningOnEmulator() async {
+    try {
+      if (!Platform.isAndroid) return false;
 
-        final result = await _performanceChannel.invokeMethod<bool>('isEmulator');
-        return result ?? false;
-      } catch (e) {
-        debugPrint('Failed to check emulator status: $e');
-        return false;
-      }
+      final result = await _performanceChannel.invokeMethod<bool>('isEmulator');
+      return result ?? false;
+    } catch (e) {
+      debugPrint('Failed to check emulator status: $e');
+      return false;
     }
+  }
 
-    /// Simulate hot restart for testing
-    static Future<void> simulateHotRestart() async {
-      try {
-        await _performanceChannel.invokeMethod('simulateHotRestart');
-        // Wait for restart to complete
-        await Future.delayed(const Duration(seconds: 2));
-      } catch (e) {
-        debugPrint('Failed to simulate hot restart: $e');
-      }
+  /// Simulate hot restart for testing
+  static Future<void> simulateHotRestart() async {
+    try {
+      await _performanceChannel.invokeMethod('simulateHotRestart');
+      // Wait for restart to complete
+      await Future.delayed(const Duration(seconds: 2));
+    } catch (e) {
+      debugPrint('Failed to simulate hot restart: $e');
     }
+  }
 
-    /// Get emulator performance metrics
-    static Future<Map<String, dynamic>> getEmulatorMetrics() async {
-      try {
-        final metrics = await _performanceChannel.invokeMethod<Map>('getEmulatorMetrics');
-        return Map<String, dynamic>.from(metrics ?? {});
-      } catch (e) {
-        debugPrint('Failed to get emulator metrics: $e');
-        return {
-          'cpuUsage': 0.0,
-          'memoryUsage': 0.0,
-          'diskUsage': 0.0,
-          'networkLatency': 0.0,
-        };
-      }
-    }
-
-    /// Test with different emulator configurations
-    static Future<Map<String, dynamic>> testWithEmulatorConfig({
-      required String configName,
-      required Future<dynamic> Function() testOperation,
-    }) async {
-      final startTime = DateTime.now();
-      final startMetrics = await getEmulatorMetrics();
-      
-      dynamic result;
-      String? error;
-      
-      try {
-        result = await testOperation();
-      } catch (e) {
-        error = e.toString();
-      }
-      
-      final endTime = DateTime.now();
-      final endMetrics = await getEmulatorMetrics();
-      final duration = endTime.difference(startTime);
-      
+  /// Get emulator performance metrics
+  static Future<Map<String, dynamic>> getEmulatorMetrics() async {
+    try {
+      final metrics = await _performanceChannel.invokeMethod<Map>('getEmulatorMetrics');
+      return Map<String, dynamic>.from(metrics ?? {});
+    } catch (e) {
+      debugPrint('Failed to get emulator metrics: $e');
       return {
-        'configName': configName,
-        'duration': duration.inMilliseconds,
-        'success': error == null,
-        'error': error,
-        'result': result,
-        'startMetrics': startMetrics,
-        'endMetrics': endMetrics,
-        'cpuDelta': (endMetrics['cpuUsage'] ?? 0.0) - (startMetrics['cpuUsage'] ?? 0.0),
-        'memoryDelta': (endMetrics['memoryUsage'] ?? 0.0) - (startMetrics['memoryUsage'] ?? 0.0),
+        'cpuUsage': 0.0,
+        'memoryUsage': 0.0,
+        'diskUsage': 0.0,
+        'networkLatency': 0.0,
       };
     }
+  }
+
+  /// Test with different emulator configurations
+  static Future<Map<String, dynamic>> testWithEmulatorConfig({
+    required String configName,
+    required Future<dynamic> Function() testOperation,
+  }) async {
+    final startTime = DateTime.now();
+    final startMetrics = await getEmulatorMetrics();
+
+    dynamic result;
+    String? error;
+
+    try {
+      result = await testOperation();
+    } catch (e) {
+      error = e.toString();
+    }
+
+    final endTime = DateTime.now();
+    final endMetrics = await getEmulatorMetrics();
+    final duration = endTime.difference(startTime);
+
+    return {
+      'configName': configName,
+      'duration': duration.inMilliseconds,
+      'success': error == null,
+      'error': error,
+      'result': result,
+      'startMetrics': startMetrics,
+      'endMetrics': endMetrics,
+      'cpuDelta': (endMetrics['cpuUsage'] ?? 0.0) - (startMetrics['cpuUsage'] ?? 0.0),
+      'memoryDelta': (endMetrics['memoryUsage'] ?? 0.0) - (startMetrics['memoryUsage'] ?? 0.0),
+    };
   }
 }

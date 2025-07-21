@@ -6,7 +6,9 @@ import 'package:gigaeats_app/src/features/drivers/presentation/providers/multi_o
 import 'package:gigaeats_app/src/features/drivers/presentation/providers/route_optimization_provider.dart';
 import 'package:gigaeats_app/src/features/drivers/presentation/providers/batch_analytics_provider.dart';
 import 'package:gigaeats_app/src/features/drivers/presentation/providers/enhanced_voice_navigation_provider.dart';
+import 'package:gigaeats_app/src/features/drivers/data/services/voice_navigation_service.dart';
 import 'package:gigaeats_app/src/features/drivers/data/models/route_optimization_models.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/batch_analytics_models.dart';
 import 'package:gigaeats_app/src/features/orders/data/models/order.dart';
 
 /// Mock providers for comprehensive testing
@@ -168,19 +170,16 @@ class MockBatchAnalyticsNotifier extends StateNotifier<BatchAnalyticsState>
     // Simulate analytics recording
     await Future.delayed(const Duration(milliseconds: 50));
     
-    final event = {
-      'id': 'event-${DateTime.now().millisecondsSinceEpoch}',
-      'type': 'batch_created',
-      'batchId': batchId,
-      'driverId': driverId,
-      'data': {
+    final event = AnalyticsEvent.batchCreated(
+      driverId: driverId,
+      batchId: batchId,
+      data: {
         'order_count': orderCount,
         'estimated_distance': estimatedDistance,
         'estimated_duration_minutes': estimatedDuration.inMinutes,
         ...optimizationMetrics,
       },
-      'timestamp': DateTime.now(),
-    };
+    );
     
     state = state.copyWith(
       recentEvents: [event, ...state.recentEvents],
@@ -200,12 +199,12 @@ class MockBatchAnalyticsNotifier extends StateNotifier<BatchAnalyticsState>
   }) async {
     await Future.delayed(const Duration(milliseconds: 50));
     
-    final event = {
-      'id': 'event-${DateTime.now().millisecondsSinceEpoch}',
-      'type': 'batch_completed',
-      'batchId': batchId,
-      'driverId': driverId,
-      'data': {
+    final event = AnalyticsEvent(
+      eventId: 'event-${DateTime.now().millisecondsSinceEpoch}',
+      eventType: 'batch_completed',
+      driverId: driverId,
+      batchId: batchId,
+      data: {
         'actual_duration_minutes': actualDuration.inMinutes,
         'actual_distance': actualDistance,
         'completed_orders': completedOrders,
@@ -213,8 +212,8 @@ class MockBatchAnalyticsNotifier extends StateNotifier<BatchAnalyticsState>
         'completion_rate': completedOrders / totalOrders,
         ...performanceData,
       },
-      'timestamp': DateTime.now(),
-    };
+      timestamp: DateTime.now(),
+    );
     
     state = state.copyWith(
       recentEvents: [event, ...state.recentEvents],
@@ -297,15 +296,11 @@ class MockEnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNav
     if (!state.isEnabled) return;
     
     await Future.delayed(const Duration(milliseconds: 50));
-    
-    final announcement = {
-      'instruction': instruction,
-      'timestamp': DateTime.now(),
-      'language': state.currentLanguage,
-    };
-    
+
+    // Update state tracking
     state = state.copyWith(
-      recentAnnouncements: [announcement, ...state.recentAnnouncements.take(9).toList()],
+      consecutiveAnnouncementCount: state.consecutiveAnnouncementCount + 1,
+      lastAnnouncementTime: DateTime.now(),
     );
   }
 
@@ -319,19 +314,20 @@ class MockEnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNav
     
     await Future.delayed(const Duration(milliseconds: 50));
     
-    final alert = {
-      'message': message,
-      'severity': severity?.toString() ?? 'moderate',
-      'isUrgent': isUrgent,
-      'timestamp': DateTime.now(),
-    };
-    
+    final alert = TrafficAlert(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      message: message,
+      severity: severity ?? TrafficSeverity.moderate,
+      timestamp: DateTime.now(),
+      isUrgent: isUrgent,
+      wasAnnounced: true,
+    );
+
     state = state.copyWith(
-      recentTrafficAlerts: [alert, ...state.recentTrafficAlerts.take(9).toList()],
+      recentTrafficAlerts: [alert, ...state.recentTrafficAlerts.take(9)],
     );
   }
 
-  @override
   Future<void> setEnabled(bool enabled) async {
     state = state.copyWith(isEnabled: enabled);
   }
@@ -361,7 +357,6 @@ class MockEnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNav
     });
   }
 
-  @override
   void clearError() {
     state = state.copyWith(error: null);
   }

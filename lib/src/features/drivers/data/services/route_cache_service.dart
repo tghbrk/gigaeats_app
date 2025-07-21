@@ -150,6 +150,7 @@ class RouteCacheService {
   static Future<OfflineRoute?> getOfflineRoute(String routeId) async {
     try {
       final file = await _getOfflineRouteFile(routeId);
+      // ignore: avoid_slow_async_io
       if (!await file.exists()) {
         return null;
       }
@@ -197,6 +198,7 @@ class RouteCacheService {
     try {
       // Delete file
       final file = await _getOfflineRouteFile(routeId);
+      // ignore: avoid_slow_async_io
       if (await file.exists()) {
         await file.delete();
       }
@@ -305,6 +307,7 @@ class RouteCacheService {
   static Future<File> _getOfflineRouteFile(String routeId) async {
     final directory = await getApplicationDocumentsDirectory();
     final routesDir = Directory('${directory.path}/offline_routes');
+    // ignore: avoid_slow_async_io
     if (!await routesDir.exists()) {
       await routesDir.create(recursive: true);
     }

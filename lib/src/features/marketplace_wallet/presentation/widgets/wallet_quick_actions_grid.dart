@@ -8,6 +8,7 @@ class WalletQuickActionsGrid extends StatelessWidget {
   final VoidCallback? onPaymentMethodsPressed;
   final VoidCallback? onLoyaltyPressed;
   final VoidCallback? onSettingsPressed;
+  final VoidCallback? onVerificationPressed;
 
   const WalletQuickActionsGrid({
     super.key,
@@ -17,6 +18,7 @@ class WalletQuickActionsGrid extends StatelessWidget {
     this.onPaymentMethodsPressed,
     this.onLoyaltyPressed,
     this.onSettingsPressed,
+    this.onVerificationPressed,
   });
 
   @override
@@ -49,7 +51,7 @@ class WalletQuickActionsGrid extends StatelessWidget {
               crossAxisCount: 3,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 1.0,
+              childAspectRatio: 0.9,
               children: [
                 _buildActionItem(
                   theme: theme,
@@ -92,6 +94,13 @@ class WalletQuickActionsGrid extends StatelessWidget {
                   label: 'Settings',
                   color: Colors.grey,
                   onPressed: onSettingsPressed,
+                ),
+                _buildActionItem(
+                  theme: theme,
+                  icon: Icons.verified_user,
+                  label: 'Verify',
+                  color: Colors.green,
+                  onPressed: onVerificationPressed,
                 ),
               ],
             ),

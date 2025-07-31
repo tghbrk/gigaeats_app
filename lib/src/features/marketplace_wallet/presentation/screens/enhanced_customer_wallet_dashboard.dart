@@ -126,6 +126,7 @@ class _EnhancedCustomerWalletDashboardState extends ConsumerState<EnhancedCustom
                     onPaymentMethodsPressed: () => _navigateToPaymentMethods(),
                     onLoyaltyPressed: () => _navigateToLoyalty(),
                     onSettingsPressed: () => _navigateToSettings(),
+                    onVerificationPressed: () => _navigateToVerification(),
                   ),
                 ),
               ),
@@ -370,6 +371,10 @@ class _EnhancedCustomerWalletDashboardState extends ConsumerState<EnhancedCustom
   void _navigateToSettings() => context.push('/customer/wallet/settings');
   void _navigateToSecurity() => context.push('/customer/wallet/security');
   void _navigateToAnalytics() => context.push('/customer/wallet/analytics');
+  void _navigateToVerification() {
+    _logger.info('🔐 [WALLET-DASHBOARD] Navigating to wallet verification');
+    context.push('/customer/wallet/verification');
+  }
   void _navigateToNotifications() => context.push('/customer/wallet/notifications');
   void _navigateToHelp() => context.push('/customer/wallet/help');
   void _navigateToExport() => context.push('/customer/wallet/export');

@@ -1097,19 +1097,6 @@ class _DriverEarningsScreenState extends ConsumerState<DriverEarningsScreen>
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Phase 4: Real-time notifications widget
-                  if (_showNotifications) ...[
-                    EarningsNotificationsWidget(
-                      driverId: driverId,
-                      showUnreadOnly: false,
-                      maxNotifications: 5,
-                      onNotificationTap: () {
-                        debugPrint('💰 Notification tapped');
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
                   // Phase 4: Enhanced overview cards with animations
                   EnhancedEarningsOverviewCards(
                     driverId: driverId,

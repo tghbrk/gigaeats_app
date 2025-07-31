@@ -103,7 +103,7 @@ serve(async (req: Request): Promise<Response> => {
         delivery_fee,
         delivery_address,
         created_at,
-        delivered_at,
+        actual_delivery_time,
         status
       `)
       .eq('id', orderId)

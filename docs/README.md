@@ -38,10 +38,17 @@ Welcome to the GigaEats project documentation. This documentation is organized i
 ### 4. ⚙️ [Feature-Specific Documentation](./04-feature-specific-documentation/)
 *Deep-dive documents that explain the design and workflow of specific, complex features.*
 
-**Key Documents:**
+**🚗💰 Driver Wallet System:**
+- [Driver Wallet System Master Guide](./04-feature-specific-documentation/DRIVER_WALLET_SYSTEM_MASTER_GUIDE.md) - Comprehensive system overview
+- [Driver Wallet API Reference](./04-feature-specific-documentation/DRIVER_WALLET_API_REFERENCE.md) - Complete API documentation
+- [Driver Wallet User Guide](./04-feature-specific-documentation/DRIVER_WALLET_USER_GUIDE.md) - Driver-facing user guide
+- [Driver Wallet Troubleshooting](./04-feature-specific-documentation/DRIVER_WALLET_TROUBLESHOOTING.md) - Issue resolution guide
+- [Driver Wallet FAQ](./04-feature-specific-documentation/DRIVER_WALLET_FAQ.md) - Frequently asked questions
+
+**Other Key Documents:**
 - Order Management System Documentation
 - Delivery Proof System Documentation
-- API References
+- Marketplace Wallet Documentation
 
 ---
 
@@ -59,18 +66,27 @@ Welcome to the GigaEats project documentation. This documentation is organized i
 ### 6. 🛠️ [Setup & Deployment Guides](./06-setup-deployment-guides/)
 *Step-by-step instructions for setting up the development environment and deploying features.*
 
-**Key Documents:**
+**🚗💰 Driver Wallet System:**
+- [Driver Wallet Production Deployment](./06-setup-deployment-guides/DRIVER_WALLET_PRODUCTION_DEPLOYMENT.md) - Production deployment procedures
+- [Driver Wallet Production Readiness Checklist](./06-setup-deployment-guides/DRIVER_WALLET_PRODUCTION_READINESS_CHECKLIST.md) - Pre-deployment validation
+
+**Other Key Documents:**
 - Phase 1 & 2 Setup Guides
 - Delivery Proof Deployment Guide
+- Marketplace Wallet Production Deployment
 
 ---
 
 ### 7. 🧪 [Testing, Audits, and Quality Assurance](./07-testing-audits-qa/)
 *Documents related to ensuring the quality, compliance, and correctness of the codebase.*
 
+**🚗💰 Driver Wallet System:**
+- [Driver Wallet Integration Testing Guide](./testing/DRIVER_WALLET_INTEGRATION_TESTING_GUIDE.md) - Comprehensive testing procedures
+
 **Key Documents:**
 - Code Audit Reports (95%+ compliance achieved)
 - Comprehensive Testing Guides
+- Driver Workflow Testing & Validation
 
 ---
 

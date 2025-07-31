@@ -10,6 +10,8 @@ The driver dashboard has been integrated with the Supabase backend to display re
 - Today's performance summary
 - Real-time data updates
 
+> **Note**: The dashboard map tab has been removed as it didn't serve a functional purpose in the driver workflow. The dashboard now focuses on order management, earnings tracking, and profile management. Map functionality is preserved in the navigation features used during order delivery.
+
 ## Architecture
 
 ### Data Flow

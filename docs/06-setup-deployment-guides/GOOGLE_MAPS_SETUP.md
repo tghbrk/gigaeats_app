@@ -62,43 +62,47 @@ For security, restrict your API key:
 ## Step 4: Test the Integration
 
 1. Run the app on a device or emulator
-2. Navigate to the driver dashboard
-3. Go to the map screen
+2. Navigate to the driver workflow screens
+3. Test navigation features during order delivery
 4. Verify that:
-   - The map loads correctly
-   - Current location is displayed
-   - Markers appear for pickup and delivery locations
-   - Route calculation works
+   - In-app navigation loads correctly during delivery
+   - Turn-by-turn directions work properly
+   - Route preview shows before navigation starts
+   - External navigation app integration functions
 
 ## Features Implemented
 
-### Core Map Features
-- **Interactive Google Maps**: Pan, zoom, and navigate the map
-- **Real-time Location Tracking**: Driver's current location with GPS accuracy
-- **Route Visualization**: Polyline showing delivery route
-- **Custom Markers**: Different markers for current location, pickup, and delivery points
+### Navigation Features
+- **In-App Navigation**: Full-screen turn-by-turn navigation during delivery
+- **Route Preview**: Pre-navigation overview with distance and ETA
+- **External Navigation**: Integration with Google Maps, Waze, and other navigation apps
+- **Multi-Waypoint Navigation**: Support for batch delivery routes
 
-### Driver-Specific Features
-- **Location Tracking Toggle**: Start/stop location tracking
-- **Route Information**: Distance and estimated time to destination
-- **Navigation Integration**: Quick access to external navigation apps
-- **Emergency Features**: Quick access to emergency contacts
+### Driver Workflow Integration
+- **Order-Based Navigation**: Navigation triggered during driver workflow steps
+- **Real-time Location Tracking**: Driver's current location with GPS accuracy
+- **Route Optimization**: Efficient routing for multiple deliveries
+- **Voice Guidance**: Turn-by-turn voice instructions
 
 ### Real-time Updates
-- **Live Location Updates**: Driver location updates every 15 seconds
+- **Live Location Updates**: Driver location updates during active deliveries
 - **Database Synchronization**: Location data stored in Supabase
-- **Order Integration**: Map automatically loads active delivery orders
+- **Order Integration**: Navigation integrated with order status transitions
+
+> **Note**: The dashboard map feature has been removed as it didn't serve a functional purpose. Maps are now used specifically for navigation during the driver workflow. A future implementation may add a map feature for visualizing nearby orders.
 
 ## Technical Implementation
 
 ### State Management
 - Uses Riverpod for state management
-- `DriverMapProvider` handles all map-related state
+- `EnhancedNavigationProvider` handles navigation state
+- `MultiOrderBatchProvider` manages batch delivery navigation
 - Real-time updates through Supabase subscriptions
 
-### Location Services
-- `DriverLocationService` handles GPS tracking
-- `RouteService` calculates routes and distances
+### Navigation Services
+- `EnhancedNavigationService` handles in-app navigation
+- `NavigationAppService` manages external navigation integration
+- `RouteOptimizationService` calculates optimal routes for batch deliveries
 - Proper permission handling for location access
 
 ### Database Integration

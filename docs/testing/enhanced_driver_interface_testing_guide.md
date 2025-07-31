@@ -20,7 +20,7 @@ This document provides comprehensive testing guidelines for the enhanced driver 
 - **Coverage**: RouteCacheService, NavigationLocationService, EnhancedRouteService
 
 ### 4. Android Emulator Tests
-- **Location**: `test_scripts/`
+- **Location**: `test/scripts/`
 - **Purpose**: End-to-end testing on actual Android devices/emulators
 - **Coverage**: Complete user workflows, performance, real device behavior
 

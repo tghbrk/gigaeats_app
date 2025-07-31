@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../data/models/user_role.dart';
 import '../providers/enhanced_voice_navigation_provider.dart';
-import '../../data/services/voice_navigation_service.dart';
+
+import '../../data/models/traffic_models.dart';
+
 
 /// Voice navigation settings screen for Phase 4.1
 /// Provides comprehensive voice guidance configuration with multi-language support,
@@ -460,26 +462,26 @@ class _VoiceNavigationSettingsScreenState extends ConsumerState<VoiceNavigationS
 
   IconData _getSeverityIcon(TrafficSeverity severity) {
     switch (severity) {
-      case TrafficSeverity.light:
+      case TrafficSeverity.low:
         return Icons.info_outline;
-      case TrafficSeverity.moderate:
+      case TrafficSeverity.medium:
         return Icons.warning_amber_outlined;
-      case TrafficSeverity.heavy:
+      case TrafficSeverity.high:
         return Icons.warning;
-      case TrafficSeverity.severe:
+      case TrafficSeverity.critical:
         return Icons.error;
     }
   }
 
   Color _getSeverityColor(TrafficSeverity severity) {
     switch (severity) {
-      case TrafficSeverity.light:
+      case TrafficSeverity.low:
         return Colors.blue;
-      case TrafficSeverity.moderate:
+      case TrafficSeverity.medium:
         return Colors.orange;
-      case TrafficSeverity.heavy:
+      case TrafficSeverity.high:
         return Colors.red;
-      case TrafficSeverity.severe:
+      case TrafficSeverity.critical:
         return Colors.red.shade900;
     }
   }

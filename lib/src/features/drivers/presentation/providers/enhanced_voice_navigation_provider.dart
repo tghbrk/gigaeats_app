@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/voice_navigation_service.dart';
 import '../../data/models/navigation_models.dart';
+import '../../data/models/traffic_models.dart';
+import '../../data/models/voice_navigation_preferences.dart';
 
 /// Enhanced voice navigation provider for Phase 4.1
 /// Provides advanced voice guidance with multi-language support, traffic alerts,
@@ -291,7 +293,7 @@ class EnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNavigat
   /// Announce traffic alert with enhanced Phase 4.1 features
   Future<void> announceTrafficAlert(
     String message, {
-    TrafficSeverity severity = TrafficSeverity.moderate,
+    TrafficSeverity severity = TrafficSeverity.medium,
     bool isUrgent = false,
   }) async {
     if (!state.isEnabled || !state.isInitialized) return;
@@ -307,9 +309,12 @@ class EnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNavigat
         wasAnnounced: true,
       );
 
+      // Convert TrafficSeverity to VoiceTrafficSeverity
+      final voiceSeverity = _mapToVoiceTrafficSeverity(severity);
+
       await _voiceService.announceTrafficAlert(
         message,
-        severity: severity,
+        severity: voiceSeverity,
         isUrgent: isUrgent,
       );
 
@@ -353,6 +358,73 @@ class EnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNavigat
   /// Clear recent traffic alerts
   void clearTrafficAlerts() {
     state = state.copyWith(recentTrafficAlerts: []);
+  }
+
+  /// Update voice navigation preferences (Phase 4.1 enhancement)
+  Future<void> updateVoicePreferences(VoiceNavigationPreferences preferences) async {
+    if (!state.isInitialized) return;
+
+    try {
+      debugPrint('🔊 [ENHANCED-VOICE-NAV] Updating voice preferences');
+
+      // Update voice service with new preferences
+      await _voiceService.updateAudioPreferences(
+        language: preferences.language != state.currentLanguage ? preferences.language : null,
+        volume: preferences.volume != state.volume ? preferences.volume : null,
+        speechRate: preferences.speechRate != state.speechRate ? preferences.speechRate : null,
+        pitch: preferences.pitch != state.pitch ? preferences.pitch : null,
+        enabled: preferences.isEnabled != state.isEnabled ? preferences.isEnabled : null,
+        batteryOptimization: preferences.batteryOptimizationEnabled != state.batteryOptimizationEnabled
+            ? preferences.batteryOptimizationEnabled : null,
+      );
+
+      // Update state
+      state = state.copyWith(
+        isEnabled: preferences.isEnabled,
+        currentLanguage: preferences.language,
+        volume: preferences.volume,
+        speechRate: preferences.speechRate,
+        pitch: preferences.pitch,
+        batteryOptimizationEnabled: preferences.batteryOptimizationEnabled,
+        error: null,
+      );
+
+      debugPrint('🔊 [ENHANCED-VOICE-NAV] Voice preferences updated successfully');
+
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-VOICE-NAV] Error updating voice preferences: $e');
+      state = state.copyWith(
+        error: 'Failed to update voice preferences: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get current preferences as VoiceNavigationPreferences object
+  VoiceNavigationPreferences getCurrentPreferences() {
+    return VoiceNavigationPreferences(
+      language: state.currentLanguage,
+      isEnabled: state.isEnabled,
+      volume: state.volume,
+      speechRate: state.speechRate,
+      pitch: state.pitch,
+      batteryOptimizationEnabled: state.batteryOptimizationEnabled,
+      trafficAlertsEnabled: true, // Default to enabled
+      emergencyAlertsEnabled: true, // Default to enabled
+    );
+  }
+
+  /// Map TrafficSeverity to VoiceTrafficSeverity
+  VoiceTrafficSeverity _mapToVoiceTrafficSeverity(TrafficSeverity severity) {
+    switch (severity) {
+      case TrafficSeverity.low:
+        return VoiceTrafficSeverity.light;
+      case TrafficSeverity.medium:
+        return VoiceTrafficSeverity.moderate;
+      case TrafficSeverity.high:
+        return VoiceTrafficSeverity.heavy;
+      case TrafficSeverity.critical:
+        return VoiceTrafficSeverity.severe;
+    }
   }
 
   /// Dispose resources

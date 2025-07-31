@@ -6,8 +6,8 @@ import 'package:audio_session/audio_session.dart';
 
 import '../models/navigation_models.dart';
 
-/// Traffic severity levels for enhanced voice announcements
-enum TrafficSeverity {
+/// Voice navigation traffic severity levels for enhanced voice announcements
+enum VoiceTrafficSeverity {
   light,
   moderate,
   heavy,
@@ -17,7 +17,7 @@ enum TrafficSeverity {
 /// Enhanced Voice navigation service with multi-language TTS support
 /// Provides voice guidance for turn-by-turn navigation with Malaysian language support
 /// Phase 4.1 enhancements: Advanced audio session management, battery optimization,
-/// traffic alert notifications, and improved multi-language support
+/// traffic alert notifications, improved multi-language support, and enhanced audio preferences
 class VoiceNavigationService {
   final FlutterTts _tts = FlutterTts();
   AudioSession? _audioSession;
@@ -42,31 +42,47 @@ class VoiceNavigationService {
   static const Duration _batteryOptimizationInterval = Duration(minutes: 5);
   static const int _maxConsecutiveAnnouncements = 3;
   
-  // Voice settings for different languages
+  // Enhanced voice settings for different languages with Phase 4.1 improvements
   static const Map<String, Map<String, dynamic>> _languageSettings = {
     'en-MY': {
       'language': 'en-US', // Fallback to US English for TTS
       'voice': 'en-us-x-sfg#female_1-local',
       'speechRate': 0.8,
       'pitch': 1.0,
+      'displayName': 'English (Malaysia)',
+      'nativeDisplayName': 'English (Malaysia)',
+      'voiceGender': 'female',
+      'supportedFeatures': ['navigation', 'traffic', 'emergency'],
     },
     'ms-MY': {
       'language': 'ms-MY',
       'voice': 'ms-my-x-mas#female_1-local',
       'speechRate': 0.7, // Slightly slower for Malay
       'pitch': 1.0,
+      'displayName': 'Malay (Malaysia)',
+      'nativeDisplayName': 'Bahasa Melayu (Malaysia)',
+      'voiceGender': 'female',
+      'supportedFeatures': ['navigation', 'traffic', 'emergency'],
     },
     'zh-CN': {
       'language': 'zh-CN',
       'voice': 'zh-cn-x-ccc#female_1-local',
       'speechRate': 0.7,
       'pitch': 1.1,
+      'displayName': 'Chinese (Simplified)',
+      'nativeDisplayName': '中文 (简体)',
+      'voiceGender': 'female',
+      'supportedFeatures': ['navigation', 'traffic', 'emergency'],
     },
     'ta-MY': {
       'language': 'ta-IN', // Tamil fallback
       'voice': 'ta-in-x-tag#female_1-local',
       'speechRate': 0.7,
       'pitch': 1.0,
+      'displayName': 'Tamil (Malaysia)',
+      'nativeDisplayName': 'தமிழ் (மலேசியா)',
+      'voiceGender': 'female',
+      'supportedFeatures': ['navigation', 'traffic'],
     },
   };
 
@@ -354,6 +370,13 @@ class VoiceNavigationService {
     debugPrint('🔊 [VOICE-NAV] Speech rate set to: $_speechRate');
   }
 
+  /// Set pitch
+  Future<void> setPitch(double pitch) async {
+    _pitch = pitch.clamp(0.5, 2.0);
+    await _tts.setPitch(_pitch);
+    debugPrint('🔊 [VOICE-NAV] Pitch set to: $_pitch');
+  }
+
   /// Announce navigation instruction with enhanced Phase 4.1 features
   Future<void> announceInstruction(NavigationInstruction instruction) async {
     if (!_isEnabled || !_isInitialized) return;
@@ -392,7 +415,7 @@ class VoiceNavigationService {
 
   /// Announce traffic alert with enhanced Phase 4.1 features
   Future<void> announceTrafficAlert(String message, {
-    TrafficSeverity severity = TrafficSeverity.moderate,
+    VoiceTrafficSeverity severity = VoiceTrafficSeverity.moderate,
     bool isUrgent = false,
   }) async {
     if (!_isEnabled || !_isInitialized) return;
@@ -419,7 +442,7 @@ class VoiceNavigationService {
       final originalVolume = _volume;
       final originalSpeechRate = _speechRate;
 
-      if (severity == TrafficSeverity.severe || isUrgent) {
+      if (severity == VoiceTrafficSeverity.severe || isUrgent) {
         await _tts.setVolume((_volume * 1.2).clamp(0.0, 1.0));
         await _tts.setSpeechRate(_speechRate * 0.9); // Slower for important alerts
       }
@@ -541,7 +564,7 @@ class VoiceNavigationService {
   }
 
   /// Get localized traffic message with severity indication
-  String _getLocalizedTrafficMessage(String message, [TrafficSeverity? severity]) {
+  String _getLocalizedTrafficMessage(String message, [VoiceTrafficSeverity? severity]) {
     final severityPrefix = _getSeverityPrefix(severity);
 
     switch (_currentLanguage) {
@@ -557,52 +580,52 @@ class VoiceNavigationService {
   }
 
   /// Get severity prefix for traffic messages
-  String _getSeverityPrefix(TrafficSeverity? severity) {
-    severity ??= TrafficSeverity.moderate;
+  String _getSeverityPrefix(VoiceTrafficSeverity? severity) {
+    severity ??= VoiceTrafficSeverity.moderate;
 
     switch (_currentLanguage) {
       case 'ms-MY':
         switch (severity) {
-          case TrafficSeverity.light:
+          case VoiceTrafficSeverity.light:
             return 'Amaran trafik ringan: ';
-          case TrafficSeverity.moderate:
+          case VoiceTrafficSeverity.moderate:
             return 'Amaran trafik: ';
-          case TrafficSeverity.heavy:
+          case VoiceTrafficSeverity.heavy:
             return 'Amaran trafik teruk: ';
-          case TrafficSeverity.severe:
+          case VoiceTrafficSeverity.severe:
             return 'AMARAN TRAFIK KRITIKAL: ';
         }
       case 'zh-CN':
         switch (severity) {
-          case TrafficSeverity.light:
+          case VoiceTrafficSeverity.light:
             return '轻微交通警报：';
-          case TrafficSeverity.moderate:
+          case VoiceTrafficSeverity.moderate:
             return '交通警报：';
-          case TrafficSeverity.heavy:
+          case VoiceTrafficSeverity.heavy:
             return '严重交通警报：';
-          case TrafficSeverity.severe:
+          case VoiceTrafficSeverity.severe:
             return '紧急交通警报：';
         }
       case 'ta-MY':
         switch (severity) {
-          case TrafficSeverity.light:
+          case VoiceTrafficSeverity.light:
             return 'லேசான போக்குவரத்து எச்சரிக்கை: ';
-          case TrafficSeverity.moderate:
+          case VoiceTrafficSeverity.moderate:
             return 'போக்குவரத்து எச்சரிக்கை: ';
-          case TrafficSeverity.heavy:
+          case VoiceTrafficSeverity.heavy:
             return 'கடுமையான போக்குவரத்து எச்சரிக்கை: ';
-          case TrafficSeverity.severe:
+          case VoiceTrafficSeverity.severe:
             return 'அவசர போக்குவரத்து எச்சரிக்கை: ';
         }
       default:
         switch (severity) {
-          case TrafficSeverity.light:
+          case VoiceTrafficSeverity.light:
             return 'Light traffic alert: ';
-          case TrafficSeverity.moderate:
+          case VoiceTrafficSeverity.moderate:
             return 'Traffic alert: ';
-          case TrafficSeverity.heavy:
+          case VoiceTrafficSeverity.heavy:
             return 'Heavy traffic alert: ';
-          case TrafficSeverity.severe:
+          case VoiceTrafficSeverity.severe:
             return 'CRITICAL TRAFFIC ALERT: ';
         }
     }
@@ -671,8 +694,9 @@ class VoiceNavigationService {
   /// Test voice with sample text
   Future<void> testVoice() async {
     if (!_isEnabled || !_isInitialized) return;
-    
+
     final testMessage = _getLocalizedTestMessage();
+    debugPrint('🔊 [VOICE-NAV] Testing voice with message: $testMessage');
     await _tts.speak(testMessage);
   }
 
@@ -680,13 +704,159 @@ class VoiceNavigationService {
   String _getLocalizedTestMessage() {
     switch (_currentLanguage) {
       case 'ms-MY':
-        return 'Ujian suara navigasi GigaEats';
+        return 'Ujian suara navigasi GigaEats. Sistem suara berfungsi dengan baik.';
       case 'zh-CN':
-        return 'GigaEats导航语音测试';
+        return 'GigaEats导航语音测试。语音系统运行正常。';
       case 'ta-MY':
-        return 'GigaEats வழிசெலுத்தல் குரல் சோதனை';
+        return 'GigaEats வழிசெலுத்தல் குரல் சோதனை. குரல் அமைப்பு சரியாக வேலை செய்கிறது.';
       default:
-        return 'GigaEats navigation voice test';
+        return 'GigaEats navigation voice test. Voice system is working properly.';
+    }
+  }
+
+  // Phase 4.1 Enhanced Audio Preferences Management
+
+  /// Get enhanced audio preferences
+  Map<String, dynamic> getAudioPreferences() {
+    return {
+      'language': _currentLanguage,
+      'volume': _volume,
+      'speechRate': _speechRate,
+      'pitch': _pitch,
+      'isEnabled': _isEnabled,
+      'batteryOptimizationEnabled': _batteryOptimizationTimer != null,
+      'languageDisplayName': _languageSettings[_currentLanguage]?['displayName'] ?? _currentLanguage,
+      'nativeDisplayName': _languageSettings[_currentLanguage]?['nativeDisplayName'] ?? _currentLanguage,
+      'supportedFeatures': _languageSettings[_currentLanguage]?['supportedFeatures'] ?? [],
+    };
+  }
+
+  /// Update audio preferences with validation
+  Future<void> updateAudioPreferences({
+    String? language,
+    double? volume,
+    double? speechRate,
+    double? pitch,
+    bool? enabled,
+    bool? batteryOptimization,
+  }) async {
+    debugPrint('🔊 [VOICE-NAV] Updating audio preferences');
+
+    try {
+      // Validate and update language
+      if (language != null && language != _currentLanguage) {
+        if (_languageSettings.containsKey(language)) {
+          await setLanguage(language);
+          debugPrint('🔊 [VOICE-NAV] Language updated to: $language');
+        } else {
+          debugPrint('⚠️ [VOICE-NAV] Unsupported language: $language');
+        }
+      }
+
+      // Validate and update volume (0.0 to 1.0)
+      if (volume != null && volume >= 0.0 && volume <= 1.0) {
+        await setVolume(volume);
+        debugPrint('🔊 [VOICE-NAV] Volume updated to: $volume');
+      }
+
+      // Validate and update speech rate (0.1 to 2.0)
+      if (speechRate != null && speechRate >= 0.1 && speechRate <= 2.0) {
+        await setSpeechRate(speechRate);
+        debugPrint('🔊 [VOICE-NAV] Speech rate updated to: $speechRate');
+      }
+
+      // Validate and update pitch (0.5 to 2.0)
+      if (pitch != null && pitch >= 0.5 && pitch <= 2.0) {
+        await setPitch(pitch);
+        debugPrint('🔊 [VOICE-NAV] Pitch updated to: $pitch');
+      }
+
+      // Update enabled state
+      if (enabled != null) {
+        await setEnabled(enabled);
+        debugPrint('🔊 [VOICE-NAV] Enabled state updated to: $enabled');
+      }
+
+      // Update battery optimization
+      if (batteryOptimization != null) {
+        if (batteryOptimization && _batteryOptimizationTimer == null) {
+          _startBatteryOptimization();
+        } else if (!batteryOptimization && _batteryOptimizationTimer != null) {
+          _batteryOptimizationTimer?.cancel();
+          _batteryOptimizationTimer = null;
+          debugPrint('🔋 [VOICE-NAV] Battery optimization disabled');
+        }
+      }
+
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error updating audio preferences: $e');
+      throw Exception('Failed to update audio preferences: $e');
+    }
+  }
+
+  /// Get available language options with enhanced metadata
+  List<Map<String, dynamic>> getAvailableLanguageOptions() {
+    return _languageSettings.entries.map((entry) {
+      final languageCode = entry.key;
+      final settings = entry.value;
+
+      return {
+        'code': languageCode,
+        'displayName': settings['displayName'],
+        'nativeDisplayName': settings['nativeDisplayName'],
+        'voiceGender': settings['voiceGender'],
+        'supportedFeatures': settings['supportedFeatures'],
+        'isCurrentLanguage': languageCode == _currentLanguage,
+      };
+    }).toList();
+  }
+
+  /// Check if a feature is supported for current language
+  bool isFeatureSupported(String feature) {
+    final supportedFeatures = _languageSettings[_currentLanguage]?['supportedFeatures'] as List<String>?;
+    return supportedFeatures?.contains(feature) ?? false;
+  }
+
+  /// Get voice system status for debugging
+  Map<String, dynamic> getSystemStatus() {
+    return {
+      'isInitialized': _isInitialized,
+      'isEnabled': _isEnabled,
+      'currentLanguage': _currentLanguage,
+      'volume': _volume,
+      'speechRate': _speechRate,
+      'pitch': _pitch,
+      'isBackgroundMode': _isBackgroundMode,
+      'isDucking': _isDucking,
+      'batteryOptimizationActive': _batteryOptimizationTimer != null,
+      'consecutiveAnnouncementCount': _consecutiveAnnouncementCount,
+      'lastAnnouncementTime': _lastAnnouncementTime?.toIso8601String(),
+      'audioSessionActive': _audioSession != null,
+    };
+  }
+
+  /// Pause voice navigation announcements
+  Future<void> pause() async {
+    if (!_isInitialized) return;
+
+    try {
+      await _tts.stop();
+      _isEnabled = false;
+      debugPrint('🔊 [VOICE-NAV] Voice navigation paused');
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error pausing voice navigation: $e');
+    }
+  }
+
+  /// Resume voice navigation announcements
+  Future<void> resume() async {
+    if (!_isInitialized) return;
+
+    try {
+      _isEnabled = true;
+      debugPrint('🔊 [VOICE-NAV] Voice navigation resumed');
+    } catch (e) {
+      debugPrint('❌ [VOICE-NAV] Error resuming voice navigation: $e');
     }
   }
 

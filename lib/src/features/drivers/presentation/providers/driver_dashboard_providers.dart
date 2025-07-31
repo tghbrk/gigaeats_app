@@ -311,8 +311,8 @@ final todayEarningsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
         .select('id, total_amount, delivery_fee, commission_amount')
         .eq('assigned_driver_id', userId)
         .eq('status', 'delivered')
-        .gte('delivered_at', startOfDay.toIso8601String())
-        .lt('delivered_at', endOfDay.toIso8601String());
+        .gte('actual_delivery_time', startOfDay.toIso8601String())
+        .lt('actual_delivery_time', endOfDay.toIso8601String());
 
     final orderCount = response.length;
     final totalEarnings = response.fold<double>(

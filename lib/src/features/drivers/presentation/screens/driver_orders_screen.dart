@@ -5,6 +5,7 @@ import '../widgets/driver_dashboard_header.dart';
 import '../widgets/available_orders_section.dart';
 import '../widgets/current_order_section.dart';
 import '../widgets/earnings_summary_card.dart';
+import '../widgets/wallet/driver_wallet_compact_card.dart';
 import '../providers/driver_dashboard_providers.dart';
 
 /// Comprehensive driver dashboard screen with real-time order management
@@ -40,6 +41,11 @@ class DriverOrdersScreen extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.0),
                   child: EarningsSummaryCard(),
                 ),
+              ),
+
+              // Driver Wallet Summary
+              const SliverToBoxAdapter(
+                child: DriverWalletCompactCard(),
               ),
 
               // Current Order Section (if driver has an active order)

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../drivers/data/models/driver_order.dart';
 import '../../../drivers/data/models/pickup_confirmation.dart';
@@ -8,7 +10,9 @@ import '../../../drivers/data/models/delivery_confirmation.dart';
 import '../../../orders/data/models/driver_order_state_machine.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/enhanced_driver_workflow_providers.dart';
+import '../providers/enhanced_navigation_provider.dart';
 import '../providers/driver_dashboard_providers.dart' hide currentDriverOrderProvider;
+import '../../data/services/navigation_app_service.dart';
 import 'vendor_pickup_confirmation_dialog.dart';
 import 'driver_delivery_confirmation_dialog.dart';
 import 'pickup_instruction_widget.dart';
@@ -423,26 +427,210 @@ class _OrderActionButtonsState extends ConsumerState<OrderActionButtons> {
   }
 
   Future<void> _handleNavigation(EnhancedOrderAction action) async {
-    // TODO: Integrate with navigation service
-    // For now, just update the status
-    await _updateOrderStatus(action);
+    try {
+      debugPrint('🧭 [ORDER-ACTIONS] ═══ ENHANCED NAVIGATION DEBUG START ═══');
+      debugPrint('🧭 [ORDER-ACTIONS] Starting navigation for action: ${action.driverAction}');
+      debugPrint('🧭 [ORDER-ACTIONS] Order ID: ${widget.order.id}');
+      debugPrint('🧭 [ORDER-ACTIONS] Order Number: ${widget.order.orderNumber}');
 
-    // Show navigation hint
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Navigation started. ${action.description}'),
-          backgroundColor: Colors.blue,
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Open Maps',
-            textColor: Colors.white,
-            onPressed: () {
-              // TODO: Open external navigation app
-            },
-          ),
-        ),
+      // Determine destination based on action
+      LatLng? destination;
+      String? destinationName;
+
+      if (action.driverAction == DriverOrderAction.navigateToVendor) {
+        // Navigate to vendor/restaurant
+        final vendorAddress = widget.order.deliveryDetails.pickupAddress;
+        debugPrint('🧭 [ORDER-ACTIONS] Vendor address: "$vendorAddress"');
+        if (vendorAddress.isNotEmpty) {
+          // TODO: Convert address to coordinates using geocoding service
+          // For now, use a placeholder coordinate
+          destination = const LatLng(3.139, 101.6869); // Kuala Lumpur placeholder
+          destinationName = widget.order.vendorName;
+          debugPrint('🧭 [ORDER-ACTIONS] Navigating to vendor: $destinationName');
+          debugPrint('🧭 [ORDER-ACTIONS] Vendor coordinates: ${destination.latitude}, ${destination.longitude}');
+        } else {
+          debugPrint('❌ [ORDER-ACTIONS] Vendor address is empty');
+        }
+      } else if (action.driverAction == DriverOrderAction.navigateToCustomer) {
+        // Navigate to customer
+        final customerAddress = widget.order.deliveryDetails.deliveryAddress;
+        debugPrint('🧭 [ORDER-ACTIONS] Customer address: "$customerAddress"');
+        if (customerAddress.isNotEmpty) {
+          // TODO: Convert address to coordinates using geocoding service
+          // For now, use a placeholder coordinate
+          destination = const LatLng(3.1390, 101.6869); // Kuala Lumpur placeholder
+          destinationName = 'Customer Location';
+          debugPrint('🧭 [ORDER-ACTIONS] Navigating to customer: $customerAddress');
+          debugPrint('🧭 [ORDER-ACTIONS] Customer coordinates: ${destination.latitude}, ${destination.longitude}');
+        } else {
+          debugPrint('❌ [ORDER-ACTIONS] Customer address is empty');
+        }
+      }
+
+      if (destination == null) {
+        debugPrint('❌ [ORDER-ACTIONS] No destination available for navigation');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to start navigation: No destination address available'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Get current location as origin
+      // TODO: Get actual current location from location service
+      const origin = LatLng(3.1390, 101.6869); // Placeholder current location
+
+      debugPrint('🧭 [ORDER-ACTIONS] ═══ STARTING ENHANCED IN-APP NAVIGATION ═══');
+      debugPrint('🧭 [ORDER-ACTIONS] Origin: ${origin.latitude}, ${origin.longitude}');
+      debugPrint('🧭 [ORDER-ACTIONS] Destination: ${destination.latitude}, ${destination.longitude}');
+      debugPrint('🧭 [ORDER-ACTIONS] Destination Name: $destinationName');
+
+      // Get the navigation provider
+      final navigationProvider = ref.read(enhancedNavigationProvider.notifier);
+      debugPrint('🧭 [ORDER-ACTIONS] Navigation provider obtained');
+
+      // Check current navigation state before starting
+      final currentState = ref.read(enhancedNavigationProvider);
+      debugPrint('🧭 [ORDER-ACTIONS] Current navigation state - isNavigating: ${currentState.isNavigating}');
+      debugPrint('🧭 [ORDER-ACTIONS] Current navigation state - error: ${currentState.error}');
+
+      debugPrint('🧭 [ORDER-ACTIONS] Calling navigationProvider.startNavigation...');
+      final success = await navigationProvider.startNavigation(
+        origin: origin,
+        destination: destination,
+        orderId: widget.order.id,
+        destinationName: destinationName,
       );
+
+      debugPrint('🧭 [ORDER-ACTIONS] Navigation provider returned: $success');
+
+      if (success) {
+        debugPrint('✅ [ORDER-ACTIONS] Enhanced In-App Navigation started successfully');
+
+        // Check navigation state after successful start
+        final newState = ref.read(enhancedNavigationProvider);
+        debugPrint('✅ [ORDER-ACTIONS] New navigation state - isNavigating: ${newState.isNavigating}');
+        debugPrint('✅ [ORDER-ACTIONS] New navigation state - session: ${newState.currentSession?.id}');
+
+        // Update order status to reflect navigation started
+        debugPrint('🧭 [ORDER-ACTIONS] Updating order status...');
+        await _updateOrderStatus(action);
+
+        // Navigate to the in-app navigation screen
+        if (mounted) {
+          debugPrint('🧭 [ORDER-ACTIONS] Navigating to /driver/navigation screen');
+          context.push('/driver/navigation');
+        } else {
+          debugPrint('❌ [ORDER-ACTIONS] Widget not mounted, cannot navigate to screen');
+        }
+      } else {
+        debugPrint('❌ [ORDER-ACTIONS] Failed to start Enhanced In-App Navigation');
+
+        // Check navigation state after failure
+        final failedState = ref.read(enhancedNavigationProvider);
+        debugPrint('❌ [ORDER-ACTIONS] Failed navigation state - error: ${failedState.error}');
+
+        // Fallback to external navigation app selection
+        debugPrint('🧭 [ORDER-ACTIONS] Falling back to external navigation app selection');
+        await _showNavigationAppSelection(destination, destinationName);
+      }
+
+      debugPrint('🧭 [ORDER-ACTIONS] ═══ ENHANCED NAVIGATION DEBUG END ═══');
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ [ORDER-ACTIONS] ═══ NAVIGATION ERROR ═══');
+      debugPrint('❌ [ORDER-ACTIONS] Error in navigation handling: $e');
+      debugPrint('❌ [ORDER-ACTIONS] Stack trace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Show navigation app selection dialog as fallback
+  Future<void> _showNavigationAppSelection(LatLng destination, String? destinationName) async {
+    try {
+      debugPrint('🧭 [ORDER-ACTIONS] Showing navigation app selection dialog');
+
+      // Get available navigation apps
+      final availableApps = await NavigationAppService.getAvailableNavigationApps();
+
+      if (mounted) {
+        final selectedApp = await showDialog<NavigationApp>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Choose Navigation App'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: availableApps.map((app) => ListTile(
+                leading: Image.asset(app.iconAsset, width: 32, height: 32),
+                title: Text(app.name),
+                subtitle: app.isInstalled
+                    ? const Text('Installed')
+                    : const Text('Not installed', style: TextStyle(color: Colors.grey)),
+                enabled: app.isInstalled,
+                onTap: app.isInstalled
+                    ? () => Navigator.of(context).pop(app)
+                    : null,
+              )).toList(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        if (selectedApp != null) {
+          debugPrint('🧭 [ORDER-ACTIONS] User selected: ${selectedApp.name}');
+
+          final success = await NavigationAppService.launchNavigation(
+            appId: selectedApp.id,
+            destination: destination,
+            destinationName: destinationName,
+          );
+
+          if (success) {
+            debugPrint('✅ [ORDER-ACTIONS] Successfully launched ${selectedApp.name}');
+          } else {
+            debugPrint('❌ [ORDER-ACTIONS] Failed to launch ${selectedApp.name}');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to launch ${selectedApp.name}'),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ [ORDER-ACTIONS] Error showing navigation app selection: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error showing navigation options'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

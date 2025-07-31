@@ -446,11 +446,11 @@ final enhancedTodayEarningsProvider = FutureProvider.autoDispose<EnhancedEarning
     // Get today's completed orders with granular status tracking
     final ordersResponse = await supabase
         .from('orders')
-        .select('id, total_amount, status, delivered_at')
+        .select('id, total_amount, status, actual_delivery_time')
         .eq('assigned_driver_id', userId)
         .eq('status', 'delivered')
-        .gte('delivered_at', startOfDay.toIso8601String())
-        .lt('delivered_at', endOfDay.toIso8601String());
+        .gte('actual_delivery_time', startOfDay.toIso8601String())
+        .lt('actual_delivery_time', endOfDay.toIso8601String());
 
     // Calculate enhanced earnings data
     double totalGrossEarnings = 0.0;
@@ -643,6 +643,10 @@ DriverOrder _transformToDriverOrder(Map<String, dynamic> response, String effect
   debugPrint('🔄 [TRANSFORM] Raw database status: $effectiveStatus');
   debugPrint('🔄 [TRANSFORM] Full response keys: ${response.keys.toList()}');
 
+  // Map database status to valid DriverOrderStatus enum value
+  String mappedStatus = _mapDatabaseStatusToDriverStatus(effectiveStatus);
+  debugPrint('🔄 [TRANSFORM] Mapped status from "$effectiveStatus" to "$mappedStatus"');
+
   // Parse delivery address safely
   String deliveryAddressStr = '';
   if (response['delivery_address'] != null) {
@@ -681,7 +685,7 @@ DriverOrder _transformToDriverOrder(Map<String, dynamic> response, String effect
     'vendor_name': vendorName,
     'customer_id': response['customer_id']?.toString() ?? '',
     'customer_name': 'Unknown Customer', // Not available in current query
-    'status': effectiveStatus,
+    'status': mappedStatus, // Use mapped status instead of raw effectiveStatus
     'priority': 'normal',
     'delivery_details': {
       'pickup_address': response['vendors']?['business_address']?.toString() ?? '',
@@ -723,6 +727,44 @@ DriverOrder _transformToDriverOrder(Map<String, dynamic> response, String effect
     debugPrint('❌ [TRANSFORM] Stack trace: $stackTrace');
     debugPrint('❌ [TRANSFORM] Problematic JSON: $driverOrderJson');
     rethrow;
+  }
+}
+
+/// Map database status to valid DriverOrderStatus enum value
+/// This ensures that database statuses are properly converted to enum values
+/// that can be handled by DriverOrder.fromJson()
+String _mapDatabaseStatusToDriverStatus(String databaseStatus) {
+  switch (databaseStatus.toLowerCase()) {
+    case 'ready':
+      // Orders that are ready for pickup should be treated as assigned for driver workflow
+      return 'assigned';
+    case 'confirmed':
+      return 'assigned';
+    case 'preparing':
+      return 'assigned'; // Restaurant is preparing, driver not involved yet
+    case 'assigned':
+      return 'assigned';
+    case 'on_route_to_vendor':
+      return 'on_route_to_vendor';
+    case 'arrived_at_vendor':
+      return 'arrived_at_vendor';
+    case 'picked_up':
+      return 'picked_up';
+    case 'out_for_delivery':
+      return 'picked_up'; // Map legacy status to picked up so driver can navigate to customer
+    case 'on_route_to_customer':
+      return 'on_route_to_customer';
+    case 'arrived_at_customer':
+      return 'arrived_at_customer';
+    case 'delivered':
+      return 'delivered';
+    case 'cancelled':
+      return 'cancelled';
+    case 'failed':
+      return 'failed';
+    default:
+      debugPrint('⚠️ [STATUS-MAPPING] Unknown database status: $databaseStatus, defaulting to assigned');
+      return 'assigned'; // Default fallback to prevent enum decode errors
   }
 }
 

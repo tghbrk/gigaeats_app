@@ -5,7 +5,7 @@ import '../../../../data/models/user_role.dart';
 import '../../../../shared/widgets/auth_guard.dart';
 import '../widgets/incoming_orders_tab.dart';
 import '../widgets/active_orders_tab.dart';
-import '../widgets/history_orders_tab.dart';
+import '../widgets/enhanced_history_orders_tab.dart';
 import '../providers/driver_orders_management_providers.dart';
 
 /// Dedicated Orders Management screen for drivers with three distinct tabs
@@ -66,7 +66,7 @@ class _DriverOrdersManagementScreenState extends ConsumerState<DriverOrdersManag
           children: const [
             IncomingOrdersTab(),
             ActiveOrdersTab(),
-            HistoryOrdersTab(),
+            EnhancedHistoryOrdersTab(),
           ],
         ),
       ),

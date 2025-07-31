@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../data/models/user_role.dart';
 import '../../../../shared/widgets/auth_guard.dart';
-import 'driver_map_screen.dart';
 // Import the enhanced driver profile screen with debug logging
 import '../../../user_management/presentation/screens/driver/driver_profile_screen.dart';
 import '../../../payments/presentation/screens/driver/driver_earnings_screen.dart';
@@ -11,6 +10,11 @@ import 'driver_orders_screen.dart';
 import 'driver_orders_management_screen.dart';
 
 /// Main driver dashboard with bottom navigation
+///
+/// Note: The Map tab has been removed as it didn't serve a functional purpose
+/// in the driver workflow. Map functionality is preserved in navigation features
+/// used during order delivery. Future implementation may add a map feature for
+/// visualizing nearby orders.
 class DriverDashboard extends ConsumerStatefulWidget {
   const DriverDashboard({super.key});
 
@@ -31,11 +35,6 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
       icon: Icon(Icons.assignment_outlined),
       selectedIcon: Icon(Icons.assignment),
       label: 'Orders',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.map_outlined),
-      selectedIcon: Icon(Icons.map),
-      label: 'Map',
     ),
     const NavigationDestination(
       icon: Icon(Icons.account_balance_wallet_outlined),
@@ -59,7 +58,6 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
           children: [
             const DriverOrdersScreen(key: ValueKey('driver_dashboard_tab')),
             const DriverOrdersManagementScreen(key: ValueKey('driver_orders_management_tab')),
-            const DriverMapScreen(key: ValueKey('driver_map_tab')),
             // Use the static earnings screen to prevent infinite loops
             const DriverEarningsScreen(key: ValueKey('driver_earnings_tab')),
             const DriverProfileScreen(key: ValueKey('driver_profile_tab')),

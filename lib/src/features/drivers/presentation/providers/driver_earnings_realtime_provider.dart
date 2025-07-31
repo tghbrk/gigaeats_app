@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/driver_earnings.dart';
 import '../../data/services/driver_earnings_service.dart';
+import '../../../../core/services/enhanced_supabase_connection_manager.dart';
+import '../../../../core/services/app_lifecycle_service.dart';
 
 /// Real-time earnings notification data model
 class EarningsNotification {
@@ -121,13 +123,14 @@ enum EarningsNotificationType {
   }
 }
 
-/// Real-time earnings notifications state
+/// Enhanced real-time earnings notifications state with connection health
 class EarningsNotificationsState {
   final List<EarningsNotification> notifications;
   final bool isListening;
   final String? error;
   final int unreadCount;
   final DateTime? lastUpdate;
+  final ConnectionHealth? connectionHealth;
 
   const EarningsNotificationsState({
     this.notifications = const [],
@@ -135,6 +138,7 @@ class EarningsNotificationsState {
     this.error,
     this.unreadCount = 0,
     this.lastUpdate,
+    this.connectionHealth,
   });
 
   EarningsNotificationsState copyWith({
@@ -143,6 +147,7 @@ class EarningsNotificationsState {
     String? error,
     int? unreadCount,
     DateTime? lastUpdate,
+    ConnectionHealth? connectionHealth,
   }) {
     return EarningsNotificationsState(
       notifications: notifications ?? this.notifications,
@@ -150,85 +155,281 @@ class EarningsNotificationsState {
       error: error,
       unreadCount: unreadCount ?? this.unreadCount,
       lastUpdate: lastUpdate ?? this.lastUpdate,
+      connectionHealth: connectionHealth ?? this.connectionHealth,
     );
   }
 }
 
-/// Real-time earnings notifications provider
+/// Enhanced real-time earnings notifications provider with robust connection management
 class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotificationsState> {
   final DriverEarningsService _earningsService;
-  final SupabaseClient _supabase;
+  final EnhancedSupabaseConnectionManager _connectionManager;
+  final AppLifecycleService _lifecycleService;
   final String _driverId;
-  
-  StreamSubscription<List<Map<String, dynamic>>>? _earningsSubscription;
+
+  String? _subscriptionId;
   Timer? _cleanupTimer;
-  
+  Timer? _refreshRateLimitTimer;
+  StreamSubscription<ConnectionHealth>? _connectionHealthSubscription;
+  StreamSubscription<AppLifecycleEvent>? _lifecycleSubscription;
+
   // Maximum notifications to keep in memory
   static const int _maxNotifications = 50;
-  
+
   // Notification cleanup interval (remove old notifications)
   static const Duration _cleanupInterval = Duration(hours: 1);
+
+  // Rate limiting for refresh operations
+  static const Duration _minRefreshInterval = Duration(seconds: 30);
+  static const Duration _backgroundRefreshInterval = Duration(minutes: 2);
+  static const Duration _activeRefreshInterval = Duration(seconds: 45);
+
+  // Refresh state tracking
+  DateTime? _lastRefreshTime;
+  DateTime? _lastConnectionRestoreTime;
+  bool _isRefreshInProgress = false;
+  int _consecutiveRefreshCount = 0;
+  static const int _maxConsecutiveRefreshes = 3;
 
   DriverEarningsRealtimeNotifier({
     required DriverEarningsService earningsService,
     required String driverId,
-    SupabaseClient? supabaseClient,
+    EnhancedSupabaseConnectionManager? connectionManager,
+    AppLifecycleService? lifecycleService,
   })  : _earningsService = earningsService,
-        _supabase = supabaseClient ?? Supabase.instance.client,
+        _connectionManager = connectionManager ?? EnhancedSupabaseConnectionManager(),
+        _lifecycleService = lifecycleService ?? AppLifecycleService(),
         _driverId = driverId,
         super(const EarningsNotificationsState()) {
-    _initializeRealtimeSubscription();
+    _initializeEnhancedRealtimeSubscription();
     _startCleanupTimer();
+    _setupConnectionHealthMonitoring();
+    _setupLifecycleMonitoring();
   }
 
-  /// Initialize real-time subscription for earnings updates
-  void _initializeRealtimeSubscription() {
-    debugPrint('DriverEarningsRealtimeNotifier: Initializing real-time subscription for driver: $_driverId');
-    
+  /// Initialize enhanced real-time subscription for earnings updates
+  Future<void> _initializeEnhancedRealtimeSubscription() async {
+    debugPrint('🔗 [EARNINGS-REALTIME] Initializing enhanced real-time subscription for driver: $_driverId');
+
     try {
       state = state.copyWith(isListening: true, error: null);
-      
-      // Subscribe to driver_earnings table changes for this driver
-      _earningsSubscription = _supabase
-          .from('driver_earnings')
-          .stream(primaryKey: ['id'])
-          .eq('driver_id', _driverId)
-          .listen(
-            _handleEarningsUpdate,
-            onError: _handleSubscriptionError,
-          );
-      
-      debugPrint('DriverEarningsRealtimeNotifier: Real-time subscription established');
+
+      // Ensure connection manager is initialized
+      await _connectionManager.initialize();
+
+      // Create subscription configuration
+      final config = SubscriptionConfig(
+        id: 'driver_earnings_$_driverId',
+        table: 'driver_earnings',
+        filter: 'driver_id=eq.$_driverId',
+        onData: _handleEarningsUpdate,
+        onError: _handleSubscriptionError,
+        autoReconnect: true,
+        reconnectDelay: const Duration(seconds: 3),
+        maxReconnectAttempts: 15,
+      );
+
+      // Subscribe using enhanced connection manager
+      _subscriptionId = await _connectionManager.subscribe(config);
+
+      debugPrint('✅ [EARNINGS-REALTIME] Enhanced real-time subscription established: $_subscriptionId');
     } catch (e) {
-      debugPrint('DriverEarningsRealtimeNotifier: Error initializing subscription: $e');
+      debugPrint('❌ [EARNINGS-REALTIME] Error initializing enhanced subscription: $e');
       state = state.copyWith(
         isListening: false,
-        error: 'Failed to initialize real-time notifications: $e',
+        error: 'Failed to initialize enhanced real-time notifications: $e',
       );
     }
   }
 
+  /// Setup connection health monitoring with intelligent refresh logic
+  void _setupConnectionHealthMonitoring() {
+    debugPrint('📊 [EARNINGS-REALTIME] Setting up connection health monitoring with rate limiting');
+
+    _connectionHealthSubscription = _connectionManager.connectionHealthStream.listen(
+      (health) {
+        debugPrint('📊 [EARNINGS-REALTIME] Connection health update: ${health.state.name}');
+
+        // Update state based on connection health
+        state = state.copyWith(
+          isListening: health.state == ConnectionState.connected,
+          error: health.lastError,
+          connectionHealth: health,
+        );
+
+        // Handle specific connection states with intelligent refresh logic
+        switch (health.state) {
+          case ConnectionState.connected:
+            _handleConnectionRestoredWithRateLimit();
+            break;
+          case ConnectionState.failed:
+            _handleConnectionFailed(health.lastError);
+            break;
+          case ConnectionState.reconnecting:
+            _handleReconnecting();
+            break;
+          default:
+            break;
+        }
+      },
+      onError: (error) {
+        debugPrint('❌ [EARNINGS-REALTIME] Connection health monitoring error: $error');
+      },
+    );
+  }
+
+  /// Setup app lifecycle monitoring
+  void _setupLifecycleMonitoring() {
+    debugPrint('📱 [EARNINGS-REALTIME] Setting up app lifecycle monitoring');
+
+    _lifecycleSubscription = _lifecycleService.lifecycleEventStream.listen(
+      (event) {
+        debugPrint('📱 [EARNINGS-REALTIME] App lifecycle event: ${event.name}');
+
+        switch (event) {
+          case AppLifecycleEvent.resumed:
+            _handleAppResumed();
+            break;
+          case AppLifecycleEvent.paused:
+            _handleAppPaused();
+            break;
+          default:
+            break;
+        }
+      },
+      onError: (error) {
+        debugPrint('❌ [EARNINGS-REALTIME] Lifecycle monitoring error: $error');
+      },
+    );
+  }
+
   /// Handle earnings updates from real-time subscription
-  void _handleEarningsUpdate(List<Map<String, dynamic>> data) {
-    debugPrint('DriverEarningsRealtimeNotifier: Received earnings update with ${data.length} records');
-    
+  Future<void> _handleEarningsUpdate(List<Map<String, dynamic>> data) async {
+    debugPrint('📨 [EARNINGS-REALTIME] Received earnings update with ${data.length} records');
+
     try {
       final notifications = <EarningsNotification>[];
-      
+
       for (final record in data) {
-        final notification = _createNotificationFromEarningsRecord(record);
+        final notification = await _createNotificationFromEarningsRecord(record);
         if (notification != null) {
           notifications.add(notification);
         }
       }
-      
+
       if (notifications.isNotEmpty) {
         _addNotifications(notifications);
       }
+
+      // Update last update timestamp
+      state = state.copyWith(lastUpdate: DateTime.now());
     } catch (e) {
-      debugPrint('DriverEarningsRealtimeNotifier: Error processing earnings update: $e');
+      debugPrint('❌ [EARNINGS-REALTIME] Error processing earnings update: $e');
       state = state.copyWith(error: 'Error processing earnings update: $e');
     }
+  }
+
+  /// Handle connection restored with intelligent rate limiting
+  void _handleConnectionRestoredWithRateLimit() {
+    final now = DateTime.now();
+    debugPrint('✅ [EARNINGS-REALTIME] Connection restored at ${now.toIso8601String()}');
+
+    // Check if we recently handled a connection restore to prevent loops
+    if (_lastConnectionRestoreTime != null) {
+      final timeSinceLastRestore = now.difference(_lastConnectionRestoreTime!);
+      if (timeSinceLastRestore < _minRefreshInterval) {
+        debugPrint('⏸️ [EARNINGS-REALTIME] Skipping refresh - too soon since last connection restore (${timeSinceLastRestore.inSeconds}s < ${_minRefreshInterval.inSeconds}s)');
+        return;
+      }
+    }
+
+    // Check if refresh is already in progress
+    if (_isRefreshInProgress) {
+      debugPrint('⏸️ [EARNINGS-REALTIME] Skipping refresh - already in progress');
+      return;
+    }
+
+    // Check consecutive refresh count to prevent excessive refreshing
+    if (_consecutiveRefreshCount >= _maxConsecutiveRefreshes) {
+      debugPrint('⏸️ [EARNINGS-REALTIME] Skipping refresh - max consecutive refreshes reached ($_consecutiveRefreshCount)');
+      _resetRefreshCountAfterDelay();
+      return;
+    }
+
+    _lastConnectionRestoreTime = now;
+    _consecutiveRefreshCount++;
+
+    // Schedule refresh with appropriate delay based on app state
+    final refreshDelay = _getOptimalRefreshDelay();
+    debugPrint('⏰ [EARNINGS-REALTIME] Scheduling refresh in ${refreshDelay.inSeconds}s (attempt $_consecutiveRefreshCount/$_maxConsecutiveRefreshes)');
+
+    Future.delayed(refreshDelay, () {
+      if (mounted && !_isRefreshInProgress) {
+        _refreshWithRateLimit();
+      }
+    });
+  }
+
+  /// Handle connection failed
+  void _handleConnectionFailed(String? error) {
+    debugPrint('❌ [EARNINGS-REALTIME] Connection failed: $error');
+
+    // Update state with error information
+    state = state.copyWith(
+      isListening: false,
+      error: 'Connection failed: ${error ?? "Unknown error"}',
+    );
+  }
+
+  /// Handle reconnecting state
+  void _handleReconnecting() {
+    debugPrint('🔄 [EARNINGS-REALTIME] Reconnecting...');
+
+    // Update state to show reconnecting status
+    state = state.copyWith(
+      isListening: false,
+      error: 'Reconnecting to real-time updates...',
+    );
+  }
+
+  /// Handle app resumed with intelligent refresh logic
+  void _handleAppResumed() {
+    final now = DateTime.now();
+    debugPrint('📱 [EARNINGS-REALTIME] App resumed at ${now.toIso8601String()}');
+
+    // Check if we need to refresh data after being backgrounded
+    if (_lifecycleService.wasRecentlyBackgrounded) {
+      debugPrint('🔄 [EARNINGS-REALTIME] App was backgrounded, checking if refresh is needed');
+
+      // Check if we recently refreshed to prevent unnecessary calls
+      if (_lastRefreshTime != null) {
+        final timeSinceLastRefresh = now.difference(_lastRefreshTime!);
+        if (timeSinceLastRefresh < _backgroundRefreshInterval) {
+          debugPrint('⏸️ [EARNINGS-REALTIME] Skipping background refresh - too recent (${timeSinceLastRefresh.inMinutes}m < ${_backgroundRefreshInterval.inMinutes}m)');
+          return;
+        }
+      }
+
+      // Reset consecutive refresh count on app resume
+      _consecutiveRefreshCount = 0;
+
+      // Schedule background refresh with longer delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && !_isRefreshInProgress) {
+          _refreshWithRateLimit();
+        }
+      });
+    } else {
+      debugPrint('📱 [EARNINGS-REALTIME] App resumed but was not recently backgrounded, no refresh needed');
+    }
+  }
+
+  /// Handle app paused
+  void _handleAppPaused() {
+    debugPrint('📱 [EARNINGS-REALTIME] App paused');
+
+    // The connection manager will handle subscription suspension
+    // We just log the event for debugging
   }
 
   /// Handle subscription errors
@@ -247,17 +448,17 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
   }
 
   /// Create notification from earnings record
-  EarningsNotification? _createNotificationFromEarningsRecord(Map<String, dynamic> record) {
+  Future<EarningsNotification?> _createNotificationFromEarningsRecord(Map<String, dynamic> record) async {
     try {
       final netEarnings = (record['net_earnings'] as num?)?.toDouble() ?? 0.0;
       final grossEarnings = (record['gross_earnings'] as num?)?.toDouble() ?? 0.0;
       final status = EarningsStatus.fromString(record['payment_status'] ?? 'pending');
-      
+
       // Determine notification type and message based on status and amount
       EarningsNotificationType type;
       String title;
       String message;
-      
+
       switch (status) {
         case EarningsStatus.confirmed:
           type = EarningsNotificationType.earningsUpdate;
@@ -285,9 +486,36 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
           message = 'Your earnings of RM ${netEarnings.toStringAsFixed(2)} have been cancelled';
           break;
       }
-      
+
+      // Check if this notification already exists and preserve its read status
+      final notificationId = record['id'] ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final existingNotification = state.notifications.firstWhere(
+        (n) => n.id == notificationId,
+        orElse: () => EarningsNotification(
+          id: '',
+          driverId: '',
+          amount: 0,
+          netAmount: 0,
+          status: EarningsStatus.pending,
+          type: EarningsNotificationType.earningsUpdate,
+          title: '',
+          message: '',
+          timestamp: DateTime.now(),
+        ),
+      );
+
+      // Determine read status: check existing notification first, then load from storage
+      bool isRead = false;
+      if (existingNotification.id.isNotEmpty) {
+        // Use existing notification's read status
+        isRead = existingNotification.isRead;
+      } else {
+        // Load from persistent storage for new notifications
+        isRead = await _loadNotificationReadStatus(notificationId);
+      }
+
       return EarningsNotification(
-        id: record['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id: notificationId,
         driverId: record['driver_id'] ?? _driverId,
         orderId: record['order_id'],
         amount: grossEarnings,
@@ -297,6 +525,7 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
         title: title,
         message: message,
         timestamp: DateTime.tryParse(record['updated_at'] ?? '') ?? DateTime.now(),
+        isRead: isRead, // Use determined read status
         metadata: {
           'base_commission': record['base_commission'],
           'distance_fee': record['distance_fee'],
@@ -319,11 +548,17 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
       // Check if notification already exists
       final existingIndex = currentNotifications.indexWhere((n) => n.id == notification.id);
       if (existingIndex >= 0) {
-        // Update existing notification
-        currentNotifications[existingIndex] = notification;
+        // Update existing notification but preserve read status
+        final existingNotification = currentNotifications[existingIndex];
+        final updatedNotification = notification.copyWith(
+          isRead: existingNotification.isRead, // Preserve read status
+        );
+        currentNotifications[existingIndex] = updatedNotification;
+        debugPrint('📝 [EARNINGS-REALTIME] Updated existing notification ${notification.id}, preserving isRead: ${existingNotification.isRead}');
       } else {
-        // Add new notification
+        // Add new notification (will be unread by default)
         currentNotifications.insert(0, notification);
+        debugPrint('➕ [EARNINGS-REALTIME] Added new notification ${notification.id}');
       }
     }
 
@@ -341,17 +576,34 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
       lastUpdate: DateTime.now(),
     );
 
-    debugPrint('DriverEarningsRealtimeNotifier: Added ${newNotifications.length} notifications, total: ${currentNotifications.length}, unread: $unreadCount');
+    debugPrint('✅ [EARNINGS-REALTIME] Final state: ${currentNotifications.length} total, $unreadCount unread (processed ${newNotifications.length} new notifications)');
   }
 
   /// Mark notification as read
   void markAsRead(String notificationId) {
+    debugPrint('📖 [EARNINGS-REALTIME] Marking notification $notificationId as read');
+
+    final previousUnreadCount = state.unreadCount;
+    bool notificationFound = false;
+
     final updatedNotifications = state.notifications.map((notification) {
       if (notification.id == notificationId) {
-        return notification.copyWith(isRead: true);
+        notificationFound = true;
+        if (!notification.isRead) {
+          debugPrint('📖 [EARNINGS-REALTIME] Notification $notificationId was unread, marking as read');
+          return notification.copyWith(isRead: true);
+        } else {
+          debugPrint('📖 [EARNINGS-REALTIME] Notification $notificationId was already read');
+          return notification;
+        }
       }
       return notification;
     }).toList();
+
+    if (!notificationFound) {
+      debugPrint('⚠️ [EARNINGS-REALTIME] Notification $notificationId not found in current notifications');
+      return;
+    }
 
     final unreadCount = updatedNotifications.where((n) => !n.isRead).length;
 
@@ -360,11 +612,17 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
       unreadCount: unreadCount,
     );
 
-    debugPrint('DriverEarningsRealtimeNotifier: Marked notification $notificationId as read');
+    // Persist read status locally
+    _persistNotificationReadStatus(notificationId, true);
+
+    debugPrint('✅ [EARNINGS-REALTIME] Marked notification $notificationId as read. Unread count: $previousUnreadCount → $unreadCount');
   }
 
   /// Mark all notifications as read
   void markAllAsRead() {
+    final previousUnreadCount = state.unreadCount;
+    debugPrint('📖 [EARNINGS-REALTIME] Marking all $previousUnreadCount unread notifications as read');
+
     final updatedNotifications = state.notifications.map((notification) {
       return notification.copyWith(isRead: true);
     }).toList();
@@ -374,7 +632,12 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
       unreadCount: 0,
     );
 
-    debugPrint('DriverEarningsRealtimeNotifier: Marked all notifications as read');
+    // Persist read status for all notifications
+    for (final notification in updatedNotifications) {
+      _persistNotificationReadStatus(notification.id, true);
+    }
+
+    debugPrint('✅ [EARNINGS-REALTIME] Marked all notifications as read. Unread count: $previousUnreadCount → 0');
   }
 
   /// Clear all notifications
@@ -413,22 +676,55 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
     });
   }
 
-  /// Reconnect to real-time subscription
+  /// Reconnect to real-time subscription (legacy method - now handled by connection manager)
   void _reconnect() {
-    debugPrint('DriverEarningsRealtimeNotifier: Attempting to reconnect...');
+    debugPrint('🔄 [EARNINGS-REALTIME] Legacy reconnect called - delegating to connection manager');
 
-    _earningsSubscription?.cancel();
-    _earningsSubscription = null;
-
-    _initializeRealtimeSubscription();
+    // Delegate to connection manager
+    _connectionManager.reconnectAll();
   }
 
-  /// Manually refresh notifications
+  /// Manually refresh notifications with enhanced logging and rate limiting
   Future<void> refresh() async {
-    debugPrint('DriverEarningsRealtimeNotifier: Manual refresh requested');
+    // Delegate to rate-limited refresh method
+    await _refreshWithRateLimit();
+  }
+
+  /// Rate-limited refresh implementation with intelligent optimization
+  Future<void> _refreshWithRateLimit() async {
+    final now = DateTime.now();
+
+    // Check if refresh is already in progress
+    if (_isRefreshInProgress) {
+      debugPrint('⏸️ [EARNINGS-REALTIME] Refresh already in progress, skipping');
+      return;
+    }
+
+    // Check rate limiting
+    if (_lastRefreshTime != null) {
+      final timeSinceLastRefresh = now.difference(_lastRefreshTime!);
+      final minInterval = _getOptimalRefreshDelay();
+
+      if (timeSinceLastRefresh < minInterval) {
+        debugPrint('⏸️ [EARNINGS-REALTIME] Rate limited - too soon since last refresh (${timeSinceLastRefresh.inSeconds}s < ${minInterval.inSeconds}s)');
+        return;
+      }
+    }
+
+    _isRefreshInProgress = true;
+    _lastRefreshTime = now;
+
+    debugPrint('🔄 [EARNINGS-REALTIME] Rate-limited refresh started for driver: $_driverId (attempt $_consecutiveRefreshCount)');
+
+    final startTime = DateTime.now();
 
     try {
+      // Skip connection health check to prevent feedback loop
+      // The real-time subscription will handle connection issues
+      debugPrint('📊 [EARNINGS-REALTIME] Skipping connection health check to prevent refresh loops');
+
       // Get recent earnings to create notifications
+      debugPrint('📊 [EARNINGS-REALTIME] Fetching recent earnings from service');
       final recentEarnings = await _earningsService.getDriverEarnings(
         _driverId,
         startDate: DateTime.now().subtract(const Duration(days: 1)),
@@ -436,8 +732,11 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
         useCache: false,
       );
 
-      final notifications = recentEarnings.map((earning) {
-        return _createNotificationFromEarningsRecord({
+      debugPrint('📊 [EARNINGS-REALTIME] Retrieved ${recentEarnings.length} earnings records');
+
+      final notifications = <EarningsNotification>[];
+      for (final earning in recentEarnings) {
+        final notification = await _createNotificationFromEarningsRecord({
           'id': earning.id,
           'driver_id': earning.driverId,
           'order_id': earning.orderId,
@@ -452,17 +751,58 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
           'completion_bonus': 0,
           'rating_bonus': 0,
         });
-      }).where((n) => n != null).cast<EarningsNotification>().toList();
-
-      if (notifications.isNotEmpty) {
-        _addNotifications(notifications);
+        if (notification != null) {
+          notifications.add(notification);
+        }
       }
 
-      state = state.copyWith(error: null);
+      if (notifications.isNotEmpty) {
+        debugPrint('📨 [EARNINGS-REALTIME] Adding ${notifications.length} notifications');
+        _addNotifications(notifications);
+      } else {
+        debugPrint('📭 [EARNINGS-REALTIME] No new notifications to add');
+      }
+
+      final duration = DateTime.now().difference(startTime);
+      state = state.copyWith(
+        lastUpdate: DateTime.now(),
+        error: null,
+      );
+
+      debugPrint('✅ [EARNINGS-REALTIME] Rate-limited refresh completed in ${duration.inMilliseconds}ms with ${notifications.length} notifications');
+
+      // Reset consecutive refresh count on successful refresh
+      _consecutiveRefreshCount = 0;
     } catch (e) {
-      debugPrint('DriverEarningsRealtimeNotifier: Error during refresh: $e');
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('❌ [EARNINGS-REALTIME] Rate-limited refresh failed after ${duration.inMilliseconds}ms: $e');
       state = state.copyWith(error: 'Failed to refresh notifications: $e');
+
+      // Increment consecutive refresh count on failure
+      _consecutiveRefreshCount++;
+    } finally {
+      _isRefreshInProgress = false;
     }
+  }
+
+  /// Get optimal refresh delay based on app state and driver activity
+  Duration _getOptimalRefreshDelay() {
+    // Use longer intervals for background or inactive states
+    if (_lifecycleService.wasRecentlyBackgrounded) {
+      return _backgroundRefreshInterval;
+    }
+
+    // Use shorter intervals for active states
+    return _activeRefreshInterval;
+  }
+
+  /// Reset consecutive refresh count after a delay to allow recovery
+  void _resetRefreshCountAfterDelay() {
+    _refreshRateLimitTimer?.cancel();
+    _refreshRateLimitTimer = Timer(const Duration(minutes: 5), () {
+      debugPrint('🔄 [EARNINGS-REALTIME] Resetting consecutive refresh count after cooldown period');
+      _consecutiveRefreshCount = 0;
+    });
   }
 
   /// Get notifications by type
@@ -484,12 +824,51 @@ class DriverEarningsRealtimeNotifier extends StateNotifier<EarningsNotifications
   /// Get unread count
   int get unreadCount => state.unreadCount;
 
+  /// Persist notification read status to local storage
+  Future<void> _persistNotificationReadStatus(String notificationId, bool isRead) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'earnings_notification_read_${_driverId}_$notificationId';
+      await prefs.setBool(key, isRead);
+      debugPrint('💾 [EARNINGS-REALTIME] Persisted read status for notification $notificationId: $isRead');
+    } catch (e) {
+      debugPrint('❌ [EARNINGS-REALTIME] Failed to persist read status for notification $notificationId: $e');
+    }
+  }
+
+  /// Load notification read status from local storage
+  Future<bool> _loadNotificationReadStatus(String notificationId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'earnings_notification_read_${_driverId}_$notificationId';
+      final isRead = prefs.getBool(key) ?? false;
+      return isRead;
+    } catch (e) {
+      debugPrint('❌ [EARNINGS-REALTIME] Failed to load read status for notification $notificationId: $e');
+      return false;
+    }
+  }
+
   @override
   void dispose() {
-    debugPrint('DriverEarningsRealtimeNotifier: Disposing...');
+    debugPrint('🗑️ [EARNINGS-REALTIME] Disposing enhanced earnings realtime notifier');
 
-    _earningsSubscription?.cancel();
+    // Cancel connection health monitoring
+    _connectionHealthSubscription?.cancel();
+
+    // Cancel lifecycle monitoring
+    _lifecycleSubscription?.cancel();
+
+    // Unsubscribe from connection manager
+    if (_subscriptionId != null) {
+      _connectionManager.unsubscribe(_subscriptionId!);
+    }
+
+    // Cancel cleanup timer
     _cleanupTimer?.cancel();
+
+    // Cancel refresh rate limit timer
+    _refreshRateLimitTimer?.cancel();
 
     super.dispose();
   }

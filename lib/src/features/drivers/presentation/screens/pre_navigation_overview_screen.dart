@@ -10,7 +10,9 @@ import '../widgets/navigation_app_selector.dart';
 import '../widgets/route_information_card.dart';
 import '../widgets/elevation_profile_widget.dart';
 import '../providers/navigation_location_providers.dart';
+import '../providers/enhanced_navigation_provider.dart';
 import '../../../../core/config/google_config.dart';
+import 'in_app_navigation_screen.dart';
 
 /// Pre-navigation overview screen that displays comprehensive route information
 /// before starting navigation to vendor or customer
@@ -202,9 +204,8 @@ class _PreNavigationOverviewScreenState extends ConsumerState<PreNavigationOverv
 
     try {
       if (_selectedAppId == 'in_app') {
-        // Use in-app navigation
-        widget.onNavigationStarted();
-        Navigator.of(context).pop();
+        // Use in-app navigation - launch the new InAppNavigationScreen
+        await _launchInAppNavigation();
       } else {
         // Launch external navigation app
         final success = await NavigationAppService.launchNavigation(
@@ -234,6 +235,69 @@ class _PreNavigationOverviewScreenState extends ConsumerState<PreNavigationOverv
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  /// Launch the new InAppNavigationScreen for turn-by-turn navigation
+  Future<void> _launchInAppNavigation() async {
+    if (_routeInfo == null) return;
+
+    try {
+      debugPrint('🧭 [PRE-NAV] Launching in-app navigation');
+
+      // Start navigation session using the enhanced navigation provider
+      final navNotifier = ref.read(enhancedNavigationProvider.notifier);
+
+      final success = await navNotifier.startNavigation(
+        origin: _routeInfo!.origin,
+        destination: _routeInfo!.destination,
+        orderId: widget.order.id,
+        destinationName: _getDestinationName(),
+      );
+
+      if (success) {
+        // Get the navigation session
+        final navState = ref.read(enhancedNavigationProvider);
+        final session = navState.currentSession;
+
+        if (session != null && mounted) {
+          // Launch the InAppNavigationScreen
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => InAppNavigationScreen(
+                session: session,
+                onNavigationComplete: () {
+                  debugPrint('🧭 [PRE-NAV] In-app navigation completed');
+                  widget.onNavigationStarted();
+                },
+                onNavigationCancelled: () {
+                  debugPrint('🧭 [PRE-NAV] In-app navigation cancelled');
+                },
+              ),
+            ),
+          );
+
+          // Navigation screen closed, pop this screen too
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        } else {
+          throw Exception('Failed to create navigation session');
+        }
+      } else {
+        throw Exception('Failed to start navigation');
+      }
+    } catch (e) {
+      debugPrint('❌ [PRE-NAV] Error launching in-app navigation: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start in-app navigation: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
     }
   }
 

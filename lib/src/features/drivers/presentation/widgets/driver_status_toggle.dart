@@ -22,20 +22,20 @@ class DriverStatusToggle extends ConsumerWidget {
 
   Widget _buildToggle(ThemeData theme, String status, DriverStatusNotifier notifier) {
     final isOnline = status == 'online';
-    
+
     return GestureDetector(
       onTap: () => notifier.toggleStatus(),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Ultra minimal padding
         decoration: BoxDecoration(
-          color: isOnline 
+          color: isOnline
               ? Colors.green.withValues(alpha: 0.2)
               : Colors.orange.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(10), // Smaller border radius
           border: Border.all(
             color: isOnline ? Colors.green : Colors.orange,
-            width: 2,
+            width: 1, // Thinner border
           ),
         ),
         child: Row(
@@ -43,26 +43,27 @@ class DriverStatusToggle extends ConsumerWidget {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              width: 12,
-              height: 12,
+              width: 6, // Even smaller dot
+              height: 6,
               decoration: BoxDecoration(
                 color: isOnline ? Colors.green : Colors.orange,
                 shape: BoxShape.circle,
                 boxShadow: isOnline ? [
                   BoxShadow(
                     color: Colors.green.withValues(alpha: 0.5),
-                    blurRadius: 8,
-                    spreadRadius: 2,
+                    blurRadius: 2, // Smaller shadow
+                    spreadRadius: 0.5,
                   ),
                 ] : null,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 3), // Even smaller spacing
             Text(
-              isOnline ? 'ONLINE' : 'OFFLINE',
-              style: theme.textTheme.labelMedium?.copyWith(
+              isOnline ? 'ON' : 'OFF', // Shorter text
+              style: theme.textTheme.labelSmall?.copyWith( // Smaller text
                 color: theme.colorScheme.onPrimary,
                 fontWeight: FontWeight.bold,
+                fontSize: 9, // Even smaller font size
               ),
             ),
           ],
@@ -73,34 +74,35 @@ class DriverStatusToggle extends ConsumerWidget {
 
   Widget _buildLoadingToggle(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Ultra minimal padding
       decoration: BoxDecoration(
         color: theme.colorScheme.onPrimary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10), // Smaller border radius
         border: Border.all(
           color: theme.colorScheme.onPrimary.withValues(alpha: 0.3),
-          width: 2,
+          width: 1, // Thinner border
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 12,
-            height: 12,
+            width: 6, // Even smaller loading indicator
+            height: 6,
             child: CircularProgressIndicator(
-              strokeWidth: 2,
+              strokeWidth: 1,
               valueColor: AlwaysStoppedAnimation<Color>(
                 theme.colorScheme.onPrimary,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 3), // Even smaller spacing
           Text(
-            'LOADING...',
-            style: theme.textTheme.labelMedium?.copyWith(
+            '...',  // Much shorter text
+            style: theme.textTheme.labelSmall?.copyWith( // Smaller text
               color: theme.colorScheme.onPrimary,
               fontWeight: FontWeight.bold,
+              fontSize: 9, // Even smaller font size
             ),
           ),
         ],
@@ -110,13 +112,13 @@ class DriverStatusToggle extends ConsumerWidget {
 
   Widget _buildErrorToggle(ThemeData theme, String error) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Ultra minimal padding
       decoration: BoxDecoration(
         color: Colors.red.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10), // Smaller border radius
         border: Border.all(
           color: Colors.red,
-          width: 2,
+          width: 1, // Thinner border
         ),
       ),
       child: Row(
@@ -124,15 +126,16 @@ class DriverStatusToggle extends ConsumerWidget {
         children: [
           const Icon(
             Icons.error_outline,
-            size: 12,
+            size: 6, // Even smaller icon
             color: Colors.red,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 3), // Even smaller spacing
           Text(
-            'ERROR',
-            style: theme.textTheme.labelMedium?.copyWith(
+            'ERR', // Shorter text
+            style: theme.textTheme.labelSmall?.copyWith( // Smaller text
               color: theme.colorScheme.onPrimary,
               fontWeight: FontWeight.bold,
+              fontSize: 9, // Even smaller font size
             ),
           ),
         ],

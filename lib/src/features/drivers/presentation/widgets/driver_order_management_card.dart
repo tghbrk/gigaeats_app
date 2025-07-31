@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../orders/data/models/order.dart';
 import '../../../orders/data/models/driver_order_state_machine.dart';
@@ -10,9 +12,11 @@ import '../../data/models/delivery_confirmation.dart';
 import '../providers/driver_orders_management_providers.dart';
 import '../providers/driver_realtime_providers.dart';
 import '../providers/enhanced_driver_workflow_providers.dart';
+import '../providers/enhanced_navigation_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'driver_order_details_dialog.dart';
 import 'driver_delivery_confirmation_dialog.dart';
+import 'navigation_method_selection_dialog.dart';
 
 /// Order card widget for driver order management with context-specific actions
 class DriverOrderManagementCard extends ConsumerStatefulWidget {
@@ -646,13 +650,13 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
     debugPrint('🚗 [DRIVER-CARD] Updating driver workflow status to: $status');
 
     try {
-      // Handle navigation actions before status update
+      // Handle navigation actions before status update using Enhanced In-App Navigation
       if (status == 'on_route_to_customer') {
-        debugPrint('🚗 [DRIVER-CARD] Opening maps for navigation to customer');
-        await _openMapsToCustomer();
+        debugPrint('🚗 [DRIVER-CARD] Starting Enhanced In-App Navigation to customer');
+        await _startEnhancedNavigationToCustomer();
       } else if (status == 'on_route_to_vendor') {
-        debugPrint('🚗 [DRIVER-CARD] Opening maps for navigation to vendor');
-        await _openMapsToVendor();
+        debugPrint('🚗 [DRIVER-CARD] Starting Enhanced In-App Navigation to vendor');
+        await _startEnhancedNavigationToVendor();
       }
 
       // ✅ CRITICAL FIX: Handle delivery completion with photo capture
@@ -897,41 +901,345 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
     return widget.order.items.fold<int>(0, (sum, item) => sum + item.quantity);
   }
 
-  /// Open maps for navigation to customer
-  Future<void> _openMapsToCustomer() async {
+  /// Show navigation method selection for customer
+  Future<void> _startEnhancedNavigationToCustomer() async {
     try {
-      final address = widget.order.deliveryAddress.fullAddress;
-      final encodedAddress = Uri.encodeComponent(address);
-      final url = 'https://www.google.com/maps/search/?api=1&query=$encodedAddress';
+      debugPrint('🧭 [DRIVER-CARD] ═══ NAVIGATION TO CUSTOMER START ═══');
+      debugPrint('🧭 [DRIVER-CARD] Order ID: ${widget.order.id}');
+      debugPrint('🧭 [DRIVER-CARD] Customer address: ${widget.order.deliveryAddress.fullAddress}');
 
-      debugPrint('🚗 [DRIVER-CARD] Opening maps to customer: $address');
+      // TODO: Convert address to coordinates using geocoding service
+      // For now, use a placeholder coordinate
+      const destination = LatLng(3.1390, 101.6869); // Kuala Lumpur placeholder
+      const destinationName = 'Customer Location';
 
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      } else {
-        debugPrint('🚗 [DRIVER-CARD] Could not launch maps URL: $url');
+      debugPrint('🧭 [DRIVER-CARD] Showing navigation method selection dialog');
+
+      // Show navigation method selection dialog
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => NavigationMethodSelectionDialog(
+            destinationName: destinationName,
+            destinationLat: destination.latitude,
+            destinationLng: destination.longitude,
+            onInAppNavigationSelected: () async {
+              debugPrint('🧭 [DRIVER-CARD] User selected Enhanced In-App Navigation to customer');
+              await _startEnhancedInAppNavigationToCustomer();
+            },
+            onExternalNavigationSelected: () {
+              debugPrint('🧭 [DRIVER-CARD] User selected external navigation to customer');
+              // External navigation is handled by the dialog itself
+            },
+          ),
+        );
       }
+
+      debugPrint('🧭 [DRIVER-CARD] ═══ NAVIGATION TO CUSTOMER END ═══');
     } catch (e) {
-      debugPrint('🚗 [DRIVER-CARD] Error opening maps to customer: $e');
+      debugPrint('❌ [DRIVER-CARD] Error showing navigation selection for customer: $e');
+
+      // Fallback to external Google Maps
+      await _fallbackToExternalMaps(widget.order.deliveryAddress.fullAddress, 'Customer');
     }
   }
 
-  /// Open maps for navigation to vendor
-  Future<void> _openMapsToVendor() async {
+  /// Start Enhanced In-App Navigation to customer (called after user selection)
+  Future<void> _startEnhancedInAppNavigationToCustomer() async {
     try {
-      final address = widget.order.vendorName; // Use vendor name as fallback for address
+      debugPrint('🧭 [DRIVER-CARD] ═══ ENHANCED IN-APP NAVIGATION TO CUSTOMER START ═══');
+
+      // TODO: Convert address to coordinates using geocoding service
+      const destination = LatLng(3.1390, 101.6869); // Kuala Lumpur placeholder
+      const origin = LatLng(3.1390, 101.6869); // Placeholder current location
+      const destinationName = 'Customer Location';
+
+      debugPrint('🧭 [DRIVER-CARD] Destination: ${destination.latitude}, ${destination.longitude}');
+
+      // Get the navigation provider
+      final navigationProvider = ref.read(enhancedNavigationProvider.notifier);
+      debugPrint('🧭 [DRIVER-CARD] Navigation provider obtained');
+
+      // Clear any previous navigation state
+      debugPrint('🧭 [DRIVER-CARD] Clearing previous navigation state');
+      await navigationProvider.stopNavigation();
+
+      // Start Enhanced In-App Navigation with comprehensive error handling
+      debugPrint('🧭 [DRIVER-CARD] Starting navigation session...');
+      final success = await navigationProvider.startNavigation(
+        origin: origin,
+        destination: destination,
+        orderId: widget.order.id,
+        destinationName: destinationName,
+      );
+
+      if (success) {
+        debugPrint('✅ [DRIVER-CARD] Enhanced In-App Navigation to customer started successfully');
+
+        // Wait longer to ensure state is properly set before navigation
+        debugPrint('🧭 [DRIVER-CARD] Waiting for navigation state to stabilize...');
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Verify navigation state multiple times with retries
+        bool navigationReady = false;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+          final navState = ref.read(enhancedNavigationProvider);
+          debugPrint('🧭 [DRIVER-CARD] Navigation state check $attempt/3: isNavigating=${navState.isNavigating}, session=${navState.currentSession?.id}, error=${navState.error}');
+
+          if (navState.isNavigating && navState.currentSession != null && navState.error == null) {
+            navigationReady = true;
+            break;
+          }
+
+          if (attempt < 3) {
+            debugPrint('🧭 [DRIVER-CARD] Navigation state not ready, waiting 200ms before retry...');
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+        }
+
+        // Navigate to the in-app navigation screen
+        if (mounted && navigationReady) {
+          debugPrint('🧭 [DRIVER-CARD] Navigation state verified, navigating to /driver/dashboard/navigation screen');
+          context.go('/driver/dashboard/navigation');
+        } else {
+          final navState = ref.read(enhancedNavigationProvider);
+          debugPrint('❌ [DRIVER-CARD] Navigation state not ready after retries: mounted=$mounted, isNavigating=${navState.isNavigating}, session=${navState.currentSession?.id}, error=${navState.error}');
+
+          // Show error to user
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Navigation setup failed: ${navState.error ?? "Unknown error"}'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+
+          // Fallback to external Google Maps
+          await _fallbackToExternalMaps(widget.order.deliveryAddress.fullAddress, 'Customer');
+        }
+      } else {
+        debugPrint('❌ [DRIVER-CARD] Failed to start Enhanced In-App Navigation to customer');
+
+        // Get error details from provider
+        final navState = ref.read(enhancedNavigationProvider);
+        debugPrint('❌ [DRIVER-CARD] Navigation error: ${navState.error}');
+
+        // Show error to user
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Navigation failed: ${navState.error ?? "Unknown error"}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Fallback to external Google Maps
+        await _fallbackToExternalMaps(widget.order.deliveryAddress.fullAddress, 'Customer');
+      }
+
+      debugPrint('🧭 [DRIVER-CARD] ═══ ENHANCED IN-APP NAVIGATION TO CUSTOMER END ═══');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [DRIVER-CARD] Error starting Enhanced In-App Navigation to customer: $e');
+      debugPrint('❌ [DRIVER-CARD] Stack trace: $stackTrace');
+
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Fallback to external Google Maps
+      await _fallbackToExternalMaps(widget.order.deliveryAddress.fullAddress, 'Customer');
+    }
+  }
+
+  /// Show navigation method selection for vendor
+  Future<void> _startEnhancedNavigationToVendor() async {
+    try {
+      debugPrint('🧭 [DRIVER-CARD] ═══ NAVIGATION TO VENDOR START ═══');
+      debugPrint('🧭 [DRIVER-CARD] Order ID: ${widget.order.id}');
+      debugPrint('🧭 [DRIVER-CARD] Vendor name: ${widget.order.vendorName}');
+
+      // TODO: Convert address to coordinates using geocoding service
+      // For now, use a placeholder coordinate
+      const destination = LatLng(3.139, 101.6869); // Kuala Lumpur placeholder
+      final destinationName = widget.order.vendorName;
+
+      debugPrint('🧭 [DRIVER-CARD] Showing navigation method selection dialog');
+
+      // Show navigation method selection dialog
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => NavigationMethodSelectionDialog(
+            destinationName: destinationName,
+            destinationLat: destination.latitude,
+            destinationLng: destination.longitude,
+            onInAppNavigationSelected: () async {
+              debugPrint('🧭 [DRIVER-CARD] User selected Enhanced In-App Navigation to vendor');
+              await _startEnhancedInAppNavigationToVendor();
+            },
+            onExternalNavigationSelected: () {
+              debugPrint('🧭 [DRIVER-CARD] User selected external navigation to vendor');
+              // External navigation is handled by the dialog itself
+            },
+          ),
+        );
+      }
+
+      debugPrint('🧭 [DRIVER-CARD] ═══ NAVIGATION TO VENDOR END ═══');
+    } catch (e) {
+      debugPrint('❌ [DRIVER-CARD] Error showing navigation selection for vendor: $e');
+
+      // Fallback to external Google Maps
+      await _fallbackToExternalMaps(widget.order.vendorName, 'Vendor');
+    }
+  }
+
+  /// Start Enhanced In-App Navigation to vendor (called after user selection)
+  Future<void> _startEnhancedInAppNavigationToVendor() async {
+    try {
+      debugPrint('🧭 [DRIVER-CARD] ═══ ENHANCED IN-APP NAVIGATION TO VENDOR START ═══');
+
+      // TODO: Convert address to coordinates using geocoding service
+      const destination = LatLng(3.139, 101.6869); // Kuala Lumpur placeholder
+      const origin = LatLng(3.1390, 101.6869); // Placeholder current location
+      final destinationName = widget.order.vendorName;
+
+      // Get the navigation provider
+      final navigationProvider = ref.read(enhancedNavigationProvider.notifier);
+      debugPrint('🧭 [DRIVER-CARD] Navigation provider obtained');
+
+      // Clear any previous navigation state
+      debugPrint('🧭 [DRIVER-CARD] Clearing previous navigation state');
+      await navigationProvider.stopNavigation();
+
+      // Start Enhanced In-App Navigation with comprehensive error handling
+      debugPrint('🧭 [DRIVER-CARD] Starting navigation session...');
+      final success = await navigationProvider.startNavigation(
+        origin: origin,
+        destination: destination,
+        orderId: widget.order.id,
+        destinationName: destinationName,
+      );
+
+      if (success) {
+        debugPrint('✅ [DRIVER-CARD] Enhanced In-App Navigation to vendor started successfully');
+
+        // Wait longer to ensure state is properly set before navigation
+        debugPrint('🧭 [DRIVER-CARD] Waiting for navigation state to stabilize...');
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Verify navigation state multiple times with retries
+        bool navigationReady = false;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+          final navState = ref.read(enhancedNavigationProvider);
+          debugPrint('🧭 [DRIVER-CARD] Navigation state check $attempt/3: isNavigating=${navState.isNavigating}, session=${navState.currentSession?.id}, error=${navState.error}');
+
+          if (navState.isNavigating && navState.currentSession != null && navState.error == null) {
+            navigationReady = true;
+            break;
+          }
+
+          if (attempt < 3) {
+            debugPrint('🧭 [DRIVER-CARD] Navigation state not ready, waiting 200ms before retry...');
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+        }
+
+        // Navigate to the in-app navigation screen
+        if (mounted && navigationReady) {
+          debugPrint('🧭 [DRIVER-CARD] Navigation state verified, navigating to /driver/dashboard/navigation screen');
+          context.go('/driver/dashboard/navigation');
+        } else {
+          final navState = ref.read(enhancedNavigationProvider);
+          debugPrint('❌ [DRIVER-CARD] Navigation state not ready after retries: mounted=$mounted, isNavigating=${navState.isNavigating}, session=${navState.currentSession?.id}, error=${navState.error}');
+
+          // Show error to user
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Navigation setup failed: ${navState.error ?? "Unknown error"}'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+
+          // Fallback to external Google Maps
+          await _fallbackToExternalMaps(widget.order.vendorName, 'Vendor');
+        }
+      } else {
+        debugPrint('❌ [DRIVER-CARD] Failed to start Enhanced In-App Navigation to vendor');
+
+        // Get error details from provider
+        final navState = ref.read(enhancedNavigationProvider);
+        debugPrint('❌ [DRIVER-CARD] Navigation error: ${navState.error}');
+
+        // Show error to user
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Navigation failed: ${navState.error ?? "Unknown error"}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Fallback to external Google Maps
+        await _fallbackToExternalMaps(widget.order.vendorName, 'Vendor');
+      }
+
+      debugPrint('🧭 [DRIVER-CARD] ═══ ENHANCED IN-APP NAVIGATION TO VENDOR END ═══');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [DRIVER-CARD] Error starting Enhanced In-App Navigation to vendor: $e');
+      debugPrint('❌ [DRIVER-CARD] Stack trace: $stackTrace');
+
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Fallback to external Google Maps
+      await _fallbackToExternalMaps(widget.order.vendorName, 'Vendor');
+    }
+  }
+
+  /// Fallback to external Google Maps when Enhanced In-App Navigation fails
+  Future<void> _fallbackToExternalMaps(String address, String locationType) async {
+    try {
+      debugPrint('🧭 [DRIVER-CARD] Falling back to external Google Maps for $locationType');
+
       final encodedAddress = Uri.encodeComponent(address);
       final url = 'https://www.google.com/maps/search/?api=1&query=$encodedAddress';
 
-      debugPrint('🚗 [DRIVER-CARD] Opening maps to vendor: $address');
+      debugPrint('🧭 [DRIVER-CARD] Opening external maps to $locationType: $address');
 
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       } else {
-        debugPrint('🚗 [DRIVER-CARD] Could not launch maps URL: $url');
+        debugPrint('❌ [DRIVER-CARD] Could not launch external maps URL: $url');
       }
     } catch (e) {
-      debugPrint('🚗 [DRIVER-CARD] Error opening maps to vendor: $e');
+      debugPrint('❌ [DRIVER-CARD] Error opening external maps to $locationType: $e');
     }
   }
 

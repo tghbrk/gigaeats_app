@@ -110,7 +110,7 @@ final driverOrderHistoryProvider = FutureProvider.family<List<Order>, String>((r
         .select('*, order_items(*), vendors(name, image_url)')
         .eq('assigned_driver_id', driverId)
         .eq('status', 'delivered')
-        .order('delivered_at', ascending: false)
+        .order('actual_delivery_time', ascending: false)
         .limit(50);
 
     return response.map((json) => Order.fromJson(json)).toList();
@@ -141,7 +141,7 @@ final driverStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     // Get all orders for this driver
     final response = await supabase
         .from('orders')
-        .select('id, total_amount, status, created_at, delivered_at')
+        .select('id, total_amount, status, created_at, actual_delivery_time')
         .eq('assigned_driver_id', driverId);
 
     final totalOrders = response.length;
@@ -168,9 +168,9 @@ final driverStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     double averageDeliveryTime = 0;
     if (completedOrders.isNotEmpty) {
       final totalDeliveryTime = completedOrders.fold<int>(0, (sum, order) {
-        if (order['delivered_at'] != null) {
+        if (order['actual_delivery_time'] != null) {
           final created = DateTime.parse(order['created_at']);
-          final delivered = DateTime.parse(order['delivered_at']);
+          final delivered = DateTime.parse(order['actual_delivery_time']);
           return sum + delivered.difference(created).inMinutes;
         }
         return sum;
@@ -259,7 +259,6 @@ class DriverOrderNotifier extends StateNotifier<AsyncValue<void>> {
           updateData['out_for_delivery_at'] = DateTime.now().toIso8601String();
           break;
         case OrderStatus.delivered:
-          updateData['delivered_at'] = DateTime.now().toIso8601String();
           updateData['actual_delivery_time'] = DateTime.now().toIso8601String();
           break;
         default:

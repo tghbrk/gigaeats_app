@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/driver_dashboard_providers.dart';
 import 'driver_status_toggle.dart';
+import '../../../../core/constants/app_constants.dart';
 
 /// Header widget for the driver dashboard with greeting, status, and quick stats
-class DriverDashboardHeader extends ConsumerWidget {
+class DriverDashboardHeader extends ConsumerStatefulWidget {
   const DriverDashboardHeader({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriverDashboardHeader> createState() => _DriverDashboardHeaderState();
+}
+
+class _DriverDashboardHeaderState extends ConsumerState<DriverDashboardHeader> {
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final authState = ref.watch(authStateProvider);
     final driverStatusAsync = ref.watch(currentDriverStatusProvider);
@@ -37,8 +45,10 @@ class DriverDashboardHeader extends ConsumerWidget {
           // Greeting and Status Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
+                flex: 3, // Give more space to the title area
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -55,12 +65,44 @@ class DriverDashboardHeader extends ConsumerWidget {
                         color: theme.colorScheme.onPrimary,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis, // Handle long names gracefully
+                      maxLines: 2, // Allow title to wrap to 2 lines if needed
                     ),
                   ],
                 ),
               ),
-              // Driver Status Toggle
-              const DriverStatusToggle(),
+              const SizedBox(width: 12), // Add spacing between title and actions
+              // Action Buttons Row - Simple and constrained
+              SizedBox(
+                width: 90, // Fixed width to prevent overflow
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Multi-Order Dashboard Button - Ultra compact
+                    SizedBox(
+                      width: 24, // Very small fixed width
+                      height: 24, // Very small fixed height
+                      child: IconButton(
+                        onPressed: () {
+                          debugPrint('🚛 [MULTI-ORDER-BUTTON] Multi-Order Dashboard button pressed');
+                          context.go(AppRoutes.driverMultiOrderDashboard);
+                        },
+                        icon: const Icon(Icons.route, size: 14), // Very small icon
+                        tooltip: 'Multi-Order',
+                        style: IconButton.styleFrom(
+                          backgroundColor: theme.colorScheme.onPrimary.withValues(alpha: 0.1),
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          padding: EdgeInsets.zero, // No padding
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 2), // Minimal spacing
+                    // Driver Status Toggle
+                    const DriverStatusToggle(),
+                  ],
+                ),
+              ),
             ],
           ),
           

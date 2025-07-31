@@ -130,13 +130,14 @@ class StatCard extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Icon(
                     icon,
-                    size: 32,
+                    size: 28, // Reduced from 32 to save space
                     color: cardColor,
                   ),
                   if (isLoading)
@@ -150,18 +151,22 @@ class StatCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
+              const SizedBox(height: 12), // Reduced from 16 to save space
+              Flexible(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2), // Reduced from 4 to save space
               if (isLoading)
                 Container(
-                  height: 24,
+                  height: 20, // Reduced from 24 to save space
                   width: 80,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
@@ -169,19 +174,27 @@ class StatCard extends StatelessWidget {
                   ),
                 )
               else
-                Text(
-                  value,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
+                Flexible(
+                  child: Text(
+                    value,
+                    style: theme.textTheme.headlineSmall?.copyWith( // Changed from headlineMedium to headlineSmall
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               if (subtitle != null && !isLoading) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                const SizedBox(height: 2), // Reduced from 4 to save space
+                Flexible(
+                  child: Text(
+                    subtitle!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

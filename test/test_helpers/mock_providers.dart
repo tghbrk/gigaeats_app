@@ -6,8 +6,9 @@ import 'package:gigaeats_app/src/features/drivers/presentation/providers/multi_o
 import 'package:gigaeats_app/src/features/drivers/presentation/providers/route_optimization_provider.dart';
 import 'package:gigaeats_app/src/features/drivers/presentation/providers/batch_analytics_provider.dart';
 import 'package:gigaeats_app/src/features/drivers/presentation/providers/enhanced_voice_navigation_provider.dart';
-import 'package:gigaeats_app/src/features/drivers/data/services/voice_navigation_service.dart';
+
 import 'package:gigaeats_app/src/features/drivers/data/models/route_optimization_models.dart';
+import 'package:gigaeats_app/src/features/drivers/data/models/traffic_models.dart';
 import 'package:gigaeats_app/src/features/drivers/data/models/batch_analytics_models.dart';
 import 'package:gigaeats_app/src/features/orders/data/models/order.dart';
 
@@ -317,7 +318,7 @@ class MockEnhancedVoiceNavigationNotifier extends StateNotifier<EnhancedVoiceNav
     final alert = TrafficAlert(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       message: message,
-      severity: severity ?? TrafficSeverity.moderate,
+      severity: severity ?? TrafficSeverity.medium,
       timestamp: DateTime.now(),
       isUrgent: isUrgent,
       wasAnnounced: true,

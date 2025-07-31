@@ -140,7 +140,7 @@ void main() {
           // Verify final delivery state
           final finalOrder = await DriverTestHelpers.getTestOrder(supabase, testOrderId);
           expect(finalOrder['status'], equals('delivered'));
-          expect(finalOrder['delivered_at'], isNotNull);
+          expect(finalOrder['actual_delivery_time'], isNotNull);
 
           DriverWorkflowLogger.logDatabaseOperation(
             operation: 'complete_workflow_test_success',
@@ -533,7 +533,7 @@ void main() {
           expect(order['updated_at'], isNotNull);
 
           if (targetStatus == DriverOrderStatus.delivered) {
-            expect(order['delivered_at'], isNotNull);
+            expect(order['actual_delivery_time'], isNotNull);
           }
 
           currentStatus = targetStatus;

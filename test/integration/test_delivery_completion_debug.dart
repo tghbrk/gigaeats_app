@@ -69,12 +69,12 @@ Future<void> testOrderStatusUpdate(SupabaseClient supabase) async {
     // Check order status after update
     final updatedOrder = await supabase
         .from('orders')
-        .select('id, status, delivered_at, assigned_driver_id')
+        .select('id, status, actual_delivery_time, assigned_driver_id')
         .eq('id', testOrderId)
         .single();
-    
+
     print('✅ Updated order status: ${updatedOrder['status']}');
-    print('✅ Delivered at: ${updatedOrder['delivered_at']}');
+    print('✅ Delivered at: ${updatedOrder['actual_delivery_time']}');
     
   } catch (e) {
     print('❌ Error testing order status update: $e');

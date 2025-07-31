@@ -126,7 +126,7 @@ class DriverOrderRepository extends BaseRepository {
             created_at,
             assigned_at:updated_at,
             picked_up_at:preparation_started_at,
-            delivered_at:actual_delivery_time,
+            actual_delivery_time,
             vendor:vendors!orders_vendor_id_fkey(
               business_address
             ),
@@ -533,7 +533,7 @@ class DriverOrderRepository extends BaseRepository {
             created_at,
             assigned_at:updated_at,
             picked_up_at:preparation_started_at,
-            delivered_at:actual_delivery_time,
+            actual_delivery_time,
             vendor:vendors!orders_vendor_id_fkey(
               business_address
             ),
@@ -615,7 +615,7 @@ class DriverOrderRepository extends BaseRepository {
           'arrived_at_vendor_at': null,
           'picked_up_at': response['picked_up_at']?.toString(),
           'arrived_at_customer_at': null,
-          'delivered_at': response['delivered_at']?.toString(),
+          'delivered_at': response['actual_delivery_time']?.toString(),
           'created_at': response['created_at']?.toString() ?? DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         });
@@ -707,7 +707,7 @@ class DriverOrderRepository extends BaseRepository {
             created_at,
             assigned_at:updated_at,
             picked_up_at:preparation_started_at,
-            delivered_at:actual_delivery_time,
+            actual_delivery_time,
             vendor:vendors!orders_vendor_id_fkey(
               business_address
             ),
@@ -772,7 +772,7 @@ class DriverOrderRepository extends BaseRepository {
             created_at,
             assigned_at:updated_at,
             picked_up_at:preparation_started_at,
-            delivered_at:actual_delivery_time,
+            actual_delivery_time,
             vendor:vendors!orders_vendor_id_fkey(
               business_address
             ),

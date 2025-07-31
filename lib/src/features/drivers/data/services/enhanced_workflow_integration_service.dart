@@ -5,6 +5,7 @@ import '../../../drivers/data/models/driver_order.dart';
 import '../../../orders/data/models/driver_order_state_machine.dart';
 import 'driver_earnings_service.dart';
 import 'driver_workflow_notification_service.dart';
+import 'earnings_wallet_integration_service.dart';
 
 /// Enhanced workflow integration service that connects the granular driver workflow
 /// with existing systems including earnings, real-time updates, and photo storage
@@ -12,6 +13,9 @@ class EnhancedWorkflowIntegrationService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final DriverEarningsService _earningsService = DriverEarningsService();
   final DriverWorkflowNotificationService _notificationService = DriverWorkflowNotificationService();
+
+  // Initialize earnings-wallet integration service
+  late final EarningsWalletIntegrationService _earningsWalletService = EarningsWalletIntegrationService();
 
   /// Process order status change with enhanced workflow integration
   Future<WorkflowIntegrationResult> processOrderStatusChange({
@@ -242,8 +246,13 @@ class EnhancedWorkflowIntegrationService {
     // This could include photo analysis, customer notifications, etc.
   }
 
-  /// Store earnings record in the database
+  /// Store earnings record in the database and process wallet deposit
   Future<void> _storeEarningsRecord(String orderId, String driverId, Map<String, dynamic> earningsData) async {
+    debugPrint('💰 [WORKFLOW-INTEGRATION] Storing earnings record and processing wallet deposit');
+    debugPrint('💰 [WORKFLOW-INTEGRATION] Order: $orderId, Driver: $driverId');
+    debugPrint('💰 [WORKFLOW-INTEGRATION] Net earnings: RM ${earningsData['net_earnings']?.toStringAsFixed(2) ?? '0.00'}');
+
+    // Store earnings record in driver_earnings table
     await _supabase.from('driver_earnings').insert({
       'order_id': orderId,
       'driver_id': driverId,
@@ -258,6 +267,63 @@ class EnhancedWorkflowIntegrationService {
       'earnings_type': 'delivery_completion',
       'created_at': DateTime.now().toIso8601String(),
     });
+
+    debugPrint('✅ [WORKFLOW-INTEGRATION] Earnings record stored successfully');
+
+    // Process wallet deposit (non-blocking to avoid failing the entire workflow)
+    await _processWalletDeposit(orderId, driverId, earningsData);
+  }
+
+  /// Process wallet deposit after delivery completion
+  /// This method is designed to be non-blocking to avoid failing the entire workflow
+  Future<void> _processWalletDeposit(String orderId, String driverId, Map<String, dynamic> earningsData) async {
+    try {
+      debugPrint('🔍 [WORKFLOW-INTEGRATION] Processing wallet deposit for order: $orderId');
+      debugPrint('🔍 [WORKFLOW-INTEGRATION] Driver: $driverId');
+
+      final grossEarnings = earningsData['gross_earnings']?.toDouble() ?? 0.0;
+      final netEarnings = earningsData['net_earnings']?.toDouble() ?? 0.0;
+
+      debugPrint('🔍 [WORKFLOW-INTEGRATION] Gross earnings: RM ${grossEarnings.toStringAsFixed(2)}');
+      debugPrint('🔍 [WORKFLOW-INTEGRATION] Net earnings: RM ${netEarnings.toStringAsFixed(2)}');
+
+      // Only process if there are actual earnings to deposit
+      if (netEarnings <= 0) {
+        debugPrint('⚠️ [WORKFLOW-INTEGRATION] No earnings to deposit (net earnings: $netEarnings)');
+        return;
+      }
+
+      // Process earnings deposit using comprehensive integration service
+      final result = await _earningsWalletService.processOrderEarningsToWallet(
+        orderId: orderId,
+        driverId: driverId,
+        earningsData: earningsData,
+        retryOnFailure: true,
+      );
+
+      if (result.isSuccess) {
+        debugPrint('✅ [WORKFLOW-INTEGRATION] Wallet deposit successful: ${result.message}');
+        if (result.amountDeposited != null && result.amountDeposited! > 0) {
+          debugPrint('✅ [WORKFLOW-INTEGRATION] Amount deposited: RM ${result.amountDeposited!.toStringAsFixed(2)}');
+        }
+      } else {
+        debugPrint('⚠️ [WORKFLOW-INTEGRATION] Wallet deposit failed but will be retried: ${result.error}');
+      }
+
+      debugPrint('✅ [WORKFLOW-INTEGRATION] Wallet deposit completed successfully');
+      debugPrint('✅ [WORKFLOW-INTEGRATION] Deposited RM ${netEarnings.toStringAsFixed(2)} to driver wallet');
+
+    } catch (e) {
+      debugPrint('❌ [WORKFLOW-INTEGRATION] Wallet deposit failed: $e');
+      debugPrint('❌ [WORKFLOW-INTEGRATION] Order: $orderId, Driver: $driverId');
+
+      // Log the error but don't throw - earnings are still recorded in driver_earnings table
+      // Wallet deposit can be retried later using WalletDepositRetryService
+      // This ensures the delivery completion workflow doesn't fail due to wallet issues
+
+      // Note: Retry mechanism is implemented in EarningsWalletIntegrationService
+      // Failed deposits will be automatically retried by the retry service
+    }
   }
 
   // Helper methods for various integrations

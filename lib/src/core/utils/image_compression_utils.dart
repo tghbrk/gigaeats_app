@@ -137,6 +137,57 @@ class ImageCompressionUtils {
     }
   }
 
+  /// Compress image for document verification (high quality for OCR)
+  static Future<Uint8List> compressForDocumentVerification(
+    XFile imageFile, {
+    int maxWidth = 2048,
+    int maxHeight = 2048,
+    int quality = 90,
+    int maxSizeKB = 5000,
+  }) async {
+    try {
+      Uint8List imageBytes;
+      if (kIsWeb) {
+        imageBytes = await imageFile.readAsBytes();
+      } else {
+        imageBytes = await File(imageFile.path).readAsBytes();
+      }
+
+      img.Image? image = img.decodeImage(imageBytes);
+      if (image == null) {
+        throw Exception('Failed to decode image');
+      }
+
+      // Resize if needed while maintaining aspect ratio
+      if (image.width > maxWidth || image.height > maxHeight) {
+        image = img.copyResize(
+          image,
+          width: image.width > image.height ? maxWidth : null,
+          height: image.height > image.width ? maxHeight : null,
+          interpolation: img.Interpolation.cubic,
+        );
+      }
+
+      // Compress with high quality for OCR readability
+      Uint8List compressedBytes = Uint8List.fromList(
+        img.encodeJpg(image, quality: quality),
+      );
+
+      // If still too large, reduce quality gradually
+      int currentQuality = quality;
+      while (compressedBytes.length > maxSizeKB * 1024 && currentQuality > 60) {
+        currentQuality -= 10;
+        compressedBytes = Uint8List.fromList(
+          img.encodeJpg(image, quality: currentQuality),
+        );
+      }
+
+      return compressedBytes;
+    } catch (e) {
+      throw Exception('Failed to compress image for document verification: $e');
+    }
+  }
+
   /// Create thumbnail from image
   static Future<Uint8List> createThumbnail(
     XFile imageFile, {

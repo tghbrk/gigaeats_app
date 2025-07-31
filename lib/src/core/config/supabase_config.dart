@@ -40,4 +40,5 @@ class SupabaseConfig {
   static const String orderDocumentsBucket = 'order-documents';
   static const String deliveryProofsBucket = 'delivery-proofs';
   static const String pickupVerificationsBucket = 'pickup-verifications';
+  static const String driverVerificationDocumentsBucket = 'driver-verification-documents';
 }

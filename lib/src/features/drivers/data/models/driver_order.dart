@@ -80,6 +80,12 @@ enum DriverOrderStatus {
       case 'available': // Available orders should be treated as assigned for driver workflow
       case 'assigned':
         return DriverOrderStatus.assigned;
+      case 'ready': // Orders ready for pickup should be treated as assigned for driver workflow
+        return DriverOrderStatus.assigned;
+      case 'confirmed': // Confirmed orders should be treated as assigned for driver workflow
+        return DriverOrderStatus.assigned;
+      case 'preparing': // Orders being prepared should be treated as assigned for driver workflow
+        return DriverOrderStatus.assigned;
       case 'on_route_to_vendor':
         return DriverOrderStatus.onRouteToVendor;
       case 'arrived_at_vendor':

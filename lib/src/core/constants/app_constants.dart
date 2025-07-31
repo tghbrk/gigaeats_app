@@ -203,6 +203,10 @@ class AppRoutes {
   // Driver Routes
   static const String driverDashboard = '/driver/dashboard';
   static const String driverOrders = '/driver/dashboard/orders';
+  static const String driverWallet = '/driver/dashboard/wallet';
+  static const String driverWalletVerification = '/driver/wallet/verification';
+  static const String driverWalletVerificationUnified = '/driver/wallet/verification/unified';
+  static const String driverMultiOrderDashboard = '/driver/multi-order-dashboard';
 
   // Customer Routes (Phase 5: Role-based Routing)
   static const String customerDashboard = '/customer/dashboard';

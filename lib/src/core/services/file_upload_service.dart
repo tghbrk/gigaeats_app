@@ -186,6 +186,8 @@ class FileUploadService {
       'pickup-verifications',
       'kyc-documents',
       'order-documents',
+      'driver-verification-documents',
+      'wallet-verification-documents',
     };
     return privateBuckets.contains(bucketName);
   }

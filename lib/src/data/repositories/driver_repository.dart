@@ -148,7 +148,7 @@ class DriverRepository extends BaseRepository {
           updateData['arrived_at_customer_at'] = DateTime.now().toIso8601String();
           break;
         case DriverOrderStatus.delivered:
-          updateData['delivered_at'] = DateTime.now().toIso8601String();
+          updateData['actual_delivery_time'] = DateTime.now().toIso8601String();
           break;
         case DriverOrderStatus.cancelled:
         case DriverOrderStatus.failed:
@@ -343,7 +343,7 @@ class DriverRepository extends BaseRepository {
 
       final updateData = {
         'status': DriverOrderStatus.delivered.name,
-        'delivered_at': DateTime.now().toIso8601String(),
+        'actual_delivery_time': DateTime.now().toIso8601String(),
         'delivery_notes': deliveryNotes,
         'proof_image_url': proofImageUrl,
         'customer_rating': customerRating,

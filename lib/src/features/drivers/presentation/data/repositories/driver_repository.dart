@@ -193,7 +193,7 @@ class DriverRepository {
       // Get orders for this driver
       final ordersResponse = await _supabase
           .from('orders')
-          .select('id, total_amount, status, created_at, delivered_at')
+          .select('id, total_amount, status, created_at, actual_delivery_time')
           .eq('assigned_driver_id', driverId);
 
       final totalDeliveries = ordersResponse.length;
@@ -230,9 +230,9 @@ class DriverRepository {
       double averageDeliveryTime = 0;
       if (completedOrders.isNotEmpty) {
         final totalDeliveryTime = completedOrders.fold<int>(0, (sum, order) {
-          if (order['delivered_at'] != null) {
+          if (order['actual_delivery_time'] != null) {
             final created = DateTime.parse(order['created_at']);
-            final delivered = DateTime.parse(order['delivered_at']);
+            final delivered = DateTime.parse(order['actual_delivery_time']);
             return sum + delivered.difference(created).inMinutes;
           }
           return sum;

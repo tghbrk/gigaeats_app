@@ -136,7 +136,6 @@ class CustomerOrderService {
           updateData['out_for_delivery_at'] = DateTime.now().toIso8601String();
           break;
         case OrderStatus.delivered:
-          updateData['delivered_at'] = DateTime.now().toIso8601String();
           updateData['actual_delivery_time'] = DateTime.now().toIso8601String();
           break;
         case OrderStatus.cancelled:

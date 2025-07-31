@@ -13,6 +13,10 @@ import 'src/core/theme/app_theme.dart';
 import 'src/core/router/app_router.dart';
 import 'src/core/config/supabase_config.dart';
 import 'src/features/shared/providers/app_providers.dart' as app_providers;
+import 'src/core/services/app_lifecycle_service.dart';
+import 'src/core/services/realtime_connection_debug_logger.dart';
+import 'src/features/drivers/presentation/widgets/notifications/withdrawal_notification_overlay.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,6 +95,23 @@ void main() async {
   // Initialize SharedPreferences
   final sharedPreferences = await SharedPreferences.getInstance();
 
+  // Initialize enhanced connection services for real-time subscriptions
+  try {
+    // Initialize services
+    final appLifecycleService = AppLifecycleService();
+    final debugLogger = RealtimeConnectionDebugLogger();
+
+    await appLifecycleService.initialize();
+    await debugLogger.initialize(
+      minLogLevel: kDebugMode ? DebugLogLevel.verbose : DebugLogLevel.info,
+    );
+
+    debugPrint('✅ Enhanced real-time connection services initialized');
+  } catch (e) {
+    debugPrint('❌ Failed to initialize enhanced connection services: $e');
+    // Continue without enhanced services - fallback to basic functionality
+  }
+
   // Set preferred orientations (only for mobile platforms)
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations([
@@ -161,7 +182,9 @@ class GigaEatsApp extends ConsumerWidget {
               maxScaleFactor: 1.2,
             ),
           ),
-          child: child!,
+          child: WithdrawalNotificationOverlay(
+            child: child!,
+          ),
         );
       },
     );

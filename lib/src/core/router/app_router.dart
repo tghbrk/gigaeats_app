@@ -49,6 +49,9 @@ import '../../features/marketplace_wallet/presentation/screens/customer/customer
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_transaction_history_screen.dart';
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_settings_screen.dart';
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_spending_analytics_screen.dart';
+import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_verification_screen.dart';
+import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_document_upload_screen.dart';
+import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_instant_verification_screen.dart';
 import '../../features/customers/presentation/screens/loyalty_dashboard_screen.dart';
 import '../../features/payments/presentation/screens/sales_agent/commission_screen.dart';
 import '../../features/customer_support/presentation/screens/customer_support_screen.dart';
@@ -69,6 +72,21 @@ import '../../features/orders/presentation/screens/admin/admin_orders_screen.dar
 import '../../features/admin/presentation/screens/admin_reports_screen.dart';
 import '../../features/drivers/presentation/screens/driver_dashboard.dart';
 import '../../features/drivers/presentation/screens/driver_orders_management_screen.dart';
+import '../../features/drivers/presentation/screens/multi_order_driver_dashboard.dart';
+import '../../features/drivers/presentation/screens/in_app_navigation_screen.dart';
+import '../../features/drivers/presentation/screens/driver_wallet_dashboard_screen.dart';
+import '../../features/drivers/presentation/screens/driver_withdrawal_history_screen.dart';
+import '../../features/drivers/presentation/screens/driver_withdrawal_detail_screen.dart';
+import '../../features/drivers/presentation/screens/driver_withdrawal_request_screen.dart';
+import '../../features/drivers/presentation/screens/driver_wallet_transaction_history_screen.dart';
+import '../../features/drivers/presentation/screens/driver_wallet_transaction_detail_screen.dart';
+import '../../features/drivers/presentation/screens/driver_wallet_verification_screen.dart';
+import '../../features/drivers/presentation/screens/driver_unified_wallet_verification_screen.dart';
+import '../../features/drivers/presentation/screens/driver_bank_account_verification_screen.dart';
+import '../../features/drivers/presentation/screens/driver_bank_account_add_screen.dart';
+import '../../features/drivers/presentation/screens/driver_wallet_document_upload_screen.dart';
+import '../../features/drivers/presentation/screens/driver_wallet_instant_verification_screen.dart';
+import '../../features/drivers/presentation/providers/enhanced_navigation_provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/test_screens/data_test_screen.dart';
 import '../../shared/test_screens/test_menu_screen.dart';
@@ -494,6 +512,418 @@ List<RouteBase> _buildRoutes() {
           name: 'driver-orders-management',
           builder: (context, state) => const DriverOrdersManagementScreen(),
         ),
+        GoRoute(
+          path: 'wallet',
+          name: 'driver-wallet',
+          builder: (context, state) => const DriverWalletDashboardScreen(),
+          routes: [
+            GoRoute(
+              path: 'withdraw',
+              name: 'driver-wallet-withdraw',
+              builder: (context, state) => const DriverWithdrawalRequestScreen(),
+            ),
+            GoRoute(
+              path: 'withdrawals',
+              name: 'driver-wallet-withdrawals',
+              builder: (context, state) => const DriverWithdrawalHistoryScreen(),
+            ),
+            GoRoute(
+              path: 'withdrawal/:withdrawalId',
+              name: 'driver-wallet-withdrawal-detail',
+              builder: (context, state) {
+                final withdrawalId = state.pathParameters['withdrawalId']!;
+                return DriverWithdrawalDetailScreen(withdrawalId: withdrawalId);
+              },
+            ),
+            GoRoute(
+              path: 'transactions',
+              name: 'driver-wallet-transactions',
+              builder: (context, state) => const DriverWalletTransactionHistoryScreen(),
+            ),
+            GoRoute(
+              path: 'transaction/:transactionId',
+              name: 'driver-wallet-transaction-detail',
+              builder: (context, state) {
+                final transactionId = state.pathParameters['transactionId']!;
+                return DriverWalletTransactionDetailScreen(transactionId: transactionId);
+              },
+            ),
+            GoRoute(
+              path: 'settings',
+              name: 'driver-wallet-settings',
+              builder: (context, state) => const Scaffold(
+                body: Center(child: Text('Driver Wallet Settings - Coming Soon')),
+              ),
+            ),
+            GoRoute(
+              path: 'support',
+              name: 'driver-wallet-support',
+              builder: (context, state) => const Scaffold(
+                body: Center(child: Text('Driver Wallet Support - Coming Soon')),
+              ),
+            ),
+            GoRoute(
+              path: 'analytics',
+              name: 'driver-wallet-analytics',
+              builder: (context, state) => const Scaffold(
+                body: Center(child: Text('Driver Wallet Analytics - Coming Soon')),
+              ),
+            ),
+
+            GoRoute(
+              path: 'security',
+              name: 'driver-wallet-security',
+              builder: (context, state) => const Scaffold(
+                body: Center(child: Text('Driver Wallet Security - Coming Soon')),
+              ),
+            ),
+            GoRoute(
+              path: 'notifications',
+              name: 'driver-wallet-notifications',
+              builder: (context, state) => const Scaffold(
+                body: Center(child: Text('Driver Wallet Notifications - Coming Soon')),
+              ),
+            ),
+            GoRoute(
+              path: 'bank-accounts/add',
+              name: 'driver-wallet-bank-accounts-add',
+              builder: (context, state) => const DriverBankAccountAddScreen(),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: 'navigation',
+          name: 'driver-navigation',
+          builder: (context, state) {
+            debugPrint('🚨 [ROUTER] /driver/navigation OUTER builder called - BEFORE Consumer');
+            debugPrint('🚨 [ROUTER] Context: $context');
+            debugPrint('🚨 [ROUTER] State: $state');
+            debugPrint('🚨 [ROUTER] State path: ${state.fullPath}');
+
+            return Consumer(
+              builder: (context, ref, child) {
+                debugPrint('🚨 [ROUTER] /driver/navigation INNER Consumer builder called');
+                try {
+                  debugPrint('🧭 [ROUTER] /driver/navigation route builder called');
+
+                final navState = ref.watch(enhancedNavigationProvider);
+
+                debugPrint('🧭 [ROUTER] /driver/navigation accessed');
+                debugPrint('🧭 [ROUTER] Navigation state - isNavigating: ${navState.isNavigating}');
+                debugPrint('🧭 [ROUTER] Navigation state - currentSession: ${navState.currentSession?.id ?? 'null'}');
+                debugPrint('🧭 [ROUTER] Navigation state - error: ${navState.error ?? 'none'}');
+
+                // If no active navigation session, show loading screen briefly before redirecting
+                // This handles race conditions where state hasn't been set yet
+                if (!navState.isNavigating || navState.currentSession == null) {
+                  debugPrint('⚠️ [ROUTER] No active navigation session detected');
+                  debugPrint('⚠️ [ROUTER] isNavigating: ${navState.isNavigating}, currentSession: ${navState.currentSession?.id ?? 'null'}');
+                  debugPrint('⚠️ [ROUTER] Navigation error: ${navState.error ?? 'none'}');
+
+                  // Give a longer moment for state to update before redirecting
+                  Future.delayed(const Duration(milliseconds: 3000), () {
+                    if (context.mounted) {
+                      final updatedState = ref.read(enhancedNavigationProvider);
+                      debugPrint('🔄 [ROUTER] Rechecking navigation state after delay...');
+                      debugPrint('🔄 [ROUTER] Updated state - isNavigating: ${updatedState.isNavigating}, currentSession: ${updatedState.currentSession?.id ?? 'null'}');
+                      debugPrint('🔄 [ROUTER] Updated state - error: ${updatedState.error ?? 'none'}');
+
+                      if (!updatedState.isNavigating || updatedState.currentSession == null) {
+                        debugPrint('❌ [ROUTER] Still no navigation session after delay, redirecting to dashboard');
+                        debugPrint('❌ [ROUTER] Final error state: ${updatedState.error ?? 'No error reported'}');
+                        context.go('/driver/dashboard');
+                      }
+                    }
+                  });
+
+                  return Scaffold(
+                    backgroundColor: Colors.black,
+                    body: SafeArea(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Starting Navigation...',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Initializing Enhanced In-App Navigation',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                            if (navState.error != null) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 32),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red.shade300,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Navigation Setup Error',
+                                      style: TextStyle(
+                                        color: Colors.red.shade300,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      navState.error!,
+                                      style: TextStyle(
+                                        color: Colors.red.shade200,
+                                        fontSize: 12,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 32),
+                            ElevatedButton(
+                              onPressed: () {
+                                debugPrint('🔄 [ROUTER] User cancelled navigation loading');
+                                context.go('/driver/dashboard');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Cancel'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                debugPrint('✅ [ROUTER] Active navigation session found, attempting to render InAppNavigationScreen');
+                debugPrint('✅ [ROUTER] Session details: ID=${navState.currentSession!.id}, Status=${navState.currentSession!.status}');
+                debugPrint('✅ [ROUTER] Session origin: ${navState.currentSession!.origin}');
+                debugPrint('✅ [ROUTER] Session destination: ${navState.currentSession!.destination}');
+
+                // Validate session before rendering
+                if (navState.currentSession!.id.isEmpty) {
+                  debugPrint('❌ [ROUTER] Invalid navigation session ID');
+                  throw Exception('Invalid navigation session');
+                }
+
+                debugPrint('🧭 [ROUTER] Creating InAppNavigationScreen widget...');
+
+                try {
+                  // Validate session data before creating widget
+                  debugPrint('🔍 [ROUTER] Validating session data...');
+                  debugPrint('🔍 [ROUTER] Session ID: ${navState.currentSession!.id}');
+                  debugPrint('🔍 [ROUTER] Session status: ${navState.currentSession!.status}');
+                  debugPrint('🔍 [ROUTER] Session origin: ${navState.currentSession!.origin.latitude}, ${navState.currentSession!.origin.longitude}');
+                  debugPrint('🔍 [ROUTER] Session destination: ${navState.currentSession!.destination.latitude}, ${navState.currentSession!.destination.longitude}');
+                  debugPrint('🔍 [ROUTER] Session route points: ${navState.currentSession!.route.polylinePoints.length}');
+
+                  // Create the navigation screen with comprehensive error handling
+                  debugPrint('🧭 [ROUTER] Instantiating InAppNavigationScreen...');
+
+                  final navigationScreen = InAppNavigationScreen(
+                    session: navState.currentSession!,
+                    onNavigationComplete: () {
+                      debugPrint('🏁 [ROUTER] Navigation completed, returning to dashboard');
+                      context.go('/driver/dashboard');
+                    },
+                    onNavigationCancelled: () {
+                      debugPrint('❌ [ROUTER] Navigation cancelled, returning to dashboard');
+                      context.go('/driver/dashboard');
+                    },
+                  );
+
+                  debugPrint('✅ [ROUTER] InAppNavigationScreen widget created successfully');
+                  debugPrint('✅ [ROUTER] Widget type: ${navigationScreen.runtimeType}');
+                  debugPrint('✅ [ROUTER] Widget key: ${navigationScreen.key}');
+
+                  // Wrap the navigation screen in an error boundary to catch runtime exceptions
+                  return _NavigationScreenErrorBoundary(
+                    child: navigationScreen,
+                    onError: (error, stackTrace) {
+                      debugPrint('❌ [ROUTER] Runtime error in InAppNavigationScreen: $error');
+                      debugPrint('❌ [ROUTER] Runtime stack trace: $stackTrace');
+                      return _buildFallbackNavigationScreen(context, navState.currentSession!);
+                    },
+                  );
+                } catch (widgetError, widgetStackTrace) {
+                  debugPrint('❌ [ROUTER] CRITICAL ERROR creating InAppNavigationScreen widget: $widgetError');
+                  debugPrint('❌ [ROUTER] Widget error type: ${widgetError.runtimeType}');
+                  debugPrint('❌ [ROUTER] Widget stack trace: $widgetStackTrace');
+
+                  // Return fallback screen instead of throwing
+                  return _buildFallbackNavigationScreen(context, navState.currentSession!);
+                }
+              } catch (e, stackTrace) {
+                debugPrint('❌ [ROUTER] Error in navigation route builder: $e');
+                debugPrint('❌ [ROUTER] Stack trace: $stackTrace');
+
+                // Try to get navigation state for fallback
+                try {
+                  final navState = ref.read(enhancedNavigationProvider);
+                  if (navState.isNavigating && navState.currentSession != null) {
+                    debugPrint('🔄 [ROUTER] Attempting fallback navigation screen...');
+                    return _buildFallbackNavigationScreen(context, navState.currentSession!);
+                  }
+                } catch (fallbackError) {
+                  debugPrint('❌ [ROUTER] Fallback navigation screen also failed: $fallbackError');
+                }
+
+                return _buildNavigationErrorScreen(context, e.toString());
+              }
+            },
+          );
+        },
+        ),
+      ],
+    ),
+
+    // Multi-Order Driver Dashboard
+    GoRoute(
+      path: AppRoutes.driverMultiOrderDashboard,
+      name: 'driver-multi-order-dashboard',
+      builder: (context, state) => const MultiOrderDriverDashboard(),
+    ),
+
+    // Driver Wallet Routes (Direct access like customer wallet)
+    GoRoute(
+      path: '/driver/wallet',
+      name: 'driver-wallet-direct',
+      builder: (context, state) {
+        debugPrint('🔍 [ROUTER] Building DriverWalletDashboardScreen for /driver/wallet');
+        return const DriverWalletDashboardScreen();
+      },
+      routes: [
+        GoRoute(
+          path: 'withdraw',
+          name: 'driver-wallet-withdraw-direct',
+          builder: (context, state) => const DriverWithdrawalRequestScreen(),
+        ),
+        GoRoute(
+          path: 'withdrawals',
+          name: 'driver-wallet-withdrawals-direct',
+          builder: (context, state) => const DriverWithdrawalHistoryScreen(),
+        ),
+        GoRoute(
+          path: 'withdrawal/:withdrawalId',
+          name: 'driver-wallet-withdrawal-detail-direct',
+          builder: (context, state) {
+            final withdrawalId = state.pathParameters['withdrawalId']!;
+            return DriverWithdrawalDetailScreen(withdrawalId: withdrawalId);
+          },
+        ),
+        GoRoute(
+          path: 'transactions',
+          name: 'driver-wallet-transactions-direct',
+          builder: (context, state) => const DriverWalletTransactionHistoryScreen(),
+        ),
+        GoRoute(
+          path: 'verification',
+          name: 'driver-wallet-verification-direct',
+          builder: (context, state) => const DriverWalletVerificationScreen(),
+          routes: [
+            GoRoute(
+              path: 'unified',
+              name: 'driver-wallet-verification-unified',
+              builder: (context, state) => const DriverUnifiedWalletVerificationScreen(),
+            ),
+            // Legacy routes - kept for backward compatibility but deprecated
+            // TODO: Remove these routes in a future version after migration is complete
+            GoRoute(
+              path: 'bank-account',
+              name: 'driver-wallet-verification-bank-account',
+              builder: (context, state) {
+                debugPrint('⚠️ [ROUTER] Using deprecated bank-account verification route');
+                return const DriverBankAccountVerificationScreen();
+              },
+            ),
+            GoRoute(
+              path: 'documents',
+              name: 'driver-wallet-verification-documents',
+              builder: (context, state) {
+                debugPrint('⚠️ [ROUTER] Using deprecated documents verification route');
+                return const DriverWalletDocumentUploadScreen();
+              },
+            ),
+            GoRoute(
+              path: 'instant',
+              name: 'driver-wallet-verification-instant',
+              builder: (context, state) {
+                debugPrint('⚠️ [ROUTER] Using deprecated instant verification route');
+                return const DriverWalletInstantVerificationScreen();
+              },
+            ),
+          ],
+        ),
+        GoRoute(
+          path: 'transaction/:transactionId',
+          name: 'driver-wallet-transaction-detail-direct',
+          builder: (context, state) {
+            final transactionId = state.pathParameters['transactionId']!;
+            return DriverWalletTransactionDetailScreen(transactionId: transactionId);
+          },
+        ),
+        GoRoute(
+          path: 'settings',
+          name: 'driver-wallet-settings-direct',
+          builder: (context, state) => const Scaffold(
+            body: Center(child: Text('Driver Wallet Settings - Coming Soon')),
+          ),
+        ),
+        GoRoute(
+          path: 'support',
+          name: 'driver-wallet-support-direct',
+          builder: (context, state) => const Scaffold(
+            body: Center(child: Text('Driver Wallet Support - Coming Soon')),
+          ),
+        ),
+        GoRoute(
+          path: 'analytics',
+          name: 'driver-wallet-analytics-direct',
+          builder: (context, state) => const Scaffold(
+            body: Center(child: Text('Driver Wallet Analytics - Coming Soon')),
+          ),
+        ),
+
+        GoRoute(
+          path: 'security',
+          name: 'driver-wallet-security-direct',
+          builder: (context, state) => const Scaffold(
+            body: Center(child: Text('Driver Wallet Security - Coming Soon')),
+          ),
+        ),
+        GoRoute(
+          path: 'notifications',
+          name: 'driver-wallet-notifications-direct',
+          builder: (context, state) => const Scaffold(
+            body: Center(child: Text('Driver Wallet Notifications - Coming Soon')),
+          ),
+        ),
       ],
     ),
 
@@ -641,6 +1071,23 @@ List<RouteBase> _buildRoutes() {
           builder: (context, state) => const Scaffold(
             body: Center(child: Text('Wallet Promotions - Coming Soon')),
           ),
+        ),
+        GoRoute(
+          path: 'verification',
+          name: 'customer-wallet-verification',
+          builder: (context, state) => const CustomerWalletVerificationScreen(),
+          routes: [
+            GoRoute(
+              path: 'documents',
+              name: 'customer-wallet-verification-documents',
+              builder: (context, state) => const CustomerWalletDocumentUploadScreen(),
+            ),
+            GoRoute(
+              path: 'instant',
+              name: 'customer-wallet-verification-instant',
+              builder: (context, state) => const CustomerWalletInstantVerificationScreen(),
+            ),
+          ],
         ),
       ],
     ),
@@ -847,6 +1294,191 @@ List<RouteBase> _buildRoutes() {
   ];
 }
 
+/// Build fallback navigation screen when InAppNavigationScreen fails
+Widget _buildFallbackNavigationScreen(BuildContext context, dynamic session) {
+  return Scaffold(
+    backgroundColor: Colors.black,
+    appBar: AppBar(
+      backgroundColor: Colors.black,
+      foregroundColor: Colors.white,
+      title: const Text('Navigation'),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () {
+          debugPrint('🔄 [ROUTER] Returning to dashboard from fallback navigation screen');
+          context.go('/driver/dashboard');
+        },
+      ),
+    ),
+    body: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.navigation,
+              size: 64,
+              color: Colors.blue.shade400,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Navigation Active',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Enhanced In-App Navigation is running in the background.',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Session ID: ${session.id ?? 'Unknown'}',
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Column(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    debugPrint('🗺️ [ROUTER] Opening external Google Maps');
+                    // TODO: Launch external Google Maps
+                  },
+                  icon: const Icon(Icons.map),
+                  label: const Text('Open Google Maps'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    debugPrint('🔄 [ROUTER] Returning to dashboard from fallback screen');
+                    context.go('/driver/dashboard');
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to Dashboard'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Build error screen for navigation failures
+Widget _buildNavigationErrorScreen(BuildContext context, String errorMessage) {
+  return Scaffold(
+    backgroundColor: Colors.black,
+    body: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red.shade400,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Navigation Error',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to start Enhanced In-App Navigation',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage,
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      debugPrint('🔄 [ROUTER] Returning to dashboard from error screen');
+                      context.go('/driver/dashboard');
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to Dashboard'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      debugPrint('🔄 [ROUTER] Retrying navigation from error screen');
+                      // Try to restart navigation
+                      context.go('/driver/dashboard');
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class AppRouter {
   // Helper method to get the appropriate dashboard route based on user role
   static String getDashboardRoute(UserRole role) {
@@ -879,5 +1511,50 @@ class AppRouter {
   // Get all permissions for a user role
   static Set<String> getPermissions(UserRole role) {
     return AccessControlService.getPermissions(role);
+  }
+}
+
+/// Error boundary widget to catch runtime exceptions in InAppNavigationScreen
+class _NavigationScreenErrorBoundary extends StatefulWidget {
+  final Widget child;
+  final Widget Function(Object error, StackTrace stackTrace) onError;
+
+  const _NavigationScreenErrorBoundary({
+    required this.child,
+    required this.onError,
+  });
+
+  @override
+  State<_NavigationScreenErrorBoundary> createState() => _NavigationScreenErrorBoundaryState();
+}
+
+class _NavigationScreenErrorBoundaryState extends State<_NavigationScreenErrorBoundary> {
+  Object? _error;
+  StackTrace? _stackTrace;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null && _stackTrace != null) {
+      debugPrint('🚨 [ERROR-BOUNDARY] Rendering error fallback for: $_error');
+      return widget.onError(_error!, _stackTrace!);
+    }
+
+    try {
+      return widget.child;
+    } catch (error, stackTrace) {
+      debugPrint('🚨 [ERROR-BOUNDARY] Caught build error: $error');
+      debugPrint('🚨 [ERROR-BOUNDARY] Build stack trace: $stackTrace');
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _error = error;
+            _stackTrace = stackTrace;
+          });
+        }
+      });
+
+      return widget.onError(error, stackTrace);
+    }
   }
 }

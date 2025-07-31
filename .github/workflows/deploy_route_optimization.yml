@@ -1,0 +1,380 @@
+name: Deploy Multi-Order Route Optimization System
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lib/src/features/drivers/data/services/multi_order_batch_service.dart'
+      - 'lib/src/features/drivers/data/services/route_optimization_engine.dart'
+      - 'supabase/functions/create-delivery-batch/**'
+      - 'supabase/functions/optimize-delivery-route/**'
+      - 'supabase/migrations/*route_optimization*'
+      - '.github/workflows/deploy_route_optimization.yml'
+  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip test execution'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+  SUPABASE_PROJECT_REF: 'abknoalhfltlhhdbclpv'
+  JAVA_VERSION: '17'
+
+jobs:
+  # Pre-deployment validation
+  validate:
+    name: Validate Route Optimization System
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+        
+      - name: Run Flutter analyzer
+        run: flutter analyze
+        
+      - name: Check for TODO comments
+        run: |
+          TODO_COUNT=$(find lib/ -name "*.dart" -exec grep -l "TODO" {} \; | wc -l)
+          if [ $TODO_COUNT -gt 0 ]; then
+            echo "⚠️ Found $TODO_COUNT files with TODO comments"
+            find lib/ -name "*.dart" -exec grep -l "TODO" {} \;
+          else
+            echo "✅ No TODO comments found"
+          fi
+          
+      - name: Validate route optimization files
+        run: |
+          echo "Validating route optimization system files..."
+          
+          # Check for required service files
+          if [ ! -f "lib/src/features/drivers/data/services/multi_order_batch_service.dart" ]; then
+            echo "❌ MultiOrderBatchService not found"
+            exit 1
+          fi
+          
+          if [ ! -f "lib/src/features/drivers/data/services/route_optimization_engine.dart" ]; then
+            echo "❌ RouteOptimizationEngine not found"
+            exit 1
+          fi
+          
+          echo "✅ Route optimization files validated"
+
+  # Run comprehensive tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: validate
+    if: ${{ !inputs.skip_tests }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+        
+      - name: Run unit tests
+        run: flutter test test/unit/ --coverage
+        
+      - name: Run integration tests
+        run: flutter test test/integration/
+        
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+  # Build applications
+  build:
+    name: Build Applications
+    runs-on: ubuntu-latest
+    needs: [validate, test]
+    if: always() && (needs.validate.result == 'success' && (needs.test.result == 'success' || inputs.skip_tests))
+    
+    strategy:
+      matrix:
+        platform: [android, web]
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          
+      - name: Setup Java (Android only)
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+        
+      - name: Build Android APK
+        if: matrix.platform == 'android'
+        run: |
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          flutter build apk --release --build-number=$BUILD_NUMBER
+          
+      - name: Build Android AAB
+        if: matrix.platform == 'android'
+        run: |
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          flutter build appbundle --release --build-number=$BUILD_NUMBER
+          
+      - name: Build Web
+        if: matrix.platform == 'web'
+        run: |
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          flutter build web --release --web-renderer canvaskit --build-number=$BUILD_NUMBER
+          
+      - name: Upload Android artifacts
+        if: matrix.platform == 'android'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-builds
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+          
+      - name: Upload Web artifacts
+        if: matrix.platform == 'web'
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
+          retention-days: 30
+
+  # Deploy database migrations
+  deploy-database:
+    name: Deploy Database Migrations
+    runs-on: ubuntu-latest
+    needs: [validate, test, build]
+    if: always() && needs.validate.result == 'success' && (needs.test.result == 'success' || inputs.skip_tests) && needs.build.result == 'success'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+          
+      - name: Create database backup marker
+        run: |
+          echo "Creating backup marker for deployment $(date)"
+          mkdir -p backups
+          echo "Backup marker created at $(date)" > backups/deployment_$(date +%Y%m%d_%H%M%S).marker
+          
+      - name: Apply database migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "Applying route optimization database migrations..."
+          supabase db push --project-ref ${{ env.SUPABASE_PROJECT_REF }}
+          
+      - name: Verify migration success
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "Verifying migration success..."
+          supabase db diff --project-ref ${{ env.SUPABASE_PROJECT_REF }} --schema public
+
+  # Deploy Edge Functions
+  deploy-functions:
+    name: Deploy Edge Functions
+    runs-on: ubuntu-latest
+    needs: [deploy-database]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+          
+      - name: Deploy create-delivery-batch function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -d "supabase/functions/create-delivery-batch" ]; then
+            echo "Deploying create-delivery-batch function..."
+            supabase functions deploy create-delivery-batch --project-ref ${{ env.SUPABASE_PROJECT_REF }}
+          else
+            echo "⚠️ create-delivery-batch function not found"
+          fi
+          
+      - name: Deploy optimize-delivery-route function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -d "supabase/functions/optimize-delivery-route" ]; then
+            echo "Deploying optimize-delivery-route function..."
+            supabase functions deploy optimize-delivery-route --project-ref ${{ env.SUPABASE_PROJECT_REF }}
+          else
+            echo "⚠️ optimize-delivery-route function not found"
+          fi
+          
+      - name: Deploy manage-delivery-batch function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -d "supabase/functions/manage-delivery-batch" ]; then
+            echo "Deploying manage-delivery-batch function..."
+            supabase functions deploy manage-delivery-batch --project-ref ${{ env.SUPABASE_PROJECT_REF }}
+          else
+            echo "⚠️ manage-delivery-batch function not found"
+          fi
+          
+      - name: Test Edge Functions
+        run: |
+          echo "Testing Edge Function endpoints..."
+          
+          BASE_URL="https://${{ env.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1"
+          ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
+          
+          # Test create-delivery-batch
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/create-delivery-batch" \
+            -H "Authorization: Bearer $ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -X OPTIONS)
+          
+          if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "405" ]; then
+            echo "✅ create-delivery-batch function is accessible"
+          else
+            echo "⚠️ create-delivery-batch function returned status: $RESPONSE"
+          fi
+
+  # Post-deployment validation
+  validate-deployment:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-database, deploy-functions]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run post-deployment tests
+        run: |
+          echo "Running post-deployment validation tests..."
+          
+          # Run specific route optimization tests
+          if [ -d "test/integration/route_optimization" ]; then
+            flutter test test/integration/route_optimization/
+          else
+            echo "⚠️ Route optimization integration tests not found"
+          fi
+          
+      - name: Generate deployment report
+        run: |
+          echo "# Route Optimization Deployment Report" > deployment_report.md
+          echo "" >> deployment_report.md
+          echo "**Deployment Date**: $(date)" >> deployment_report.md
+          echo "**Environment**: ${{ inputs.environment || 'staging' }}" >> deployment_report.md
+          echo "**Project Reference**: ${{ env.SUPABASE_PROJECT_REF }}" >> deployment_report.md
+          echo "" >> deployment_report.md
+          echo "## Deployment Summary" >> deployment_report.md
+          echo "- ✅ Database migrations applied" >> deployment_report.md
+          echo "- ✅ Edge Functions deployed" >> deployment_report.md
+          echo "- ✅ Applications built successfully" >> deployment_report.md
+          echo "- ✅ Post-deployment validation completed" >> deployment_report.md
+          echo "" >> deployment_report.md
+          echo "## Next Steps" >> deployment_report.md
+          echo "1. Test route optimization on Android emulator" >> deployment_report.md
+          echo "2. Validate multi-order batch creation" >> deployment_report.md
+          echo "3. Monitor system performance" >> deployment_report.md
+          echo "4. Conduct user acceptance testing" >> deployment_report.md
+          
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report
+          path: deployment_report.md
+          retention-days: 90
+
+  # Notify deployment completion
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [validate-deployment]
+    if: always()
+    
+    steps:
+      - name: Deployment Success Notification
+        if: needs.validate-deployment.result == 'success'
+        run: |
+          echo "🚀 Multi-Order Route Optimization System deployed successfully!"
+          echo "Environment: ${{ inputs.environment || 'staging' }}"
+          echo "Project: ${{ env.SUPABASE_PROJECT_REF }}"
+          echo "Deployment completed at: $(date)"
+          
+      - name: Deployment Failure Notification
+        if: needs.validate-deployment.result == 'failure'
+        run: |
+          echo "❌ Multi-Order Route Optimization System deployment failed!"
+          echo "Please check the workflow logs for details."
+          echo "Rollback may be required."

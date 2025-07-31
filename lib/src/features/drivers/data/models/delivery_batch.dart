@@ -98,27 +98,40 @@ enum BatchOrderDeliveryStatus {
 @JsonSerializable()
 class DeliveryBatch extends Equatable {
   final String id;
+  @JsonKey(name: 'driver_id')
   final String driverId;
+  @JsonKey(name: 'batch_number')
   final String batchNumber;
   final BatchStatus status;
-  
+
   // Route optimization data
+  @JsonKey(name: 'total_distance_km')
   final double? totalDistanceKm;
+  @JsonKey(name: 'estimated_duration_minutes')
   final int? estimatedDurationMinutes;
+  @JsonKey(name: 'optimization_score')
   final double? optimizationScore;
-  
+
   // Batch constraints
+  @JsonKey(name: 'max_orders')
   final int maxOrders;
+  @JsonKey(name: 'max_deviation_km', fromJson: _doubleFromJson)
   final double maxDeviationKm;
-  
+
   // Timing
+  @JsonKey(name: 'planned_start_time')
   final DateTime? plannedStartTime;
+  @JsonKey(name: 'actual_start_time')
   final DateTime? actualStartTime;
+  @JsonKey(name: 'estimated_completion_time')
   final DateTime? estimatedCompletionTime;
+  @JsonKey(name: 'actual_completion_time')
   final DateTime? actualCompletionTime;
-  
+
   // Metadata
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
   final Map<String, dynamic>? metadata;
 
@@ -245,28 +258,42 @@ class DeliveryBatch extends Equatable {
 @JsonSerializable()
 class BatchOrder extends Equatable {
   final String id;
+  @JsonKey(name: 'batch_id')
   final String batchId;
+  @JsonKey(name: 'order_id')
   final String orderId;
-  
+
   // Sequence and routing
+  @JsonKey(name: 'pickup_sequence')
   final int pickupSequence;
+  @JsonKey(name: 'delivery_sequence')
   final int deliverySequence;
-  
+
   // Timing estimates
+  @JsonKey(name: 'estimated_pickup_time')
   final DateTime? estimatedPickupTime;
+  @JsonKey(name: 'estimated_delivery_time')
   final DateTime? estimatedDeliveryTime;
+  @JsonKey(name: 'actual_pickup_time')
   final DateTime? actualPickupTime;
+  @JsonKey(name: 'actual_delivery_time')
   final DateTime? actualDeliveryTime;
-  
+
   // Route optimization data
+  @JsonKey(name: 'distance_from_previous_km')
   final double? distanceFromPreviousKm;
+  @JsonKey(name: 'travel_time_from_previous_minutes')
   final int? travelTimeFromPreviousMinutes;
-  
+
   // Status tracking
+  @JsonKey(name: 'pickup_status')
   final BatchOrderPickupStatus pickupStatus;
+  @JsonKey(name: 'delivery_status')
   final BatchOrderDeliveryStatus deliveryStatus;
-  
+
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
 
   const BatchOrder({
@@ -368,4 +395,14 @@ class BatchOrder extends Equatable {
 
   @override
   String toString() => 'BatchOrder(id: $id, orderId: $orderId, pickup: $pickupSequence, delivery: $deliverySequence)';
+}
+
+/// Helper function to convert string or number to double
+/// This handles cases where PostgreSQL DECIMAL/NUMERIC fields come as strings
+double _doubleFromJson(dynamic value) {
+  if (value == null) return 5.0; // Default value
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.parse(value);
+  throw ArgumentError('Cannot convert $value to double');
 }

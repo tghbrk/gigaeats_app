@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:battery_plus/battery_plus.dart';
 
 import '../../data/models/navigation_models.dart';
 import '../../data/services/enhanced_navigation_service.dart';
@@ -66,6 +67,7 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
   Timer? _updateTimer;
 
   EnhancedNavigationNotifier() : super(const EnhancedNavigationState()) {
+    debugPrint('🧭 [ENHANCED-NAV-PROVIDER] EnhancedNavigationNotifier initialized');
     _initialize();
   }
 
@@ -108,6 +110,19 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
     }
   }
 
+  /// Initialize enhanced 3D camera service with map controller
+  Future<void> initializeCameraService(GoogleMapController mapController) async {
+    try {
+      debugPrint('📹 [ENHANCED-NAV-PROVIDER] Initializing enhanced 3D camera service');
+      await _navigationService.initializeCameraService(mapController);
+      debugPrint('📹 [ENHANCED-NAV-PROVIDER] Enhanced 3D camera service initialized');
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error initializing camera service: $e');
+      state = state.copyWith(error: e.toString());
+      rethrow;
+    }
+  }
+
   /// Start in-app navigation
   Future<bool> startNavigation({
     required LatLng origin,
@@ -119,7 +134,13 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
   }) async {
     try {
       debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Starting navigation for order: $orderId');
-      
+      debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Origin: ${origin.latitude}, ${origin.longitude}');
+      debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Destination: ${destination.latitude}, ${destination.longitude}');
+      debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Destination name: $destinationName');
+
+      // Clear any previous error state
+      state = state.copyWith(error: null);
+
       final session = await _navigationService.startInAppNavigation(
         origin: origin,
         destination: destination,
@@ -128,21 +149,48 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
         destinationName: destinationName,
         preferences: preferences,
       );
-      
+
+      debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Navigation session created: ${session.id}');
+      debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Session status: ${session.status}');
+      debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Route distance: ${session.route.totalDistanceMeters}m');
+      debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Route duration: ${session.route.totalDurationSeconds}s');
+
       state = state.copyWith(
         currentSession: session,
         isNavigating: true,
         isVoiceEnabled: session.preferences.voiceGuidanceEnabled,
         error: null,
       );
-      
+
+      debugPrint('✅ [ENHANCED-NAV-PROVIDER] Navigation started successfully');
+      debugPrint('✅ [ENHANCED-NAV-PROVIDER] Provider state updated - isNavigating: ${state.isNavigating}');
+
       // Start periodic updates
       _startPeriodicUpdates();
-      
+
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error starting navigation: $e');
-      state = state.copyWith(error: e.toString());
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Stack trace: $stackTrace');
+
+      // Determine error type and provide helpful message
+      String errorMessage;
+      if (e.toString().contains('Failed to calculate route')) {
+        errorMessage = 'Unable to calculate route. Please check your internet connection and try again.';
+      } else if (e.toString().contains('Google API')) {
+        errorMessage = 'Navigation service temporarily unavailable. Please try external navigation.';
+      } else if (e.toString().contains('GPS') || e.toString().contains('location')) {
+        errorMessage = 'GPS signal required. Please enable location services and try again.';
+      } else {
+        errorMessage = 'Navigation setup failed: ${e.toString()}';
+      }
+
+      state = state.copyWith(
+        error: errorMessage,
+        isNavigating: false,
+        currentSession: null,
+      );
+
       return false;
     }
   }
@@ -196,7 +244,7 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
   Future<void> updatePreferences(NavigationPreferences preferences) async {
     try {
       await _navigationService.updatePreferences(preferences);
-      
+
       if (state.currentSession != null) {
         state = state.copyWith(
           currentSession: state.currentSession!.copyWith(preferences: preferences),
@@ -206,6 +254,107 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
     } catch (e) {
       debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error updating preferences: $e');
       state = state.copyWith(error: e.toString());
+    }
+  }
+
+  /// Launch external navigation app
+  Future<bool> launchExternalNavigation(ExternalNavApp app, LatLng destination, {LatLng? origin}) async {
+    try {
+      debugPrint('🚀 [ENHANCED-NAV-PROVIDER] Launching external navigation: ${app.name}');
+
+      final success = await _navigationService.launchExternalNavigation(app, destination, origin: origin);
+
+      if (success) {
+        // Stop current navigation since we're switching to external app
+        await stopNavigation();
+        debugPrint('🚀 [ENHANCED-NAV-PROVIDER] Successfully launched ${app.name}');
+      }
+
+      return success;
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error launching external navigation: $e');
+      state = state.copyWith(error: e.toString());
+      return false;
+    }
+  }
+
+  /// Handle navigation error with recovery
+  Future<NavigationErrorRecoveryResult> handleNavigationError(NavigationError error) async {
+    try {
+      debugPrint('🛡️ [ENHANCED-NAV-PROVIDER] Handling navigation error: ${error.type}');
+
+      final result = await _navigationService.handleNavigationError(error);
+
+      // Update state based on recovery result
+      if (result.type == NavigationErrorRecoveryType.failed) {
+        state = state.copyWith(error: result.message);
+      }
+
+      return result;
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error in error recovery: $e');
+      state = state.copyWith(error: e.toString());
+
+      return NavigationErrorRecoveryResult.failed(
+        'Error recovery failed: $e',
+      );
+    }
+  }
+
+  /// Get available external navigation apps
+  Future<List<ExternalNavApp>> getAvailableExternalNavApps() async {
+    try {
+      return await _navigationService.getAvailableExternalNavApps();
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error getting external nav apps: $e');
+      return [];
+    }
+  }
+
+  /// Enter background mode for battery optimization
+  void enterBackgroundMode() {
+    try {
+      debugPrint('🔋 [ENHANCED-NAV-PROVIDER] Entering background mode');
+      _navigationService.enterBackgroundMode();
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error entering background mode: $e');
+    }
+  }
+
+  /// Exit background mode
+  void exitBackgroundMode() {
+    try {
+      debugPrint('🔋 [ENHANCED-NAV-PROVIDER] Exiting background mode');
+      _navigationService.exitBackgroundMode();
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error exiting background mode: $e');
+    }
+  }
+
+  /// Update navigation context for adaptive location tracking
+  void updateNavigationContext(NavigationContext context) {
+    try {
+      debugPrint('🔋 [ENHANCED-NAV-PROVIDER] Updating navigation context: $context');
+      _navigationService.updateNavigationContext(context);
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error updating navigation context: $e');
+    }
+  }
+
+  /// Get battery optimization recommendations
+  NavigationBatteryOptimizationRecommendations getBatteryOptimizationRecommendations() {
+    try {
+      return _navigationService.getBatteryOptimizationRecommendations();
+    } catch (e) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Error getting battery recommendations: $e');
+      // Return default recommendations on error
+      return NavigationBatteryOptimizationRecommendations(
+        batteryLevel: 50, // Default battery level
+        batteryState: BatteryState.unknown,
+        currentLocationMode: NavigationLocationMode.balanced,
+        recommendations: ['Unable to get battery recommendations'],
+        criticalActions: [],
+      );
     }
   }
 
@@ -279,32 +428,69 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
     }
   }
 
-  /// Get formatted remaining distance
+  /// Get formatted remaining distance with enhanced validation
   String? get remainingDistanceText {
     final distance = state.remainingDistance;
     if (distance == null) return null;
-    
-    if (distance < 1000) {
+
+    // Validate distance is reasonable
+    if (distance < 0) {
+      debugPrint('⚠️ [ENHANCED-NAV-PROVIDER] Negative distance detected: $distance');
+      return null;
+    }
+
+    if (distance > 100000) { // > 100km
+      debugPrint('⚠️ [ENHANCED-NAV-PROVIDER] Unrealistic distance detected: ${distance}m (${(distance/1000).toStringAsFixed(2)}km)');
+      return null;
+    }
+
+    // Format based on distance magnitude
+    if (distance < 10) {
+      return '${distance.toStringAsFixed(1)}m';
+    } else if (distance < 1000) {
       return '${distance.round()}m';
-    } else {
+    } else if (distance < 10000) {
       return '${(distance / 1000).toStringAsFixed(1)}km';
+    } else {
+      return '${(distance / 1000).round()}km';
     }
   }
 
-  /// Get formatted estimated arrival time
+  /// Get formatted estimated arrival time with enhanced validation
   String? get estimatedArrivalText {
     final eta = state.estimatedArrival;
     if (eta == null) return null;
-    
+
     final now = DateTime.now();
     final difference = eta.difference(now);
-    
-    if (difference.inMinutes < 1) {
-      return 'Arriving now';
-    } else if (difference.inHours < 1) {
+
+    // Handle past times (should not happen in normal navigation)
+    if (difference.isNegative) {
+      debugPrint('⚠️ [ENHANCED-NAV-PROVIDER] ETA is in the past: $eta');
+      return 'Overdue';
+    }
+
+    // Handle unrealistic future times (more than 24 hours)
+    if (difference.inHours > 24) {
+      debugPrint('⚠️ [ENHANCED-NAV-PROVIDER] Unrealistic ETA detected: $eta (${difference.inHours}h from now)');
+      return null;
+    }
+
+    // Format based on time remaining
+    if (difference.inSeconds < 30) {
+      return 'Arriving';
+    } else if (difference.inMinutes < 1) {
+      return '<1min';
+    } else if (difference.inMinutes < 60) {
       return '${difference.inMinutes}min';
     } else {
-      return '${difference.inHours}h ${difference.inMinutes % 60}min';
+      final hours = difference.inHours;
+      final minutes = difference.inMinutes % 60;
+      if (minutes == 0) {
+        return '${hours}h';
+      } else {
+        return '${hours}h ${minutes}min';
+      }
     }
   }
 
@@ -316,6 +502,38 @@ class EnhancedNavigationNotifier extends StateNotifier<EnhancedNavigationState> 
   /// Get current navigation progress percentage
   double get progressPercentage {
     return state.currentSession?.progressPercentage ?? 0.0;
+  }
+
+  /// Get real-time navigation instructions stream
+  /// This exposes the new real-time instruction streaming feature
+  Stream<NavigationInstruction>? getNavigationInstructionsStream() {
+    if (!state.isNavigating || state.currentSession == null) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Cannot get instruction stream - not navigating');
+      return null;
+    }
+
+    debugPrint('🧭 [ENHANCED-NAV-PROVIDER] Starting real-time instruction stream');
+    return _navigationService.getNavigationInstructions();
+  }
+
+  /// Get camera position updates for automatic following
+  /// This exposes the new automatic camera following feature
+  Stream<CameraPosition>? getCameraPositionUpdates() {
+    if (!state.isNavigating || state.currentSession == null) {
+      debugPrint('❌ [ENHANCED-NAV-PROVIDER] Cannot get camera updates - not navigating');
+      return null;
+    }
+
+    debugPrint('📹 [ENHANCED-NAV-PROVIDER] Starting automatic camera following');
+    return _navigationService.getCameraPositionUpdates();
+  }
+
+  /// Force refresh of navigation data (distance, ETA)
+  Future<void> refreshNavigationData() async {
+    if (!state.isNavigating) return;
+
+    debugPrint('🔄 [ENHANCED-NAV-PROVIDER] Refreshing navigation data');
+    await _updateNavigationData();
   }
 
   @override

@@ -1,8 +1,290 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:battery_plus/battery_plus.dart';
 
 part 'navigation_models.g.dart';
+
+/// Navigation error types for comprehensive error handling
+enum NavigationErrorType {
+  networkFailure,
+  gpsSignalLoss,
+  routeCalculationFailure,
+  mapLoadingFailure,
+  voiceServiceFailure,
+  cameraServiceFailure,
+  criticalSystemFailure,
+  permissionDenied,
+  serviceUnavailable,
+  unknown,
+}
+
+/// Navigation error model
+class NavigationError {
+  final NavigationErrorType type;
+  final String message;
+  final String? details;
+  final DateTime timestamp;
+  final Map<String, dynamic>? metadata;
+
+  const NavigationError({
+    required this.type,
+    required this.message,
+    this.details,
+    required this.timestamp,
+    this.metadata,
+  });
+
+  /// Create network failure error
+  factory NavigationError.networkFailure(String message, {String? details}) {
+    return NavigationError(
+      type: NavigationErrorType.networkFailure,
+      message: message,
+      details: details,
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// Create GPS signal loss error
+  factory NavigationError.gpsSignalLoss(String message, {String? details}) {
+    return NavigationError(
+      type: NavigationErrorType.gpsSignalLoss,
+      message: message,
+      details: details,
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// Create route calculation failure error
+  factory NavigationError.routeCalculationFailure(String message, {String? details}) {
+    return NavigationError(
+      type: NavigationErrorType.routeCalculationFailure,
+      message: message,
+      details: details,
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// Create critical system failure error
+  factory NavigationError.criticalSystemFailure(String message, {String? details}) {
+    return NavigationError(
+      type: NavigationErrorType.criticalSystemFailure,
+      message: message,
+      details: details,
+      timestamp: DateTime.now(),
+    );
+  }
+}
+
+/// External navigation app model
+class ExternalNavApp {
+  final String name;
+  final String packageName;
+  final String platform;
+  final bool isInstalled;
+
+  const ExternalNavApp({
+    required this.name,
+    required this.packageName,
+    required this.platform,
+    this.isInstalled = true,
+  });
+}
+
+/// Navigation error recovery result
+enum NavigationErrorRecoveryType {
+  retry,
+  externalNavigation,
+  degraded,
+  failed,
+  networkUnavailable,
+  permissionRequired,
+  serviceRequired,
+  cooldown,
+}
+
+/// Navigation error recovery result model
+class NavigationErrorRecoveryResult {
+  final NavigationErrorRecoveryType type;
+  final String message;
+  final String? suggestedAction;
+  final List<ExternalNavApp>? availableApps;
+  final LatLng? destination;
+  final int? retryCount;
+  final List<String>? degradedFeatures;
+  final bool isUrgent;
+
+  const NavigationErrorRecoveryResult({
+    required this.type,
+    required this.message,
+    this.suggestedAction,
+    this.availableApps,
+    this.destination,
+    this.retryCount,
+    this.degradedFeatures,
+    this.isUrgent = false,
+  });
+
+  /// Create retry result
+  factory NavigationErrorRecoveryResult.retry(String message, {int? retryCount}) {
+    return NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.retry,
+      message: message,
+      retryCount: retryCount,
+    );
+  }
+
+  /// Create external navigation result
+  factory NavigationErrorRecoveryResult.externalNavigation(
+    String message, {
+    required List<ExternalNavApp> availableApps,
+    required LatLng destination,
+    bool isUrgent = false,
+  }) {
+    return NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.externalNavigation,
+      message: message,
+      availableApps: availableApps,
+      destination: destination,
+      isUrgent: isUrgent,
+    );
+  }
+
+  /// Create degraded service result
+  factory NavigationErrorRecoveryResult.degraded(
+    String message, {
+    required List<String> degradedFeatures,
+  }) {
+    return NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.degraded,
+      message: message,
+      degradedFeatures: degradedFeatures,
+    );
+  }
+
+  /// Create failed result
+  factory NavigationErrorRecoveryResult.failed(String message) {
+    return NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.failed,
+      message: message,
+    );
+  }
+
+  /// Create network unavailable result
+  factory NavigationErrorRecoveryResult.networkUnavailable(
+    String message, {
+    String? suggestedAction,
+  }) {
+    return NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.networkUnavailable,
+      message: message,
+      suggestedAction: suggestedAction,
+    );
+  }
+
+  /// Create permission required result
+  factory NavigationErrorRecoveryResult.permissionRequired(
+    String message, {
+    String? suggestedAction,
+  }) {
+    return NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.permissionRequired,
+      message: message,
+      suggestedAction: suggestedAction,
+    );
+  }
+
+  /// Create service required result
+  factory NavigationErrorRecoveryResult.serviceRequired(
+    String message, {
+    String? suggestedAction,
+  }) {
+    return NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.serviceRequired,
+      message: message,
+      suggestedAction: suggestedAction,
+    );
+  }
+
+  /// Create cooldown result
+  factory NavigationErrorRecoveryResult.cooldown() {
+    return const NavigationErrorRecoveryResult(
+      type: NavigationErrorRecoveryType.cooldown,
+      message: 'Error recovery in cooldown period',
+    );
+  }
+}
+
+/// Navigation location modes for battery optimization
+enum NavigationLocationMode {
+  highAccuracy,    // Best accuracy, highest battery usage
+  balanced,        // Good accuracy, moderate battery usage
+  batterySaver,    // Reduced accuracy, lower battery usage
+  powerSaver,      // Minimal accuracy, lowest battery usage
+}
+
+/// Navigation context for adaptive location tracking
+enum NavigationContext {
+  active,          // Actively navigating
+  approaching,     // Approaching destination/waypoint
+  parking,         // Looking for parking
+  background,      // App in background
+}
+
+/// Battery optimization recommendations
+class NavigationBatteryOptimizationRecommendations {
+  final int batteryLevel;
+  final BatteryState batteryState;
+  final NavigationLocationMode currentLocationMode;
+  final List<String> recommendations;
+  final List<String> criticalActions;
+  final Duration? estimatedNavigationTime;
+
+  const NavigationBatteryOptimizationRecommendations({
+    required this.batteryLevel,
+    required this.batteryState,
+    required this.currentLocationMode,
+    required this.recommendations,
+    required this.criticalActions,
+    this.estimatedNavigationTime,
+  });
+
+  /// Check if battery is in critical state
+  bool get isCriticalBattery => batteryLevel <= 10;
+
+  /// Check if battery is low
+  bool get isLowBattery => batteryLevel <= 20;
+
+  /// Check if device is charging
+  bool get isCharging => batteryState == BatteryState.charging;
+
+  /// Get battery status description
+  String get batteryStatusDescription {
+    if (isCharging) {
+      return 'Charging ($batteryLevel%)';
+    } else if (isCriticalBattery) {
+      return 'Critical Battery ($batteryLevel%)';
+    } else if (isLowBattery) {
+      return 'Low Battery ($batteryLevel%)';
+    } else {
+      return 'Battery: $batteryLevel%';
+    }
+  }
+
+  /// Get location mode description
+  String get locationModeDescription {
+    switch (currentLocationMode) {
+      case NavigationLocationMode.highAccuracy:
+        return 'High Accuracy Mode';
+      case NavigationLocationMode.balanced:
+        return 'Balanced Mode';
+      case NavigationLocationMode.batterySaver:
+        return 'Battery Saver Mode';
+      case NavigationLocationMode.powerSaver:
+        return 'Power Saver Mode';
+    }
+  }
+}
 
 /// LatLng JSON converter
 class LatLngConverter implements JsonConverter<LatLng, Map<String, dynamic>> {
@@ -76,6 +358,14 @@ enum NavigationInstructionType {
   roundaboutLeft,
   @JsonValue('roundabout_right')
   roundaboutRight,
+  @JsonValue('uturn')
+  uturn,
+  @JsonValue('roundabout')
+  roundabout,
+  @JsonValue('exit_roundabout')
+  exitRoundabout,
+  @JsonValue('arrive')
+  arrive,
   @JsonValue('destination')
   destination,
 }
@@ -334,12 +624,41 @@ class NavigationRoute extends Equatable {
   String get trafficDelayText {
     final delay = durationInTrafficSeconds - totalDurationSeconds;
     if (delay <= 0) return 'No delay';
-    
+
     if (delay < 60) {
       return '${delay}s delay';
     } else {
       return '${(delay / 60).round()}min delay';
     }
+  }
+
+  /// Create a copy with updated fields
+  NavigationRoute copyWith({
+    String? id,
+    List<LatLng>? polylinePoints,
+    double? totalDistanceMeters,
+    int? totalDurationSeconds,
+    int? durationInTrafficSeconds,
+    List<NavigationInstruction>? instructions,
+    TrafficCondition? overallTrafficCondition,
+    String? summary,
+    List<String>? warnings,
+    DateTime? calculatedAt,
+    Map<String, dynamic>? metadata,
+  }) {
+    return NavigationRoute(
+      id: id ?? this.id,
+      polylinePoints: polylinePoints ?? this.polylinePoints,
+      totalDistanceMeters: totalDistanceMeters ?? this.totalDistanceMeters,
+      totalDurationSeconds: totalDurationSeconds ?? this.totalDurationSeconds,
+      durationInTrafficSeconds: durationInTrafficSeconds ?? this.durationInTrafficSeconds,
+      instructions: instructions ?? this.instructions,
+      overallTrafficCondition: overallTrafficCondition ?? this.overallTrafficCondition,
+      summary: summary ?? this.summary,
+      warnings: warnings ?? this.warnings,
+      calculatedAt: calculatedAt ?? this.calculatedAt,
+      metadata: metadata ?? this.metadata,
+    );
   }
 
   @override

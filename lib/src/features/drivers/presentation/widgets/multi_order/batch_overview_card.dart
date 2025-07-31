@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/delivery_batch.dart';
+import '../../providers/multi_order_batch_provider.dart';
 
 /// Batch overview card displaying key metrics and status information
 /// Follows Material Design 3 patterns with comprehensive batch visualization
@@ -46,7 +47,7 @@ class BatchOverviewCard extends ConsumerWidget {
             const SizedBox(height: 16),
             _buildProgressSection(theme, batch!),
             const SizedBox(height: 16),
-            _buildActionButtons(theme, batch!),
+            _buildActionButtons(context, ref, theme, batch!),
           ],
         ),
       ),
@@ -304,12 +305,12 @@ class BatchOverviewCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(ThemeData theme, DeliveryBatch batch) {
+  Widget _buildActionButtons(BuildContext context, WidgetRef ref, ThemeData theme, DeliveryBatch batch) {
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () => _handleViewDetails(batch),
+            onPressed: () => _handleViewDetails(context, batch),
             icon: const Icon(Icons.visibility),
             label: const Text('View Details'),
           ),
@@ -318,8 +319,8 @@ class BatchOverviewCard extends ConsumerWidget {
         Expanded(
           child: FilledButton.icon(
             onPressed: batch.status == BatchStatus.active
-                ? () => _handlePauseBatch(batch)
-                : () => _handleStartBatch(batch),
+                ? () => _handlePauseBatch(ref, batch)
+                : () => _handleStartBatch(ref, batch),
             icon: Icon(
               batch.status == BatchStatus.active
                   ? Icons.pause
@@ -474,18 +475,197 @@ class BatchOverviewCard extends ConsumerWidget {
   }
 
   void _showBatchMenu(BuildContext context, DeliveryBatch batch) {
-    // TODO: Implement batch menu
+    debugPrint('🚛 [BATCH-OVERVIEW] Showing batch menu for: ${batch.id}');
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _BatchMenuBottomSheet(batch: batch),
+    );
   }
 
-  void _handleViewDetails(DeliveryBatch batch) {
-    // TODO: Navigate to batch details screen
+  void _handleViewDetails(BuildContext context, DeliveryBatch batch) {
+    debugPrint('🚛 [BATCH-OVERVIEW] Viewing details for batch: ${batch.id}');
+
+    // Show batch details in a dialog for now
+    // TODO: Create dedicated batch details screen route
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Batch Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Batch ID: ${batch.id}'),
+            Text('Status: ${batch.status.name}'),
+            Text('Max Orders: ${batch.maxOrders}'),
+            Text('Created: ${batch.createdAt.toString()}'),
+            if (batch.actualStartTime != null)
+              Text('Started: ${batch.actualStartTime.toString()}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _handleStartBatch(DeliveryBatch batch) {
-    // TODO: Start batch
+  void _handleStartBatch(WidgetRef ref, DeliveryBatch batch) {
+    debugPrint('🚛 [BATCH-OVERVIEW] Starting batch: ${batch.id}');
+
+    // Use the provider to start the batch
+    ref.read(multiOrderBatchProvider.notifier).startBatch();
   }
 
-  void _handlePauseBatch(DeliveryBatch batch) {
-    // TODO: Pause batch
+  void _handlePauseBatch(WidgetRef ref, DeliveryBatch batch) {
+    debugPrint('🚛 [BATCH-OVERVIEW] Pausing batch: ${batch.id}');
+
+    // Use the provider to pause the batch
+    ref.read(multiOrderBatchProvider.notifier).pauseBatch();
+  }
+}
+
+/// Batch menu bottom sheet for additional batch actions
+class _BatchMenuBottomSheet extends ConsumerWidget {
+  final DeliveryBatch batch;
+
+  const _BatchMenuBottomSheet({required this.batch});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.outline.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Batch Actions',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildMenuOption(
+            context,
+            icon: Icons.info_outline,
+            title: 'View Details',
+            subtitle: 'See batch information',
+            onTap: () {
+              Navigator.pop(context);
+              // TODO: Navigate to batch details
+            },
+          ),
+          _buildMenuOption(
+            context,
+            icon: Icons.route,
+            title: 'Optimize Route',
+            subtitle: 'Recalculate optimal route',
+            onTap: () {
+              Navigator.pop(context);
+              _handleOptimizeRoute(ref);
+            },
+          ),
+          if (batch.status == BatchStatus.active || batch.status == BatchStatus.paused)
+            _buildMenuOption(
+              context,
+              icon: Icons.cancel_outlined,
+              title: 'Cancel Batch',
+              subtitle: 'Cancel this batch',
+              onTap: () {
+                Navigator.pop(context);
+                _showCancelConfirmation(context, ref);
+              },
+              isDestructive: true,
+            ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final theme = Theme.of(context);
+    final color = isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface;
+
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(
+        title,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.outline,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  void _handleOptimizeRoute(WidgetRef ref) {
+    debugPrint('🚛 [BATCH-MENU] Optimizing route for batch: ${batch.id}');
+    // TODO: Implement route optimization - method not available in provider yet
+    ScaffoldMessenger.of(ref.context).showSnackBar(
+      const SnackBar(content: Text('Route optimization coming soon')),
+    );
+  }
+
+  void _showCancelConfirmation(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Batch'),
+        content: const Text(
+          'Are you sure you want to cancel this batch? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Keep Batch'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleCancelBatch(ref);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Cancel Batch'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleCancelBatch(WidgetRef ref) {
+    debugPrint('🚛 [BATCH-MENU] Cancelling batch: ${batch.id}');
+    ref.read(multiOrderBatchProvider.notifier).cancelBatch('User requested cancellation');
   }
 }

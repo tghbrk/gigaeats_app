@@ -100,33 +100,48 @@ class MultiOrderBatchNotifier extends StateNotifier<MultiOrderBatchState> {
   final MultiOrderBatchService _batchService = MultiOrderBatchService();
   Timer? _refreshTimer;
 
-  MultiOrderBatchNotifier() : super(const MultiOrderBatchState());
+  MultiOrderBatchNotifier() : super(const MultiOrderBatchState()) {
+    debugPrint('🚛 [BATCH-PROVIDER] MultiOrderBatchNotifier initialized');
+  }
 
   /// Load active batch for driver
   Future<void> loadActiveBatch(String driverId) async {
     try {
-      debugPrint('🚛 [BATCH-PROVIDER] Loading active batch for driver: $driverId');
-      
+      debugPrint('🚛 [BATCH-PROVIDER] ===== LOADING ACTIVE BATCH =====');
+      debugPrint('🚛 [BATCH-PROVIDER] Driver ID: $driverId');
+      debugPrint('🚛 [BATCH-PROVIDER] Testing RLS policy fix...');
+
       state = state.copyWith(isLoading: true, error: null);
 
+      debugPrint('🚛 [BATCH-PROVIDER] Calling batch service...');
       final batch = await _batchService.getActiveBatchForDriver(driverId);
-      
+      debugPrint('🚛 [BATCH-PROVIDER] Batch service call completed successfully!');
+      debugPrint('🚛 [BATCH-PROVIDER] Batch result: ${batch?.id ?? 'null'}');
+
       if (batch != null) {
+        debugPrint('🚛 [BATCH-PROVIDER] Loading batch orders for batch: ${batch.id}');
         final batchOrders = await _batchService.getBatchOrdersWithDetails(batch.id);
+        debugPrint('🚛 [BATCH-PROVIDER] Batch orders loaded: ${batchOrders.length} orders');
+
         final summary = _calculateBatchSummary(batch, batchOrders);
-        
+        debugPrint('🚛 [BATCH-PROVIDER] Batch summary calculated');
+
         state = state.copyWith(
           activeBatch: batch,
           batchOrders: batchOrders,
           batchSummary: summary,
           isLoading: false,
         );
-        
+
+        debugPrint('🚛 [BATCH-PROVIDER] State updated with active batch');
+
         // Start periodic refresh if batch is active
         if (batch.isActive) {
+          debugPrint('🚛 [BATCH-PROVIDER] Starting periodic refresh for active batch');
           _startPeriodicRefresh(driverId);
         }
       } else {
+        debugPrint('🚛 [BATCH-PROVIDER] No active batch found, clearing state');
         state = state.copyWith(
           activeBatch: null,
           batchOrders: [],
@@ -135,7 +150,8 @@ class MultiOrderBatchNotifier extends StateNotifier<MultiOrderBatchState> {
         );
       }
 
-      debugPrint('🚛 [BATCH-PROVIDER] Active batch loaded: ${batch?.id ?? 'none'}');
+      debugPrint('🚛 [BATCH-PROVIDER] ===== BATCH LOADING COMPLETED =====');
+      debugPrint('🚛 [BATCH-PROVIDER] Final result: ${batch?.id ?? 'none'}');
     } catch (e) {
       debugPrint('❌ [BATCH-PROVIDER] Error loading active batch: $e');
       state = state.copyWith(

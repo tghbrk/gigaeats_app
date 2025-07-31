@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../data/models/user_role.dart';
 import '../../../../shared/widgets/auth_guard.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../widgets/multi_order/batch_overview_card.dart';
 import '../widgets/multi_order/order_sequence_card.dart';
 import '../widgets/multi_order/route_optimization_controls.dart';
@@ -10,6 +12,8 @@ import '../widgets/multi_order/batch_progress_indicator.dart';
 import '../widgets/multi_order/quick_actions_panel.dart';
 import '../providers/multi_order_batch_provider.dart';
 import '../providers/route_optimization_provider.dart';
+
+import '../providers/driver_earnings_provider.dart';
 import '../../data/models/delivery_batch.dart';
 import '../../data/models/batch_operation_results.dart';
 
@@ -30,6 +34,7 @@ class _MultiOrderDriverDashboardState extends ConsumerState<MultiOrderDriverDash
   @override
   void initState() {
     super.initState();
+    debugPrint('🚛 [MULTI-ORDER-DASHBOARD] MultiOrderDriverDashboard initState called');
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -59,8 +64,20 @@ class _MultiOrderDriverDashboardState extends ConsumerState<MultiOrderDriverDash
   void _initializeDashboard() {
     debugPrint('🚛 [MULTI-ORDER-DASHBOARD] Initializing dashboard');
 
-    // Load active batch data - TODO: Get actual driver ID
-    ref.read(multiOrderBatchProvider.notifier).loadActiveBatch('driver_123');
+    // Get actual driver ID from provider
+    final driverIdAsync = ref.read(currentDriverIdProvider);
+    driverIdAsync.when(
+      data: (driverId) {
+        if (driverId != null) {
+          debugPrint('🚛 [MULTI-ORDER-DASHBOARD] Loading batch for driver: $driverId');
+          ref.read(multiOrderBatchProvider.notifier).loadActiveBatch(driverId);
+        } else {
+          debugPrint('🚛 [MULTI-ORDER-DASHBOARD] No driver ID found');
+        }
+      },
+      loading: () => debugPrint('🚛 [MULTI-ORDER-DASHBOARD] Loading driver ID...'),
+      error: (error, stack) => debugPrint('🚛 [MULTI-ORDER-DASHBOARD] Error getting driver ID: $error'),
+    );
 
     // Check for active route optimization
     final routeState = ref.read(routeOptimizationProvider);
@@ -174,6 +191,14 @@ class _MultiOrderDriverDashboardState extends ConsumerState<MultiOrderDriverDash
       elevation: 0,
       backgroundColor: theme.colorScheme.primary,
       foregroundColor: theme.colorScheme.onPrimary,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () {
+          debugPrint('🔙 [MULTI-ORDER-DASHBOARD] Navigating back to driver dashboard using GoRouter');
+          context.go(AppRoutes.driverDashboard);
+        },
+        tooltip: 'Back to Driver Dashboard',
+      ),
       actions: [
         // Batch status indicator
         if (batchState.activeBatch != null)
@@ -237,36 +262,42 @@ class _MultiOrderDriverDashboardState extends ConsumerState<MultiOrderDriverDash
 
   Widget _buildEmptyState(ThemeData theme) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.route,
-            size: 64,
-            color: theme.colorScheme.outline,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.route,
+                size: 64,
+                color: theme.colorScheme.outline,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Active Batch',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Create a new batch to start multi-order delivery',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _handleCreateBatch,
+                icon: const Icon(Icons.add),
+                label: const Text('Create Batch'),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'No Active Batch',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create a new batch to start multi-order delivery',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _handleCreateBatch,
-            icon: const Icon(Icons.add),
-            label: const Text('Create Batch'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -306,8 +337,20 @@ class _MultiOrderDriverDashboardState extends ConsumerState<MultiOrderDriverDash
   Future<void> _handleRefresh() async {
     debugPrint('🔄 [MULTI-ORDER-DASHBOARD] Refreshing dashboard');
 
-    // TODO: Get actual driver ID
-    await ref.read(multiOrderBatchProvider.notifier).loadActiveBatch('driver_123');
+    // Get actual driver ID from provider
+    final driverIdAsync = ref.read(currentDriverIdProvider);
+    await driverIdAsync.when(
+      data: (driverId) async {
+        if (driverId != null) {
+          debugPrint('🔄 [MULTI-ORDER-DASHBOARD] Refreshing batch for driver: $driverId');
+          await ref.read(multiOrderBatchProvider.notifier).loadActiveBatch(driverId);
+        } else {
+          debugPrint('🔄 [MULTI-ORDER-DASHBOARD] No driver ID found for refresh');
+        }
+      },
+      loading: () async => debugPrint('🔄 [MULTI-ORDER-DASHBOARD] Loading driver ID for refresh...'),
+      error: (error, stack) async => debugPrint('🔄 [MULTI-ORDER-DASHBOARD] Error getting driver ID for refresh: $error'),
+    );
   }
 
   void _handleRouteOptimization() {
@@ -345,9 +388,61 @@ class _MultiOrderDriverDashboardState extends ConsumerState<MultiOrderDriverDash
 
   void _handleCreateBatch() {
     debugPrint('➕ [MULTI-ORDER-DASHBOARD] Creating new batch');
-    
-    // TODO: Navigate to batch creation screen
-    _showSnackBar('Batch creation not implemented yet');
+
+    // Show dialog to create a new batch
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Batch'),
+        content: const Text('Would you like to create a new delivery batch with available orders?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _createNewBatch();
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createNewBatch() async {
+    try {
+      debugPrint('🚛 [MULTI-ORDER-DASHBOARD] Starting batch creation process');
+
+      // Get the current driver ID from provider
+      final driverIdAsync = ref.read(currentDriverIdProvider);
+      final driverId = await driverIdAsync.when(
+        data: (id) async => id,
+        loading: () async => throw Exception('Loading driver ID...'),
+        error: (error, stack) async => throw Exception('Error getting driver ID: $error'),
+      );
+
+      if (driverId == null) {
+        _showSnackBar('Error: Driver not found');
+        return;
+      }
+
+      debugPrint('🚛 [MULTI-ORDER-DASHBOARD] Creating batch for driver: $driverId');
+
+      // Trigger batch creation through the provider
+      await ref.read(multiOrderBatchProvider.notifier).createOptimizedBatch(
+        driverId: driverId,
+        orderIds: [], // Will auto-select available orders
+      );
+
+      _showSnackBar('Batch creation initiated');
+
+    } catch (e) {
+      debugPrint('❌ [MULTI-ORDER-DASHBOARD] Error creating batch: $e');
+      _showSnackBar('Error creating batch: $e');
+    }
   }
 
   void _handleQuickActions() {

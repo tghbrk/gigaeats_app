@@ -10,8 +10,9 @@ class QuickActionsPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
+    debugPrint('🎛️ [QUICK-ACTIONS-PANEL] Building quick actions panel');
+
     return Container(
-      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(
@@ -20,136 +21,149 @@ class QuickActionsPanel extends ConsumerWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle bar
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outline.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Title
-          Text(
-            'Quick Actions',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Action grid
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 3,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            children: [
-              _buildActionCard(
-                theme,
-                icon: Icons.navigation,
-                label: 'Navigate',
-                color: Colors.blue,
-                onTap: () => _handleAction(context, 'navigate'),
-              ),
-              _buildActionCard(
-                theme,
-                icon: Icons.phone,
-                label: 'Call Customer',
-                color: Colors.green,
-                onTap: () => _handleAction(context, 'call_customer'),
-              ),
-              _buildActionCard(
-                theme,
-                icon: Icons.message,
-                label: 'Send Message',
-                color: Colors.orange,
-                onTap: () => _handleAction(context, 'send_message'),
-              ),
-              _buildActionCard(
-                theme,
-                icon: Icons.camera_alt,
-                label: 'Take Photo',
-                color: Colors.purple,
-                onTap: () => _handleAction(context, 'take_photo'),
-              ),
-              _buildActionCard(
-                theme,
-                icon: Icons.report_problem,
-                label: 'Report Issue',
-                color: Colors.red,
-                onTap: () => _handleAction(context, 'report_issue'),
-              ),
-              _buildActionCard(
-                theme,
-                icon: Icons.help_outline,
-                label: 'Help',
-                color: Colors.grey,
-                onTap: () => _handleAction(context, 'help'),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Batch actions
-          Text(
-            'Batch Actions',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildBatchActionButton(
-                  theme,
-                  icon: Icons.pause,
-                  label: 'Pause Batch',
-                  color: Colors.orange,
-                  onTap: () => _handleAction(context, 'pause_batch'),
+          // Handle bar (fixed at top)
+          Container(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildBatchActionButton(
-                  theme,
-                  icon: Icons.refresh,
-                  label: 'Reoptimize',
-                  color: Colors.blue,
-                  onTap: () => _handleAction(context, 'reoptimize'),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          SizedBox(
-            width: double.infinity,
-            child: _buildBatchActionButton(
-              theme,
-              icon: Icons.emergency,
-              label: 'Emergency Stop',
-              color: Colors.red,
-              onTap: () => _handleAction(context, 'emergency_stop'),
             ),
           ),
+
+          // Scrollable content
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    'Quick Actions',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
           
-          // Bottom padding for safe area
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
+                  // Action grid
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 1.1, // Make cards slightly shorter
+                    children: [
+                      _buildActionCard(
+                        theme,
+                        icon: Icons.navigation,
+                        label: 'Navigate',
+                        color: Colors.blue,
+                        onTap: () => _handleAction(context, 'navigate'),
+                      ),
+                      _buildActionCard(
+                        theme,
+                        icon: Icons.phone,
+                        label: 'Call Customer',
+                        color: Colors.green,
+                        onTap: () => _handleAction(context, 'call_customer'),
+                      ),
+                      _buildActionCard(
+                        theme,
+                        icon: Icons.message,
+                        label: 'Send Message',
+                        color: Colors.orange,
+                        onTap: () => _handleAction(context, 'send_message'),
+                      ),
+                      _buildActionCard(
+                        theme,
+                        icon: Icons.camera_alt,
+                        label: 'Take Photo',
+                        color: Colors.purple,
+                        onTap: () => _handleAction(context, 'take_photo'),
+                      ),
+                      _buildActionCard(
+                        theme,
+                        icon: Icons.report_problem,
+                        label: 'Report Issue',
+                        color: Colors.red,
+                        onTap: () => _handleAction(context, 'report_issue'),
+                      ),
+                      _buildActionCard(
+                        theme,
+                        icon: Icons.help_outline,
+                        label: 'Help',
+                        color: Colors.grey,
+                        onTap: () => _handleAction(context, 'help'),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+          
+                  // Batch actions
+                  Text(
+                    'Batch Actions',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildBatchActionButton(
+                          theme,
+                          icon: Icons.pause,
+                          label: 'Pause Batch',
+                          color: Colors.orange,
+                          onTap: () => _handleAction(context, 'pause_batch'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildBatchActionButton(
+                          theme,
+                          icon: Icons.refresh,
+                          label: 'Reoptimize',
+                          color: Colors.blue,
+                          onTap: () => _handleAction(context, 'reoptimize'),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: _buildBatchActionButton(
+                      theme,
+                      icon: Icons.emergency,
+                      label: 'Emergency Stop',
+                      color: Colors.red,
+                      onTap: () => _handleAction(context, 'emergency_stop'),
+                    ),
+                  ),
+
+                  // Bottom padding for safe area
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -179,16 +193,18 @@ class QuickActionsPanel extends ConsumerWidget {
             Icon(
               icon,
               color: color,
-              size: 32,
+              size: 28, // Reduced from 32
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6), // Reduced from 8
             Text(
               label,
-              style: theme.textTheme.labelMedium?.copyWith(
+              style: theme.textTheme.labelSmall?.copyWith( // Changed from labelMedium
                 color: color,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
+              maxLines: 2, // Ensure text doesn't overflow
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -212,7 +228,7 @@ class QuickActionsPanel extends ConsumerWidget {
       ),
       style: OutlinedButton.styleFrom(
         side: BorderSide(color: color),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 8), // Reduced from 12
       ),
     );
   }

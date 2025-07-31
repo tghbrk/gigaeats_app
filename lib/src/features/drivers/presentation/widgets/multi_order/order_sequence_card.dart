@@ -361,7 +361,7 @@ class _OrderSequenceCardState extends ConsumerState<OrderSequenceCard>
                   theme,
                   icon: Icons.access_time,
                   label: 'Est. Time',
-                  value: '15 min', // TODO: Calculate from route optimization
+                  value: _getEstimatedTime(),
                 ),
               ),
             ],
@@ -538,5 +538,65 @@ class _OrderSequenceCardState extends ConsumerState<OrderSequenceCard>
       default:
         return 'Completed';
     }
+  }
+
+  /// Calculate estimated time based on order status and distance
+  String _getEstimatedTime() {
+    final batchOrder = widget.batchOrder.batchOrder;
+    final order = widget.batchOrder.order;
+
+    // If we have actual timing data, use it
+    if (batchOrder.actualPickupTime != null && batchOrder.actualDeliveryTime != null) {
+      return 'Completed';
+    }
+
+    // If pickup is completed, estimate delivery time
+    if (batchOrder.pickupStatus == BatchOrderPickupStatus.completed) {
+      if (batchOrder.estimatedDeliveryTime != null) {
+        final now = DateTime.now();
+        final diff = batchOrder.estimatedDeliveryTime!.difference(now);
+        if (diff.inMinutes > 0) {
+          return '${diff.inMinutes} min';
+        }
+      }
+      return '8-12 min'; // Default delivery estimate
+    }
+
+    // If pickup is in progress, estimate pickup completion
+    if (batchOrder.pickupStatus == BatchOrderPickupStatus.inProgress) {
+      return '5-10 min';
+    }
+
+    // Base time calculation based on order status and travel time
+    int baseTime = 15; // Default base time
+
+    // Add travel time if available
+    if (batchOrder.travelTimeFromPreviousMinutes != null) {
+      baseTime += batchOrder.travelTimeFromPreviousMinutes!;
+    }
+
+    // Adjust based on order status
+    switch (order.status) {
+      case OrderStatus.pending:
+        baseTime += 10;
+        break;
+      case OrderStatus.confirmed:
+        baseTime += 5;
+        break;
+      case OrderStatus.preparing:
+        baseTime += 2;
+        break;
+      case OrderStatus.ready:
+        // No additional time
+        break;
+      case OrderStatus.delivered:
+        return 'Completed';
+      case OrderStatus.cancelled:
+        return 'Cancelled';
+      default:
+        break;
+    }
+
+    return '$baseTime-${baseTime + 5} min';
   }
 }

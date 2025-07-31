@@ -293,3 +293,84 @@ class BatchSummary extends Equatable {
   @override
   String toString() => 'BatchSummary(orders: $totalOrders, pickups: $completedPickups/$totalOrders, deliveries: $completedDeliveries/$totalOrders)';
 }
+
+/// Result class for order compatibility analysis (Phase 3.4)
+class OrderCompatibilityResult extends Equatable {
+  final bool isCompatible;
+  final double score;
+  final String? reason;
+
+  const OrderCompatibilityResult._({
+    required this.isCompatible,
+    required this.score,
+    this.reason,
+  });
+
+  factory OrderCompatibilityResult.compatible({
+    required double score,
+    String? reason,
+  }) {
+    return OrderCompatibilityResult._(
+      isCompatible: true,
+      score: score,
+      reason: reason,
+    );
+  }
+
+  factory OrderCompatibilityResult.incompatible(String reason) {
+    return OrderCompatibilityResult._(
+      isCompatible: false,
+      score: 0.0,
+      reason: reason,
+    );
+  }
+
+  @override
+  List<Object?> get props => [isCompatible, score, reason];
+
+  @override
+  String toString() => 'OrderCompatibilityResult(compatible: $isCompatible, score: $score, reason: $reason)';
+}
+
+/// Result class for automated driver assignment (Phase 3.4)
+class DriverAssignmentResult extends Equatable {
+  final bool isSuccess;
+  final String? driverId;
+  final double? score;
+  final String? errorMessage;
+  final Map<String, dynamic>? metadata;
+
+  const DriverAssignmentResult._({
+    required this.isSuccess,
+    this.driverId,
+    this.score,
+    this.errorMessage,
+    this.metadata,
+  });
+
+  factory DriverAssignmentResult.success({
+    required String driverId,
+    required double score,
+    Map<String, dynamic>? metadata,
+  }) {
+    return DriverAssignmentResult._(
+      isSuccess: true,
+      driverId: driverId,
+      score: score,
+      metadata: metadata,
+    );
+  }
+
+  factory DriverAssignmentResult.failure(String errorMessage) {
+    return DriverAssignmentResult._(
+      isSuccess: false,
+      errorMessage: errorMessage,
+    );
+  }
+
+  @override
+  List<Object?> get props => [isSuccess, driverId, score, errorMessage, metadata];
+
+  @override
+  String toString() => 'DriverAssignmentResult(success: $isSuccess, driver: $driverId, score: $score)';
+}

@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/route_optimization_models.dart';
 import '../../data/services/route_optimization_engine.dart';
+import '../../data/services/real_time_route_adjustment_service.dart';
 import '../../data/services/preparation_time_service.dart';
 import '../../../orders/data/models/order.dart';
 
@@ -519,4 +520,465 @@ final routeTotalDistanceProvider = Provider<String?>((ref) {
 /// Route total duration provider
 final routeTotalDurationProvider = Provider<String?>((ref) {
   return ref.watch(routeOptimizationProvider).currentRoute?.totalDurationText;
+});
+
+// ============================================================================
+// PHASE 3: REAL-TIME ROUTE OPTIMIZATION PROVIDERS
+// ============================================================================
+
+/// Real-time route adjustment state
+@immutable
+class RealTimeRouteState {
+  final RouteAdjustmentResult? lastAdjustment;
+  final bool isCalculatingAdjustment;
+  final Map<String, dynamic>? realTimeConditions;
+  final List<String> completedWaypointIds;
+  final DateTime? lastAdjustmentTime;
+  final int adjustmentCount;
+  final String? error;
+
+  const RealTimeRouteState({
+    this.lastAdjustment,
+    this.isCalculatingAdjustment = false,
+    this.realTimeConditions,
+    this.completedWaypointIds = const [],
+    this.lastAdjustmentTime,
+    this.adjustmentCount = 0,
+    this.error,
+  });
+
+  RealTimeRouteState copyWith({
+    RouteAdjustmentResult? lastAdjustment,
+    bool? isCalculatingAdjustment,
+    Map<String, dynamic>? realTimeConditions,
+    List<String>? completedWaypointIds,
+    DateTime? lastAdjustmentTime,
+    int? adjustmentCount,
+    String? error,
+  }) {
+    return RealTimeRouteState(
+      lastAdjustment: lastAdjustment ?? this.lastAdjustment,
+      isCalculatingAdjustment: isCalculatingAdjustment ?? this.isCalculatingAdjustment,
+      realTimeConditions: realTimeConditions ?? this.realTimeConditions,
+      completedWaypointIds: completedWaypointIds ?? this.completedWaypointIds,
+      lastAdjustmentTime: lastAdjustmentTime ?? this.lastAdjustmentTime,
+      adjustmentCount: adjustmentCount ?? this.adjustmentCount,
+      error: error ?? this.error,
+    );
+  }
+
+  /// Check if adjustment is needed based on conditions
+  bool get needsAdjustment {
+    if (realTimeConditions == null) return false;
+
+    final trafficImpact = _getTrafficImpact();
+    final weatherImpact = _getWeatherImpact();
+    final orderChanges = realTimeConditions!['order_changes'] as bool? ?? false;
+
+    return trafficImpact > 0.2 || weatherImpact > 0.2 || orderChanges;
+  }
+
+  /// Get traffic impact score
+  double _getTrafficImpact() {
+    final trafficData = realTimeConditions?['traffic'] as Map<String, dynamic>?;
+    if (trafficData == null) return 0.0;
+
+    final congestionLevel = trafficData['congestion_level'] as String? ?? 'normal';
+    switch (congestionLevel.toLowerCase()) {
+      case 'severe': return 0.4;
+      case 'heavy': return 0.3;
+      case 'moderate': return 0.2;
+      case 'light': return 0.1;
+      default: return 0.0;
+    }
+  }
+
+  /// Get weather impact score
+  double _getWeatherImpact() {
+    final weatherData = realTimeConditions?['weather'] as Map<String, dynamic>?;
+    if (weatherData == null) return 0.0;
+
+    final condition = weatherData['condition'] as String? ?? 'clear';
+    switch (condition.toLowerCase()) {
+      case 'thunderstorm': return 0.3;
+      case 'heavy_rain': return 0.25;
+      case 'rain': return 0.15;
+      case 'fog': return 0.2;
+      case 'haze': return 0.1;
+      default: return 0.0;
+    }
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RealTimeRouteState &&
+          runtimeType == other.runtimeType &&
+          lastAdjustment == other.lastAdjustment &&
+          isCalculatingAdjustment == other.isCalculatingAdjustment &&
+          realTimeConditions == other.realTimeConditions &&
+          completedWaypointIds == other.completedWaypointIds &&
+          lastAdjustmentTime == other.lastAdjustmentTime &&
+          adjustmentCount == other.adjustmentCount &&
+          error == other.error;
+
+  @override
+  int get hashCode =>
+      lastAdjustment.hashCode ^
+      isCalculatingAdjustment.hashCode ^
+      realTimeConditions.hashCode ^
+      completedWaypointIds.hashCode ^
+      lastAdjustmentTime.hashCode ^
+      adjustmentCount.hashCode ^
+      error.hashCode;
+}
+
+/// Real-time route adjustment notifier
+class RealTimeRouteNotifier extends StateNotifier<RealTimeRouteState> {
+  final RouteOptimizationEngine _optimizationEngine = RouteOptimizationEngine();
+  Timer? _adjustmentTimer;
+
+  RealTimeRouteNotifier() : super(const RealTimeRouteState()) {
+    debugPrint('🔄 [REAL-TIME-ROUTE] RealTimeRouteNotifier initialized');
+  }
+
+  /// Update real-time conditions
+  void updateRealTimeConditions(Map<String, dynamic> conditions) {
+    debugPrint('📊 [REAL-TIME-ROUTE] Updating real-time conditions');
+
+    state = state.copyWith(
+      realTimeConditions: conditions,
+      error: null,
+    );
+
+    // Check if adjustment is needed
+    if (state.needsAdjustment) {
+      debugPrint('⚠️ [REAL-TIME-ROUTE] Adjustment needed based on conditions');
+      _scheduleAdjustmentCalculation();
+    }
+  }
+
+  /// Mark waypoint as completed
+  void markWaypointCompleted(String waypointId) {
+    debugPrint('✅ [REAL-TIME-ROUTE] Marking waypoint completed: $waypointId');
+
+    final updatedCompletedIds = [...state.completedWaypointIds, waypointId];
+    state = state.copyWith(
+      completedWaypointIds: updatedCompletedIds,
+    );
+
+    // Check if adjustment is needed after waypoint completion
+    if (state.needsAdjustment) {
+      _scheduleAdjustmentCalculation();
+    }
+  }
+
+  /// Calculate dynamic route adjustment
+  Future<void> calculateDynamicAdjustment({
+    required OptimizedRoute currentRoute,
+    required LatLng currentDriverLocation,
+  }) async {
+    try {
+      debugPrint('🔄 [REAL-TIME-ROUTE] Calculating dynamic route adjustment');
+
+      state = state.copyWith(
+        isCalculatingAdjustment: true,
+        error: null,
+      );
+
+      final adjustmentResult = await _optimizationEngine.calculateDynamicRouteAdjustment(
+        currentRoute: currentRoute,
+        currentDriverLocation: currentDriverLocation,
+        completedWaypointIds: state.completedWaypointIds,
+        realTimeConditions: state.realTimeConditions,
+      );
+
+      state = state.copyWith(
+        lastAdjustment: adjustmentResult,
+        isCalculatingAdjustment: false,
+        lastAdjustmentTime: DateTime.now(),
+        adjustmentCount: state.adjustmentCount + 1,
+      );
+
+      if (adjustmentResult.isSuccess) {
+        debugPrint('✅ [REAL-TIME-ROUTE] Route adjustment calculated successfully');
+      } else if (adjustmentResult.noAdjustmentNeeded) {
+        debugPrint('ℹ️ [REAL-TIME-ROUTE] No route adjustment needed');
+      } else {
+        debugPrint('❌ [REAL-TIME-ROUTE] Route adjustment calculation failed');
+      }
+
+    } catch (e) {
+      debugPrint('❌ [REAL-TIME-ROUTE] Error calculating dynamic adjustment: $e');
+      state = state.copyWith(
+        isCalculatingAdjustment: false,
+        error: 'Failed to calculate route adjustment: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Schedule adjustment calculation with debouncing
+  void _scheduleAdjustmentCalculation() {
+    // Cancel existing timer
+    _adjustmentTimer?.cancel();
+
+    // Schedule new calculation after a delay to avoid excessive calculations
+    _adjustmentTimer = Timer(const Duration(seconds: 5), () {
+      debugPrint('⏰ [REAL-TIME-ROUTE] Scheduled adjustment calculation triggered');
+      // Note: This would need the current route and driver location from context
+      // In a real implementation, this would be provided by the calling code
+    });
+  }
+
+  /// Reset real-time state
+  void reset() {
+    debugPrint('🔄 [REAL-TIME-ROUTE] Resetting real-time route state');
+    _adjustmentTimer?.cancel();
+    state = const RealTimeRouteState();
+  }
+
+  @override
+  void dispose() {
+    debugPrint('🔄 [REAL-TIME-ROUTE] Disposing RealTimeRouteNotifier');
+    _adjustmentTimer?.cancel();
+    super.dispose();
+  }
+}
+
+/// Real-time route provider
+final realTimeRouteProvider = StateNotifierProvider<RealTimeRouteNotifier, RealTimeRouteState>((ref) {
+  return RealTimeRouteNotifier();
+});
+
+/// Real-time conditions provider
+final realTimeConditionsProvider = Provider<Map<String, dynamic>?>((ref) {
+  return ref.watch(realTimeRouteProvider).realTimeConditions;
+});
+
+/// Needs adjustment provider
+final needsRouteAdjustmentProvider = Provider<bool>((ref) {
+  return ref.watch(realTimeRouteProvider).needsAdjustment;
+});
+
+/// Last adjustment result provider
+final lastAdjustmentResultProvider = Provider<RouteAdjustmentResult?>((ref) {
+  return ref.watch(realTimeRouteProvider).lastAdjustment;
+});
+
+/// Completed waypoints provider
+final completedWaypointsProvider = Provider<List<String>>((ref) {
+  return ref.watch(realTimeRouteProvider).completedWaypointIds;
+});
+
+// ============================================================================
+// PHASE 3.4: REAL-TIME ROUTE ADJUSTMENT SERVICE INTEGRATION
+// ============================================================================
+
+/// Real-time route adjustment service provider
+final realTimeRouteAdjustmentServiceProvider = Provider<RealTimeRouteAdjustmentService>((ref) {
+  final service = RealTimeRouteAdjustmentService();
+  ref.onDispose(() => service.dispose());
+  return service;
+});
+
+/// Real-time route adjustment controller
+class RealTimeRouteAdjustmentController extends StateNotifier<RealTimeRouteAdjustmentState> {
+  final RealTimeRouteAdjustmentService _adjustmentService;
+
+  RealTimeRouteAdjustmentController(this._adjustmentService)
+      : super(const RealTimeRouteAdjustmentState()) {
+    debugPrint('🔄 [REAL-TIME-CONTROLLER] RealTimeRouteAdjustmentController initialized');
+  }
+
+  /// Initialize real-time monitoring for a batch
+  Future<void> initializeMonitoring({
+    required String batchId,
+    required OptimizedRoute initialRoute,
+    required LatLng driverLocation,
+  }) async {
+    try {
+      debugPrint('🔄 [REAL-TIME-CONTROLLER] Initializing monitoring for batch: $batchId');
+
+      state = state.copyWith(
+        isMonitoring: true,
+        activeBatchId: batchId,
+        currentRoute: initialRoute,
+        error: null,
+      );
+
+      await _adjustmentService.initializeMonitoring(
+        batchId: batchId,
+        initialRoute: initialRoute,
+        driverLocation: driverLocation,
+      );
+
+      state = state.copyWith(
+        isInitialized: true,
+        lastInitializedAt: DateTime.now(),
+      );
+
+      debugPrint('✅ [REAL-TIME-CONTROLLER] Monitoring initialized successfully');
+
+    } catch (e) {
+      debugPrint('❌ [REAL-TIME-CONTROLLER] Error initializing monitoring: $e');
+      state = state.copyWith(
+        isMonitoring: false,
+        isInitialized: false,
+        error: 'Failed to initialize monitoring: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Update current route
+  void updateCurrentRoute(OptimizedRoute route) {
+    debugPrint('🔄 [REAL-TIME-CONTROLLER] Updating current route');
+
+    _adjustmentService.updateCurrentRoute(route);
+    state = state.copyWith(
+      currentRoute: route,
+      lastRouteUpdate: DateTime.now(),
+    );
+  }
+
+  /// Update driver location
+  void updateDriverLocation(LatLng location) {
+    debugPrint('📍 [REAL-TIME-CONTROLLER] Updating driver location');
+
+    _adjustmentService.updateDriverLocation(location);
+    state = state.copyWith(
+      currentDriverLocation: location,
+      lastLocationUpdate: DateTime.now(),
+    );
+  }
+
+  /// Get current real-time conditions
+  Map<String, dynamic> getCurrentConditions() {
+    return _adjustmentService.getCurrentConditions();
+  }
+
+  /// Stop monitoring
+  Future<void> stopMonitoring() async {
+    try {
+      debugPrint('🛑 [REAL-TIME-CONTROLLER] Stopping monitoring');
+
+      await _adjustmentService.stopMonitoring();
+
+      state = state.copyWith(
+        isMonitoring: false,
+        isInitialized: false,
+        activeBatchId: null,
+        currentRoute: null,
+        currentDriverLocation: null,
+        error: null,
+      );
+
+      debugPrint('✅ [REAL-TIME-CONTROLLER] Monitoring stopped successfully');
+
+    } catch (e) {
+      debugPrint('❌ [REAL-TIME-CONTROLLER] Error stopping monitoring: $e');
+      state = state.copyWith(
+        error: 'Failed to stop monitoring: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Reset state
+  void reset() {
+    debugPrint('🔄 [REAL-TIME-CONTROLLER] Resetting state');
+    state = const RealTimeRouteAdjustmentState();
+  }
+}
+
+/// Real-time route adjustment state
+@immutable
+class RealTimeRouteAdjustmentState {
+  final bool isMonitoring;
+  final bool isInitialized;
+  final String? activeBatchId;
+  final OptimizedRoute? currentRoute;
+  final LatLng? currentDriverLocation;
+  final DateTime? lastInitializedAt;
+  final DateTime? lastRouteUpdate;
+  final DateTime? lastLocationUpdate;
+  final String? error;
+
+  const RealTimeRouteAdjustmentState({
+    this.isMonitoring = false,
+    this.isInitialized = false,
+    this.activeBatchId,
+    this.currentRoute,
+    this.currentDriverLocation,
+    this.lastInitializedAt,
+    this.lastRouteUpdate,
+    this.lastLocationUpdate,
+    this.error,
+  });
+
+  RealTimeRouteAdjustmentState copyWith({
+    bool? isMonitoring,
+    bool? isInitialized,
+    String? activeBatchId,
+    OptimizedRoute? currentRoute,
+    LatLng? currentDriverLocation,
+    DateTime? lastInitializedAt,
+    DateTime? lastRouteUpdate,
+    DateTime? lastLocationUpdate,
+    String? error,
+  }) {
+    return RealTimeRouteAdjustmentState(
+      isMonitoring: isMonitoring ?? this.isMonitoring,
+      isInitialized: isInitialized ?? this.isInitialized,
+      activeBatchId: activeBatchId ?? this.activeBatchId,
+      currentRoute: currentRoute ?? this.currentRoute,
+      currentDriverLocation: currentDriverLocation ?? this.currentDriverLocation,
+      lastInitializedAt: lastInitializedAt ?? this.lastInitializedAt,
+      lastRouteUpdate: lastRouteUpdate ?? this.lastRouteUpdate,
+      lastLocationUpdate: lastLocationUpdate ?? this.lastLocationUpdate,
+      error: error ?? this.error,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RealTimeRouteAdjustmentState &&
+          runtimeType == other.runtimeType &&
+          isMonitoring == other.isMonitoring &&
+          isInitialized == other.isInitialized &&
+          activeBatchId == other.activeBatchId &&
+          currentRoute == other.currentRoute &&
+          currentDriverLocation == other.currentDriverLocation &&
+          lastInitializedAt == other.lastInitializedAt &&
+          lastRouteUpdate == other.lastRouteUpdate &&
+          lastLocationUpdate == other.lastLocationUpdate &&
+          error == other.error;
+
+  @override
+  int get hashCode =>
+      isMonitoring.hashCode ^
+      isInitialized.hashCode ^
+      activeBatchId.hashCode ^
+      currentRoute.hashCode ^
+      currentDriverLocation.hashCode ^
+      lastInitializedAt.hashCode ^
+      lastRouteUpdate.hashCode ^
+      lastLocationUpdate.hashCode ^
+      error.hashCode;
+}
+
+/// Real-time route adjustment controller provider
+final realTimeRouteAdjustmentControllerProvider =
+    StateNotifierProvider<RealTimeRouteAdjustmentController, RealTimeRouteAdjustmentState>((ref) {
+  final service = ref.watch(realTimeRouteAdjustmentServiceProvider);
+  return RealTimeRouteAdjustmentController(service);
+});
+
+/// Monitoring status provider
+final isMonitoringProvider = Provider<bool>((ref) {
+  return ref.watch(realTimeRouteAdjustmentControllerProvider).isMonitoring;
+});
+
+/// Current monitoring batch provider
+final currentMonitoringBatchProvider = Provider<String?>((ref) {
+  return ref.watch(realTimeRouteAdjustmentControllerProvider).activeBatchId;
 });

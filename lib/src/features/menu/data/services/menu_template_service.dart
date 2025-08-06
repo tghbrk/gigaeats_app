@@ -437,9 +437,11 @@ class MenuTemplateService {
       final file = File('${directory.path}/$fileName');
       await file.writeAsBytes(data);
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'GigaEats Menu Import Template',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'GigaEats Menu Import Template',
+        ),
       );
     } catch (e) {
       debugPrint('Error saving and sharing file: $e');

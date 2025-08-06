@@ -198,10 +198,12 @@ class EnhancedAnalyticsExportService {
       final subject = 'GigaEats Wallet Analytics Report - ${export.periodDisplayName}';
 
       // Share with enhanced options
-      await Share.shareXFiles(
-        [XFile(export.filePath!)],
-        text: shareText,
-        subject: subject,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(export.filePath!)],
+          text: shareText,
+          subject: subject,
+        ),
       );
 
       // Handle email sharing if specified

@@ -342,7 +342,12 @@ class AnalyticsExportService {
     final file = File('${directory.path}/$fileName.csv');
     await file.writeAsString(csv);
     
-    await Share.shareXFiles([XFile(file.path)], text: 'Analytics Export');
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'Analytics Export',
+      ),
+    );
   }
 
   // Excel Export Methods (simplified - would need more complex implementation for full Excel features)
@@ -440,7 +445,12 @@ class AnalyticsExportService {
     final bytes = excel.save();
     if (bytes != null) {
       await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)], text: 'Analytics Export');
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'Analytics Export',
+        ),
+      );
     }
   }
 }

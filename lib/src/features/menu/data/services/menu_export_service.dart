@@ -141,10 +141,12 @@ class MenuExportService {
     try {
       debugPrint('🍽️ [MENU-EXPORT] Sharing file: ${exportResult.fileName}');
 
-      await Share.shareXFiles(
-        [XFile(exportResult.filePath!)],
-        text: 'Menu Export - ${exportResult.fileName}',
-        subject: 'GigaEats Menu Export',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(exportResult.filePath!)],
+          text: 'Menu Export - ${exportResult.fileName}',
+          subject: 'GigaEats Menu Export',
+        ),
       );
 
       debugPrint('🍽️ [MENU-EXPORT] File shared successfully');

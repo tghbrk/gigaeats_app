@@ -350,10 +350,12 @@ class WalletAnalyticsService {
         return Left(ValidationFailure(message: 'Export file does not exist'));
       }
 
-      await Share.shareXFiles(
-        [XFile(export.filePath!)],
-        text: 'GigaEats Wallet Analytics Report - ${export.periodDisplayName}',
-        subject: 'Wallet Analytics Report',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(export.filePath!)],
+          text: 'GigaEats Wallet Analytics Report - ${export.periodDisplayName}',
+          subject: 'Wallet Analytics Report',
+        ),
       );
 
       debugPrint('🔍 [ANALYTICS-SERVICE] Export file shared successfully');

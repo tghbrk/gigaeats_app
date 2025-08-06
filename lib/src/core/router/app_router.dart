@@ -49,7 +49,7 @@ import '../../features/marketplace_wallet/presentation/screens/customer/customer
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_transaction_history_screen.dart';
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_settings_screen.dart';
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_spending_analytics_screen.dart';
-import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_verification_screen.dart';
+import '../../features/marketplace_wallet/presentation/screens/customer/customer_unified_wallet_verification_screen.dart';
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_document_upload_screen.dart';
 import '../../features/marketplace_wallet/presentation/screens/customer/customer_wallet_instant_verification_screen.dart';
 import '../../features/customers/presentation/screens/loyalty_dashboard_screen.dart';
@@ -1075,17 +1075,30 @@ List<RouteBase> _buildRoutes() {
         GoRoute(
           path: 'verification',
           name: 'customer-wallet-verification',
-          builder: (context, state) => const CustomerWalletVerificationScreen(),
+          builder: (context, state) => const CustomerUnifiedWalletVerificationScreen(),
           routes: [
+            GoRoute(
+              path: 'unified',
+              name: 'customer-wallet-verification-unified',
+              builder: (context, state) => const CustomerUnifiedWalletVerificationScreen(),
+            ),
+            // Legacy routes - kept for backward compatibility but deprecated
+            // TODO: Remove these routes in a future version after migration is complete
             GoRoute(
               path: 'documents',
               name: 'customer-wallet-verification-documents',
-              builder: (context, state) => const CustomerWalletDocumentUploadScreen(),
+              builder: (context, state) {
+                debugPrint('⚠️ [ROUTER] Using deprecated documents verification route');
+                return const CustomerWalletDocumentUploadScreen();
+              },
             ),
             GoRoute(
               path: 'instant',
               name: 'customer-wallet-verification-instant',
-              builder: (context, state) => const CustomerWalletInstantVerificationScreen(),
+              builder: (context, state) {
+                debugPrint('⚠️ [ROUTER] Using deprecated instant verification route');
+                return const CustomerWalletInstantVerificationScreen();
+              },
             ),
           ],
         ),

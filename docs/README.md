@@ -99,6 +99,15 @@ Welcome to the GigaEats project documentation. This documentation is organized i
 
 ---
 
+### 9. 📦 [Dependency Updates](./dependency-updates/)
+*Documentation for dependency management, updates, and maintenance.*
+
+**Key Documents:**
+- [Dependency Update Report 2025](./dependency-updates/DEPENDENCY_UPDATE_REPORT_2025.md) - Comprehensive update summary
+- [Technical Changes Summary](./dependency-updates/TECHNICAL_CHANGES_SUMMARY.md) - Developer-focused technical details
+
+---
+
 ## 🚀 Quick Start Guide
 
 1. **New to the project?** Start with [Project Planning & Strategy](./01-project-planning-strategy/) to understand the vision and goals

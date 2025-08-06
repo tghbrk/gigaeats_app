@@ -419,10 +419,12 @@ class _EarningsExportWidgetState extends ConsumerState<EarningsExportWidget> {
       }
 
       // Share the file
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        text: 'Earnings Report - ${_selectedDateRange.displayName}',
-        subject: 'GigaEats Driver Earnings Report',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(filePath)],
+          text: 'Earnings Report - ${_selectedDateRange.displayName}',
+          subject: 'GigaEats Driver Earnings Report',
+        ),
       );
 
       _showSuccessSnackBar('Report exported successfully!');

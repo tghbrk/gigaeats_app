@@ -125,7 +125,7 @@ class _DriverVerificationRealtimeStatusWidgetState
               Text(
                 'Real-time AI processing with Malaysian KYC compliance',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -178,10 +178,10 @@ class _DriverVerificationRealtimeStatusWidgetState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _getStatusColor(verification.overallStatus).withOpacity(0.1),
+        color: _getStatusColor(verification.overallStatus).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _getStatusColor(verification.overallStatus).withOpacity(0.3),
+          color: _getStatusColor(verification.overallStatus).withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -231,7 +231,7 @@ class _DriverVerificationRealtimeStatusWidgetState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
+        color: Colors.blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -254,9 +254,9 @@ class _DriverVerificationRealtimeStatusWidgetState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -293,7 +293,7 @@ class _DriverVerificationRealtimeStatusWidgetState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
+        color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -370,7 +370,7 @@ class _DriverVerificationRealtimeStatusWidgetState
                     'Confidence: ${document.confidenceScore}%',
                     style: TextStyle(
                       fontSize: 12,
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
               ],
@@ -401,7 +401,7 @@ class _DriverVerificationRealtimeStatusWidgetState
             const SizedBox(height: 8),
             LinearProgressIndicator(
               value: _progressAnimation.value,
-              backgroundColor: Colors.grey.withOpacity(0.3),
+              backgroundColor: Colors.grey.withValues(alpha: 0.3),
               valueColor: AlwaysStoppedAnimation<Color>(
                 Theme.of(context).colorScheme.primary,
               ),
@@ -552,7 +552,7 @@ class _DriverVerificationRealtimeStatusWidgetState
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1 * _pulseAnimation.value),
+            color: Colors.blue.withValues(alpha: 0.1 * _pulseAnimation.value),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -564,7 +564,7 @@ class _DriverVerificationRealtimeStatusWidgetState
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    Colors.blue.withOpacity(_pulseAnimation.value),
+                    Colors.blue.withValues(alpha: _pulseAnimation.value),
                   ),
                 ),
               ),
@@ -573,7 +573,7 @@ class _DriverVerificationRealtimeStatusWidgetState
                 'AI Processing...',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.blue.withOpacity(_pulseAnimation.value),
+                  color: Colors.blue.withValues(alpha: _pulseAnimation.value),
                   fontWeight: FontWeight.w500,
                 ),
               ),

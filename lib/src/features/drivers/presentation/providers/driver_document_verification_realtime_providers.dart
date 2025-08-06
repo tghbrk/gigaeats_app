@@ -170,6 +170,7 @@ class DriverDocumentVerificationState {
 class DriverDocumentVerificationNotifier extends StateNotifier<DriverDocumentVerificationState> {
   final String driverId;
   final String userId;
+  // ignore: unused_field
   final DriverDocumentVerificationService _service;
   final Ref _ref;
 

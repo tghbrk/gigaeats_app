@@ -112,7 +112,7 @@ class _EnhancedCollapsibleOrderGroupState extends ConsumerState<EnhancedCollapsi
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.2),
+          color: colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -164,7 +164,7 @@ class _EnhancedCollapsibleOrderGroupState extends ConsumerState<EnhancedCollapsi
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    color: colorScheme.outline.withOpacity(0.1),
+                    color: colorScheme.outline.withValues(alpha: 0.1),
                   ),
                 ),
               ),
@@ -180,7 +180,7 @@ class _EnhancedCollapsibleOrderGroupState extends ConsumerState<EnhancedCollapsi
                         border: index < widget.group.orders.length - 1
                             ? Border(
                                 bottom: BorderSide(
-                                  color: colorScheme.outline.withOpacity(0.05),
+                                  color: colorScheme.outline.withValues(alpha: 0.05),
                                 ),
                               )
                             : null,
@@ -251,7 +251,7 @@ class _EnhancedCollapsibleOrderGroupState extends ConsumerState<EnhancedCollapsi
           Text(
             DateFormat('MMM dd, yyyy').format(widget.group.date),
             style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -271,7 +271,7 @@ class _EnhancedCollapsibleOrderGroupState extends ConsumerState<EnhancedCollapsi
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.1),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -316,7 +316,7 @@ class _EnhancedCollapsibleOrderGroupState extends ConsumerState<EnhancedCollapsi
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
       ),
       child: Row(
@@ -439,7 +439,7 @@ class EnhancedOrderHistoryEmptyState extends ConsumerWidget {
               child: Icon(
                 _getEmptyStateIcon(hasActiveFilter),
                 size: 64,
-                color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
               ),
             ),
 
@@ -695,9 +695,9 @@ class EnhancedOrderStatisticsSummary extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [

@@ -93,7 +93,7 @@ class _EnhancedOrderHistoryDisplayState extends ConsumerState<EnhancedOrderHisto
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.2),
+          color: colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -112,7 +112,7 @@ class _EnhancedOrderHistoryDisplayState extends ConsumerState<EnhancedOrderHisto
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(order.status.value).withOpacity(0.1),
+                  color: _getStatusColor(order.status.value).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -406,7 +406,7 @@ class _EnhancedGroupedOrderHistoryDisplayState extends ConsumerState<EnhancedGro
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.2),
+          color: colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -425,7 +425,7 @@ class _EnhancedGroupedOrderHistoryDisplayState extends ConsumerState<EnhancedGro
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getStatusColorForOrder(order.status.value).withOpacity(0.1),
+                  color: _getStatusColorForOrder(order.status.value).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

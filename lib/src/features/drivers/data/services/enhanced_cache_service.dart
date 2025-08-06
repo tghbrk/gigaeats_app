@@ -13,7 +13,7 @@ class EnhancedCacheService {
   static const String _cachePrefix = 'enhanced_driver_cache_';
   static const String _metadataPrefix = 'enhanced_metadata_';
   static const String _analyticsPrefix = 'cache_analytics_';
-  static const String _prefetchPrefix = 'cache_prefetch_';
+
   
   // Dynamic cache durations based on data characteristics
   static const Duration _shortCacheDuration = Duration(minutes: 5);   // Recent/today data
@@ -23,7 +23,7 @@ class EnhancedCacheService {
   
   // Cache size limits for memory management
   static const int _maxMemoryCacheSize = 100;
-  static const int _maxPersistentCacheSize = 500;
+
   static const int _maxPrefetchCacheSize = 50;
   
   static EnhancedCacheService? _instance;
@@ -72,17 +72,25 @@ class EnhancedCacheService {
     // Higher priority for recent data
     if (filter.startDate != null) {
       final daysDiff = now.difference(filter.startDate!).inDays;
-      if (daysDiff <= 1) priority += 5;      // Today/yesterday
-      else if (daysDiff <= 7) priority += 3; // This week
-      else if (daysDiff <= 30) priority += 1; // This month
+      if (daysDiff <= 1) {
+        priority += 5;      // Today/yesterday
+      } else if (daysDiff <= 7) {
+        priority += 3; // This week
+      } else if (daysDiff <= 30) {
+        priority += 1; // This month
+      }
     }
     
     // Higher priority for commonly used filters
     if (filter.hasActiveFilter) {
       final range = filter.endDate?.difference(filter.startDate ?? now).inDays ?? 1;
-      if (range <= 1) priority += 3;      // Single day
-      else if (range <= 7) priority += 2; // Week range
-      else if (range <= 30) priority += 1; // Month range
+      if (range <= 1) {
+        priority += 3;      // Single day
+      } else if (range <= 7) {
+        priority += 2; // Week range
+      } else if (range <= 30) {
+        priority += 1; // Month range
+      }
     }
     
     return min(priority, 10); // Cap at 10
@@ -95,9 +103,13 @@ class EnhancedCacheService {
     // Recent data changes more frequently
     if (filter.startDate != null) {
       final daysDiff = now.difference(filter.startDate!).inDays;
-      if (daysDiff <= 1) return _shortCacheDuration;      // Today/yesterday
-      else if (daysDiff <= 7) return _mediumCacheDuration; // This week
-      else if (daysDiff <= 30) return _longCacheDuration;  // This month
+      if (daysDiff <= 1) {
+        return _shortCacheDuration;      // Today/yesterday
+      } else if (daysDiff <= 7) {
+        return _mediumCacheDuration; // This week
+      } else if (daysDiff <= 30) {
+        return _longCacheDuration;  // This month
+      }
     }
     
     // Historical data can be cached longer

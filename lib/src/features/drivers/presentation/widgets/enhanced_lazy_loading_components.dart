@@ -304,7 +304,7 @@ class _EnhancedInfiniteScrollListState extends ConsumerState<EnhancedInfiniteScr
               end: Alignment.centerRight,
               colors: [
                 colorScheme.surfaceContainerHighest,
-                colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 colorScheme.surfaceContainerHighest,
               ],
               stops: [
@@ -391,7 +391,7 @@ class _EnhancedInfiniteScrollListState extends ConsumerState<EnhancedInfiniteScr
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -433,7 +433,7 @@ class _EnhancedInfiniteScrollListState extends ConsumerState<EnhancedInfiniteScr
             Icon(
               Icons.inbox_rounded,
               size: 64,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -446,7 +446,7 @@ class _EnhancedInfiniteScrollListState extends ConsumerState<EnhancedInfiniteScr
             Text(
               'Try adjusting your filter settings',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ],

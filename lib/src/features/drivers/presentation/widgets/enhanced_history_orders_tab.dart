@@ -47,8 +47,8 @@ class _EnhancedHistoryOrdersTabState extends ConsumerState<EnhancedHistoryOrders
     debugPrint('🔍 [ENHANCED-HISTORY-TAB] ===== BUILD METHOD CALLED =====');
     debugPrint('🔍 [ENHANCED-HISTORY-TAB] Timestamp: ${DateTime.now()}');
     debugPrint('🔍 [ENHANCED-HISTORY-TAB] Context: ${context.runtimeType}');
-    debugPrint('🔍 [ENHANCED-HISTORY-TAB] Widget mounted: ${mounted}');
-    debugPrint('🔍 [ENHANCED-HISTORY-TAB] Widget hash: ${hashCode}');
+    debugPrint('🔍 [ENHANCED-HISTORY-TAB] Widget mounted: $mounted');
+    debugPrint('🔍 [ENHANCED-HISTORY-TAB] Widget hash: $hashCode');
 
     final combinedFilter = ref.watch(combinedDateFilterProvider);
     debugPrint('🔍 [ENHANCED-HISTORY-TAB] Combined filter: $combinedFilter');

@@ -20,9 +20,7 @@ class OptimizedDatabaseService {
   final Map<String, FilterPerformanceMetrics> _performanceCache = {};
   final Map<String, DateTime> _queryTimestamps = {};
 
-  // Query optimization flags
-  static const int _largeDatassetThreshold = 1000;
-  static const int _cursorPaginationThreshold = 100;
+
 
   /// Get driver order history using optimized database function
   Future<List<Order>> getDriverOrderHistory({
@@ -343,7 +341,7 @@ class OptimizedDatabaseService {
 
       stopwatch.stop();
       _recordPerformanceMetrics(
-        'cursor_paginated_${driverId}_${direction}',
+        'cursor_paginated_${driverId}_$direction',
         stopwatch.elapsed,
         orders.length,
         false, // Not from cache

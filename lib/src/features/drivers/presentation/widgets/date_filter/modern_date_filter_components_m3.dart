@@ -313,7 +313,7 @@ class ModernFilterStatusCard extends ConsumerWidget {
                                   color: colorScheme.primary,
                                 ),
                               ),
-                              error: (_, __) => Text(
+                              error: (_, stackTrace) => Text(
                                 'Error loading count',
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: colorScheme.error,
@@ -491,7 +491,7 @@ class _ModernDateRangePickerState extends ConsumerState<ModernDateRangePicker> {
 
     return Material(
       color: hasDate
-          ? colorScheme.primaryContainer.withOpacity(0.3)
+          ? colorScheme.primaryContainer.withValues(alpha: 0.3)
           : colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
@@ -503,8 +503,8 @@ class _ModernDateRangePickerState extends ConsumerState<ModernDateRangePicker> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: hasDate
-                  ? colorScheme.primary.withOpacity(0.5)
-                  : colorScheme.outline.withOpacity(0.3),
+                  ? colorScheme.primary.withValues(alpha: 0.5)
+                  : colorScheme.outline.withValues(alpha: 0.3),
               width: hasDate ? 1.5 : 1,
             ),
           ),
@@ -581,7 +581,7 @@ class _ModernDateRangePickerState extends ConsumerState<ModernDateRangePicker> {
               label: Text(preset['label'] as String),
               style: OutlinedButton.styleFrom(
                 foregroundColor: colorScheme.primary,
-                side: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
+                side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -615,7 +615,7 @@ class _ModernDateRangePickerState extends ConsumerState<ModernDateRangePicker> {
         color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.3),
+          color: colorScheme.outline.withValues(alpha: 0.3),
         ),
       ),
       child: Row(

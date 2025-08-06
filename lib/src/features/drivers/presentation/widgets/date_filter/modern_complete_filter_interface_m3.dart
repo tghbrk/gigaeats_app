@@ -304,7 +304,7 @@ class ModernFilterSummary extends ConsumerWidget {
               orderCountAsync.when(
                 data: (count) => _buildAnalyticsContent(theme, colorScheme, count, combinedFilter),
                 loading: () => const CircularProgressIndicator(),
-                error: (_, __) => Text(
+                error: (_, stackTrace) => Text(
                   'Unable to load analytics',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.error,

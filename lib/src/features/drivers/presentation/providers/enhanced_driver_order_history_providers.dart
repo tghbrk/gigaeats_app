@@ -123,7 +123,7 @@ class DateRangeFilter {
 
       final daysDifference = endDate!.difference(startDate!).inDays;
       if (daysDifference > 365) {
-        warnings.add('Date range is very large (${daysDifference} days). This may affect performance.');
+        warnings.add('Date range is very large ($daysDifference days). This may affect performance.');
       }
     }
 

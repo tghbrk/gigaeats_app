@@ -30,6 +30,7 @@ final enhancedDriverDocumentVerificationProvider = StateNotifierProvider.family<
 
 /// Enhanced state notifier with real-time integration
 class EnhancedDriverDocumentVerificationNotifier extends StateNotifier<AsyncValue<DriverDocumentVerification?>> {
+  // ignore: unused_field
   final DriverDocumentVerificationService _service;
   final String _driverId;
   final Ref _ref;
@@ -249,6 +250,7 @@ final enhancedDriverVerificationDocumentsProvider = StateNotifierProvider.family
 
 /// Enhanced documents notifier with real-time updates
 class EnhancedDriverVerificationDocumentsNotifier extends StateNotifier<AsyncValue<List<DriverVerificationDocument>>> {
+  // ignore: unused_field
   final DriverDocumentVerificationService _service;
   final String _verificationId;
   final Ref _ref;

@@ -25,7 +25,7 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
   DateTime? _tempStartDate;
   DateTime? _tempEndDate;
   QuickDateFilter? _tempQuickFilter;
-  bool _hasUnsavedChanges = false;
+
 
   @override
   void initState() {
@@ -78,7 +78,7 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
             width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -103,7 +103,7 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
         borderRadius: BorderRadius.circular(isBottomSheet ? 0 : 28),
         boxShadow: isBottomSheet ? null : [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.1),
+            color: colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -300,9 +300,9 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected 
+              color: isSelected
                   ? colorScheme.primary
-                  : colorScheme.outline.withOpacity(0.3),
+                  : colorScheme.outline.withValues(alpha: 0.3),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -342,8 +342,8 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
               Text(
                 filter.shortDescription,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: isSelected 
-                      ? colorScheme.onPrimaryContainer.withOpacity(0.8)
+                  color: isSelected
+                      ? colorScheme.onPrimaryContainer.withValues(alpha: 0.8)
                       : colorScheme.onSurfaceVariant,
                 ),
                 maxLines: 2,
@@ -366,7 +366,7 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
             _tempStartDate = start;
             _tempEndDate = end;
             _tempQuickFilter = QuickDateFilter.all; // Clear quick filter when using custom range
-            _hasUnsavedChanges = true;
+
           });
         },
         padding: const EdgeInsets.all(24),
@@ -391,7 +391,7 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
               label: const Text('Clear All'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: colorScheme.onSurfaceVariant,
-                side: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
+                side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -430,7 +430,7 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
         _tempStartDate = null;
         _tempEndDate = null;
       }
-      _hasUnsavedChanges = true;
+
     });
   }
 
@@ -439,7 +439,7 @@ class _ModernDateFilterDialogState extends ConsumerState<ModernDateFilterDialog>
       _tempQuickFilter = QuickDateFilter.all;
       _tempStartDate = null;
       _tempEndDate = null;
-      _hasUnsavedChanges = true;
+
     });
   }
 

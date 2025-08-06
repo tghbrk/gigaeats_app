@@ -14,7 +14,7 @@ class EnhancedLazyLoadingService {
   static const int _maxPageSize = 100;
   static const int _prefetchThreshold = 5;
   static const Duration _debounceDelay = Duration(milliseconds: 300);
-  static const Duration _requestTimeout = Duration(seconds: 30);
+
   
   static EnhancedLazyLoadingService? _instance;
   static EnhancedLazyLoadingService get instance => _instance ??= EnhancedLazyLoadingService._();
@@ -24,7 +24,7 @@ class EnhancedLazyLoadingService {
   final Map<String, EnhancedLazyLoadingState> _loadingStates = {};
   final Map<String, Timer> _debounceTimers = {};
   final Map<String, Completer<EnhancedLazyLoadingResult<Order>>> _ongoingRequests = {};
-  final Map<String, DateTime> _lastRequestTimes = {};
+
   
   // Performance monitoring
   final Map<String, List<Duration>> _loadTimes = {};

@@ -291,6 +291,80 @@ class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
       return false;
     }
   }
+
+  /// Handle verification status update from verification provider
+  /// This method is called when verification status changes to update wallet state
+  Future<void> handleVerificationStatusUpdate(String verificationStatus) async {
+    debugPrint('🔄 [CUSTOMER-WALLET-PROVIDER] Handling verification status update: $verificationStatus');
+
+    try {
+      // If verification is completed successfully, refresh wallet to get updated isVerified status
+      if (verificationStatus == 'verified') {
+        debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Verification completed - refreshing wallet state');
+        await loadWallet(forceRefresh: true);
+
+        // Verify that the wallet is now marked as verified
+        if (state.wallet?.isVerified == true) {
+          debugPrint('🎉 [CUSTOMER-WALLET-PROVIDER] Wallet verification status updated successfully');
+        } else {
+          debugPrint('⚠️ [CUSTOMER-WALLET-PROVIDER] Wallet verification status not yet updated in database');
+          // Retry after a short delay to allow database propagation
+          await Future.delayed(const Duration(seconds: 2));
+          await loadWallet(forceRefresh: true);
+        }
+      } else if (verificationStatus == 'failed') {
+        debugPrint('❌ [CUSTOMER-WALLET-PROVIDER] Verification failed - wallet remains unverified');
+        // Optionally refresh to ensure state consistency
+        await loadWallet(forceRefresh: true);
+      } else if (verificationStatus == 'pending') {
+        debugPrint('⏳ [CUSTOMER-WALLET-PROVIDER] Verification pending - no wallet state change needed');
+        // No immediate action needed, but refresh to ensure consistency
+        await loadWallet(forceRefresh: true);
+      }
+    } catch (e) {
+      debugPrint('❌ [CUSTOMER-WALLET-PROVIDER] Error handling verification status update: $e');
+      // Don't throw error to avoid breaking verification flow
+    }
+  }
+
+  /// Listen to verification status changes and update wallet accordingly
+  /// This method can be called to set up a listener for verification status changes
+  void setupVerificationStatusListener() {
+    debugPrint('🔗 [CUSTOMER-WALLET-PROVIDER] Setting up verification status listener');
+
+    // Note: The actual listening is handled by the verification provider
+    // This method is here for future enhancement if needed
+    // The verification provider already calls loadWallet(forceRefresh: true) when verification completes
+  }
+
+  /// Update wallet verification status locally (optimistic update)
+  /// This can be used for immediate UI feedback while waiting for database update
+  void updateVerificationStatusOptimistically(bool isVerified) {
+    if (state.wallet != null) {
+      debugPrint('🔄 [CUSTOMER-WALLET-PROVIDER] Optimistically updating verification status to: $isVerified');
+
+      final updatedWallet = CustomerWallet(
+        id: state.wallet!.id,
+        userId: state.wallet!.userId,
+        availableBalance: state.wallet!.availableBalance,
+        pendingBalance: state.wallet!.pendingBalance,
+        totalSpent: state.wallet!.totalSpent,
+        currency: state.wallet!.currency,
+        isActive: state.wallet!.isActive,
+        isVerified: isVerified,
+        createdAt: state.wallet!.createdAt,
+        updatedAt: DateTime.now(), // Update timestamp
+        lastActivityAt: state.wallet!.lastActivityAt,
+      );
+
+      state = state.copyWith(
+        wallet: updatedWallet,
+        lastUpdated: DateTime.now(),
+      );
+
+      debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Wallet verification status optimistically updated');
+    }
+  }
 }
 
 /// Customer wallet provider

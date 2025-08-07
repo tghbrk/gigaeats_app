@@ -1567,6 +1567,406 @@ class OrderRepository extends BaseRepository {
     }
   }
 
+  // ===== CUSTOMER ORDER HISTORY METHODS =====
+
+  /// Get customer order history with enhanced filtering and pagination
+  Future<List<Order>> getCustomerOrderHistory({
+    required String customerId,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<String>? statusFilter,
+    int limit = 20,
+    int offset = 0,
+    String? orderBy = 'created_at',
+    bool ascending = false,
+  }) async {
+    return executeQuery(() async {
+      debugPrint('🛒 OrderRepository: Getting customer order history');
+      debugPrint('🛒 OrderRepository: Customer ID: $customerId');
+      debugPrint('🛒 OrderRepository: Date range: $startDate to $endDate');
+      debugPrint('🛒 OrderRepository: Status filter: $statusFilter');
+      debugPrint('🛒 OrderRepository: Pagination: limit=$limit, offset=$offset');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      // Build comprehensive query with all necessary joins
+      var query = authenticatedClient
+          .from('orders')
+          .select('''
+            *,
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url,
+                description
+              )
+            ),
+            vendors:vendors!orders_vendor_id_fkey(
+              id,
+              business_name,
+              business_address,
+              logo_url,
+              rating
+            ),
+            sales_agent:users!orders_sales_agent_id_fkey(
+              id,
+              full_name,
+              email
+            )
+          ''')
+          .eq('customer_id', customerId);
+
+      // Apply status filtering
+      if (statusFilter != null && statusFilter.isNotEmpty) {
+        query = query.inFilter('status', statusFilter);
+        debugPrint('🛒 OrderRepository: Applied status filter: $statusFilter');
+      } else {
+        // Default to completed and cancelled orders for history
+        query = query.inFilter('status', ['delivered', 'cancelled']);
+        debugPrint('🛒 OrderRepository: Applied default status filter: [delivered, cancelled]');
+      }
+
+      // Apply date filtering
+      if (startDate != null) {
+        query = query.gte('created_at', startDate.toIso8601String());
+        debugPrint('🛒 OrderRepository: Applied start date filter: $startDate');
+      }
+
+      if (endDate != null) {
+        query = query.lt('created_at', endDate.toIso8601String());
+        debugPrint('🛒 OrderRepository: Applied end date filter: $endDate');
+      }
+
+      // Apply ordering and pagination
+      final response = await query
+          .order(orderBy!, ascending: ascending)
+          .range(offset, offset + limit - 1);
+
+      debugPrint('🛒 OrderRepository: Retrieved ${response.length} orders from database');
+
+      final orders = response.map((json) => Order.fromJson(json)).toList();
+
+      // Debug log order details
+      for (final order in orders) {
+        debugPrint('🛒 OrderRepository: Order ${order.orderNumber} - ${order.items.length} items, status: ${order.status.value}');
+      }
+
+      return orders;
+    });
+  }
+
+  /// Get customer order count with filtering
+  Future<int> getCustomerOrderCount({
+    required String customerId,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<String>? statusFilter,
+  }) async {
+    return executeQuery(() async {
+      debugPrint('🛒 OrderRepository: Getting customer order count');
+      debugPrint('🛒 OrderRepository: Customer ID: $customerId');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      var query = authenticatedClient
+          .from('orders')
+          .select('id')
+          .eq('customer_id', customerId);
+
+      // Apply status filtering
+      if (statusFilter != null && statusFilter.isNotEmpty) {
+        query = query.inFilter('status', statusFilter);
+      } else {
+        query = query.inFilter('status', ['delivered', 'cancelled']);
+      }
+
+      // Apply date filtering
+      if (startDate != null) {
+        query = query.gte('created_at', startDate.toIso8601String());
+      }
+      if (endDate != null) {
+        query = query.lt('created_at', endDate.toIso8601String());
+      }
+
+      final response = await query;
+      final count = response.length;
+
+      debugPrint('🛒 OrderRepository: Found $count orders matching criteria');
+      return count;
+    });
+  }
+
+  /// Get customer daily order statistics
+  Future<Map<String, Map<String, dynamic>>> getCustomerDailyStats({
+    required String customerId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return executeQuery(() async {
+      debugPrint('🛒 OrderRepository: Getting customer daily statistics');
+      debugPrint('🛒 OrderRepository: Customer ID: $customerId');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      // Set default date range if not provided
+      final now = DateTime.now();
+      final defaultStartDate = startDate ?? DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
+      final defaultEndDate = endDate ?? DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+
+      var query = authenticatedClient
+          .from('orders')
+          .select('created_at, status, total_amount')
+          .eq('customer_id', customerId)
+          .inFilter('status', ['delivered', 'cancelled'])
+          .gte('created_at', defaultStartDate.toIso8601String())
+          .lt('created_at', defaultEndDate.toIso8601String())
+          .order('created_at', ascending: false);
+
+      final response = await query;
+      debugPrint('🛒 OrderRepository: Retrieved ${response.length} orders for statistics');
+
+      final dailyStats = <String, Map<String, dynamic>>{};
+
+      for (final orderData in response) {
+        final createdAt = DateTime.parse(orderData['created_at']);
+        final orderDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
+        final dateKey = orderDate.toIso8601String().split('T')[0];
+
+        final status = orderData['status'] as String;
+        final amount = (orderData['total_amount'] as num).toDouble();
+
+        if (!dailyStats.containsKey(dateKey)) {
+          dailyStats[dateKey] = {
+            'date': orderDate.toIso8601String(),
+            'totalOrders': 0,
+            'completedOrders': 0,
+            'cancelledOrders': 0,
+            'totalSpent': 0.0,
+            'completedSpent': 0.0,
+          };
+        }
+
+        final stats = dailyStats[dateKey]!;
+        stats['totalOrders'] = (stats['totalOrders'] as int) + 1;
+        stats['totalSpent'] = (stats['totalSpent'] as double) + amount;
+
+        if (status == 'delivered') {
+          stats['completedOrders'] = (stats['completedOrders'] as int) + 1;
+          stats['completedSpent'] = (stats['completedSpent'] as double) + amount;
+        } else if (status == 'cancelled') {
+          stats['cancelledOrders'] = (stats['cancelledOrders'] as int) + 1;
+        }
+      }
+
+      debugPrint('🛒 OrderRepository: Processed statistics for ${dailyStats.length} days');
+      return dailyStats;
+    });
+  }
+
+  /// Get customer order history with cursor-based pagination for optimal performance
+  Future<List<Order>> getCustomerOrderHistoryCursorPaginated({
+    required String customerId,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<String>? statusFilter,
+    DateTime? cursorTimestamp,
+    String? cursorId,
+    int limit = 20,
+    String direction = 'next', // 'next' or 'previous'
+  }) async {
+    return executeQuery(() async {
+      debugPrint('🛒 OrderRepository: Getting customer order history with cursor pagination');
+      debugPrint('🛒 OrderRepository: Customer ID: $customerId');
+      debugPrint('🛒 OrderRepository: Cursor: timestamp=$cursorTimestamp, id=$cursorId');
+      debugPrint('🛒 OrderRepository: Direction: $direction, limit: $limit');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      var query = authenticatedClient
+          .from('orders')
+          .select('''
+            *,
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url,
+                description
+              )
+            ),
+            vendors:vendors!orders_vendor_id_fkey(
+              id,
+              business_name,
+              business_address,
+              logo_url,
+              rating
+            )
+          ''')
+          .eq('customer_id', customerId);
+
+      // Apply status filtering
+      if (statusFilter != null && statusFilter.isNotEmpty) {
+        query = query.inFilter('status', statusFilter);
+      } else {
+        query = query.inFilter('status', ['delivered', 'cancelled']);
+      }
+
+      // Apply date filtering
+      if (startDate != null) {
+        query = query.gte('created_at', startDate.toIso8601String());
+      }
+      if (endDate != null) {
+        query = query.lt('created_at', endDate.toIso8601String());
+      }
+
+      // Apply cursor-based pagination
+      if (cursorTimestamp != null && cursorId != null) {
+        if (direction == 'next') {
+          // For next page: created_at < cursor_timestamp OR (created_at = cursor_timestamp AND id < cursor_id)
+          query = query.or('created_at.lt.${cursorTimestamp.toIso8601String()},and(created_at.eq.${cursorTimestamp.toIso8601String()},id.lt.$cursorId)');
+        } else {
+          // For previous page: created_at > cursor_timestamp OR (created_at = cursor_timestamp AND id > cursor_id)
+          query = query.or('created_at.gt.${cursorTimestamp.toIso8601String()},and(created_at.eq.${cursorTimestamp.toIso8601String()},id.gt.$cursorId)');
+        }
+      }
+
+      // Apply ordering and limit
+      final response = await query
+          .order('created_at', ascending: direction == 'previous')
+          .order('id', ascending: direction == 'previous')
+          .limit(limit);
+
+      debugPrint('🛒 OrderRepository: Retrieved ${response.length} orders with cursor pagination');
+
+      final orders = response.map((json) => Order.fromJson(json)).toList();
+
+      // If we're going backwards, reverse the results to maintain chronological order
+      if (direction == 'previous') {
+        orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
+
+      return orders;
+    });
+  }
+
+  /// Get customer orders by specific date range (optimized for daily grouping)
+  Future<List<Order>> getCustomerOrdersByDateRange({
+    required String customerId,
+    required DateTime startDate,
+    required DateTime endDate,
+    List<String>? statusFilter,
+  }) async {
+    return executeQuery(() async {
+      debugPrint('🛒 OrderRepository: Getting customer orders by date range');
+      debugPrint('🛒 OrderRepository: Customer ID: $customerId');
+      debugPrint('🛒 OrderRepository: Date range: $startDate to $endDate');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      var query = authenticatedClient
+          .from('orders')
+          .select('''
+            *,
+            order_items:order_items(
+              *,
+              menu_item:menu_items!order_items_menu_item_id_fkey(
+                id,
+                name,
+                image_url
+              )
+            ),
+            vendors:vendors!orders_vendor_id_fkey(
+              business_name,
+              business_address
+            )
+          ''')
+          .eq('customer_id', customerId)
+          .gte('created_at', startDate.toIso8601String())
+          .lt('created_at', endDate.toIso8601String());
+
+      // Apply status filtering
+      if (statusFilter != null && statusFilter.isNotEmpty) {
+        query = query.inFilter('status', statusFilter);
+      } else {
+        query = query.inFilter('status', ['delivered', 'cancelled']);
+      }
+
+      final response = await query.order('created_at', ascending: false);
+
+      debugPrint('🛒 OrderRepository: Retrieved ${response.length} orders for date range');
+
+      return response.map((json) => Order.fromJson(json)).toList();
+    });
+  }
+
+  /// Get customer order summary statistics
+  Future<Map<String, dynamic>> getCustomerOrderSummary({
+    required String customerId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return executeQuery(() async {
+      debugPrint('🛒 OrderRepository: Getting customer order summary');
+      debugPrint('🛒 OrderRepository: Customer ID: $customerId');
+
+      final authenticatedClient = await getAuthenticatedClient();
+
+      var query = authenticatedClient
+          .from('orders')
+          .select('status, total_amount, created_at')
+          .eq('customer_id', customerId)
+          .inFilter('status', ['delivered', 'cancelled']);
+
+      // Apply date filtering
+      if (startDate != null) {
+        query = query.gte('created_at', startDate.toIso8601String());
+      }
+      if (endDate != null) {
+        query = query.lt('created_at', endDate.toIso8601String());
+      }
+
+      final response = await query;
+
+      // Calculate summary statistics
+      int totalOrders = response.length;
+      int completedOrders = 0;
+      int cancelledOrders = 0;
+      double totalSpent = 0.0;
+      double completedSpent = 0.0;
+
+      for (final orderData in response) {
+        final status = orderData['status'] as String;
+        final amount = (orderData['total_amount'] as num).toDouble();
+
+        totalSpent += amount;
+
+        if (status == 'delivered') {
+          completedOrders++;
+          completedSpent += amount;
+        } else if (status == 'cancelled') {
+          cancelledOrders++;
+        }
+      }
+
+      final summary = {
+        'totalOrders': totalOrders,
+        'completedOrders': completedOrders,
+        'cancelledOrders': cancelledOrders,
+        'totalSpent': totalSpent,
+        'completedSpent': completedSpent,
+        'averageOrderValue': totalOrders > 0 ? totalSpent / totalOrders : 0.0,
+        'completionRate': totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0.0,
+        'cancellationRate': totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0.0,
+      };
+
+      debugPrint('🛒 OrderRepository: Summary - ${summary['totalOrders']} orders, RM${(summary['totalSpent'] as double).toStringAsFixed(2)} spent');
+      return summary;
+    });
+  }
+
   // ===== DRIVER ASSIGNMENT METHODS =====
 
   /// Assign a driver to an order and update order status to 'out_for_delivery'

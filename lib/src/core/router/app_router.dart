@@ -23,7 +23,7 @@ import '../../features/admin/presentation/screens/customer_management/add_custom
 import '../../features/admin/presentation/screens/customer_management/customer_details_screen.dart';
 import '../../features/admin/presentation/screens/customer_management/edit_customer_screen.dart';
 import '../../features/user_management/presentation/screens/customer/customer_dashboard.dart';
-import '../../features/orders/presentation/screens/customer/customer_orders_screen.dart';
+import '../../features/customers/presentation/screens/enhanced_customer_orders_screen.dart';
 import '../../features/orders/presentation/screens/customer/customer_order_details_screen.dart';
 import '../../features/orders/presentation/screens/customer/customer_order_tracking_screen.dart';
 import '../../features/menu/presentation/screens/customer/customer_restaurants_screen.dart';
@@ -980,7 +980,7 @@ List<RouteBase> _buildRoutes() {
     GoRoute(
       path: '/customer/orders',
       name: 'customer-orders',
-      builder: (context, state) => const CustomerOrdersScreen(), // Fixed: Use proper CustomerOrdersScreen
+      builder: (context, state) => const EnhancedCustomerOrdersScreen(), // Enhanced: Use new enhanced customer orders screen
     ),
     GoRoute(
       path: '/customer/wallet',

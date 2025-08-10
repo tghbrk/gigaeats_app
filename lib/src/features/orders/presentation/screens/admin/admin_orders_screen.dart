@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/order.dart';
+import '../../../../../presentation/providers/repository_providers.dart';
 // TODO: Fix OrderStatus type conflicts
 // import '../../../data/models/order_status.dart';
 
@@ -35,6 +36,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔍 [ADMIN-ORDERS] build() called - Search: "$_searchQuery", Period: $_selectedPeriod');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Order Management'),
@@ -50,6 +53,14 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              debugPrint('🔄 [ADMIN-ORDERS] Manual refresh triggered');
+              ref.invalidate(platformOrdersProvider);
+            },
+            tooltip: 'Refresh Orders',
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
@@ -78,6 +89,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                       border: OutlineInputBorder(),
                     ),
                     onChanged: (value) {
+                      debugPrint('🔍 [ADMIN-ORDERS] Search query changed: "$value"');
                       setState(() {
                         _searchQuery = value;
                       });
@@ -97,6 +109,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                       child: Text(period),
                     )).toList(),
                     onChanged: (value) {
+                      debugPrint('🔍 [ADMIN-ORDERS] Period changed: "$value"');
                       setState(() {
                         _selectedPeriod = value!;
                       });
@@ -170,39 +183,117 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   }
 
   Widget _buildOrdersTab(OrderStatus? status) {
-    final orders = _getSampleOrders().where((order) {
-      final matchesStatus = status == null || order.status == status;
-      final matchesSearch = _searchQuery.isEmpty ||
-          order.orderNumber.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          order.customerName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          order.vendorName.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesStatus && matchesSearch;
-    }).toList();
+    debugPrint('🔍 [ADMIN-ORDERS] _buildOrdersTab called with status: $status');
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        final order = orders[index];
-        return _buildOrderCard(order);
+    // Use real data from platformOrdersProvider instead of mock data
+    final ordersAsync = ref.watch(platformOrdersProvider);
+
+    return ordersAsync.when(
+      data: (allOrders) {
+        debugPrint('🔍 [ADMIN-ORDERS] Received ${allOrders.length} orders from database');
+
+        // Apply filtering logic
+        final filteredOrders = allOrders.where((order) {
+          final matchesStatus = status == null || order.status == status;
+          final matchesSearch = _searchQuery.isEmpty ||
+              order.orderNumber.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              order.customerName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              order.vendorName.toLowerCase().contains(_searchQuery.toLowerCase());
+          return matchesStatus && matchesSearch;
+        }).toList();
+
+        debugPrint('🔍 [ADMIN-ORDERS] After filtering: ${filteredOrders.length} orders');
+        debugPrint('🔍 [ADMIN-ORDERS] Filter - Status: $status, Search: "$_searchQuery"');
+
+        // Log order statuses for debugging
+        final statusCounts = <OrderStatus, int>{};
+        for (final order in allOrders) {
+          statusCounts[order.status] = (statusCounts[order.status] ?? 0) + 1;
+        }
+        debugPrint('🔍 [ADMIN-ORDERS] Order status breakdown: $statusCounts');
+
+        if (filteredOrders.isEmpty) {
+          return _buildEmptyOrdersState(status);
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: filteredOrders.length,
+          itemBuilder: (context, index) {
+            final order = filteredOrders[index];
+            return _buildOrderCard(order);
+          },
+        );
+      },
+      loading: () {
+        debugPrint('🔍 [ADMIN-ORDERS] Loading orders from database...');
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading orders...'),
+            ],
+          ),
+        );
+      },
+      error: (error, stackTrace) {
+        debugPrint('❌ [ADMIN-ORDERS] Error loading orders: $error');
+        debugPrint('❌ [ADMIN-ORDERS] Stack trace: $stackTrace');
+        return _buildErrorState(error.toString());
       },
     );
   }
 
   Widget _buildActiveOrdersTab() {
-    final activeOrders = _getSampleOrders().where((order) => 
-        order.status == OrderStatus.confirmed ||
-        order.status == OrderStatus.preparing ||
-        order.status == OrderStatus.ready ||
-        order.status == OrderStatus.outForDelivery
-    ).toList();
+    debugPrint('🔍 [ADMIN-ORDERS] _buildActiveOrdersTab called');
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: activeOrders.length,
-      itemBuilder: (context, index) {
-        final order = activeOrders[index];
-        return _buildOrderCard(order);
+    // Use real data from platformOrdersProvider instead of mock data
+    final ordersAsync = ref.watch(platformOrdersProvider);
+
+    return ordersAsync.when(
+      data: (allOrders) {
+        debugPrint('🔍 [ADMIN-ORDERS] Active tab - Received ${allOrders.length} orders from database');
+
+        final activeOrders = allOrders.where((order) =>
+            order.status == OrderStatus.confirmed ||
+            order.status == OrderStatus.preparing ||
+            order.status == OrderStatus.ready ||
+            order.status == OrderStatus.outForDelivery
+        ).toList();
+
+        debugPrint('🔍 [ADMIN-ORDERS] Active tab - Found ${activeOrders.length} active orders');
+
+        if (activeOrders.isEmpty) {
+          return _buildEmptyOrdersState(null, isActiveTab: true);
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: activeOrders.length,
+          itemBuilder: (context, index) {
+            final order = activeOrders[index];
+            return _buildOrderCard(order);
+          },
+        );
+      },
+      loading: () {
+        debugPrint('🔍 [ADMIN-ORDERS] Active tab - Loading orders...');
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading active orders...'),
+            ],
+          ),
+        );
+      },
+      error: (error, stackTrace) {
+        debugPrint('❌ [ADMIN-ORDERS] Active tab - Error loading orders: $error');
+        return _buildErrorState(error.toString());
       },
     );
   }
@@ -279,6 +370,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   }
 
   Widget _buildOrderCard(Order order) {
+    debugPrint('🔍 [ADMIN-ORDERS] Building order card for: ${order.orderNumber} (${order.status.displayName})');
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -356,109 +449,115 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
     );
   }
 
-  List<Order> _getSampleOrders() {
-    final sampleAddress = Address(
-      street: '123 Jalan Bukit Bintang',
-      city: 'Kuala Lumpur',
-      state: 'Selangor',
-      postalCode: '50200',
-      country: 'Malaysia',
-    );
+  Widget _buildEmptyOrdersState(OrderStatus? status, {bool isActiveTab = false}) {
+    String title;
+    String message;
+    IconData icon;
 
-    final sampleItem = OrderItem(
-      id: '1',
-      menuItemId: '1',
-      name: 'Nasi Lemak Special',
-      description: 'Traditional Malaysian dish with coconut rice',
-      quantity: 2,
-      unitPrice: 12.50,
-      totalPrice: 25.00,
-      notes: 'Extra sambal',
-    );
+    if (isActiveTab) {
+      title = 'No Active Orders';
+      message = 'There are no orders currently being processed.';
+      icon = Icons.local_shipping_outlined;
+    } else if (status == null) {
+      title = 'No Orders Found';
+      message = 'No orders match your current search criteria.';
+      icon = Icons.receipt_long_outlined;
+    } else {
+      title = 'No ${status.displayName} Orders';
+      message = 'There are no orders with ${status.displayName.toLowerCase()} status.';
+      icon = _getStatusIcon(status);
+    }
 
-    return [
-      Order(
-        id: '1',
-        orderNumber: 'ORD-001',
-        status: OrderStatus.pending,
-        items: [sampleItem],
-        vendorId: '1',
-        vendorName: 'Nasi Lemak Express',
-        customerId: '1',
-        customerName: 'ABC Company',
-        salesAgentId: '1',
-        salesAgentName: 'John Doe',
-        deliveryDate: DateTime.now().add(const Duration(hours: 2)),
-        deliveryAddress: sampleAddress,
-        subtotal: 25.00,
-        deliveryFee: 5.00,
-        sstAmount: 1.80,
-        totalAmount: 31.80,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-        updatedAt: DateTime.now(),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Refresh the orders
+                ref.invalidate(platformOrdersProvider);
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+            ),
+          ],
+        ),
       ),
-      Order(
-        id: '2',
-        orderNumber: 'ORD-002',
-        status: OrderStatus.confirmed,
-        items: [sampleItem],
-        vendorId: '2',
-        vendorName: 'Teh Tarik Corner',
-        customerId: '2',
-        customerName: 'XYZ Corporation',
-        salesAgentId: '2',
-        salesAgentName: 'Jane Smith',
-        deliveryDate: DateTime.now().add(const Duration(hours: 1)),
-        deliveryAddress: sampleAddress,
-        subtotal: 45.00,
-        deliveryFee: 8.00,
-        sstAmount: 3.18,
-        totalAmount: 56.18,
-        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-        updatedAt: DateTime.now(),
-      ),
-      Order(
-        id: '3',
-        orderNumber: 'ORD-003',
-        status: OrderStatus.delivered,
-        items: [sampleItem],
-        vendorId: '3',
-        vendorName: 'Roti Canai House',
-        customerId: '3',
-        customerName: 'DEF Enterprise',
-        salesAgentId: '1',
-        salesAgentName: 'John Doe',
-        deliveryDate: DateTime.now().subtract(const Duration(hours: 2)),
-        deliveryAddress: sampleAddress,
-        subtotal: 35.00,
-        deliveryFee: 6.00,
-        sstAmount: 2.46,
-        totalAmount: 43.46,
-        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-        updatedAt: DateTime.now(),
-      ),
-      Order(
-        id: '4',
-        orderNumber: 'ORD-004',
-        status: OrderStatus.cancelled,
-        items: [sampleItem],
-        vendorId: '1',
-        vendorName: 'Nasi Lemak Express',
-        customerId: '4',
-        customerName: 'GHI Limited',
-        salesAgentId: '2',
-        salesAgentName: 'Jane Smith',
-        deliveryDate: DateTime.now().add(const Duration(hours: 3)),
-        deliveryAddress: sampleAddress,
-        subtotal: 28.00,
-        deliveryFee: 5.00,
-        sstAmount: 1.98,
-        totalAmount: 34.98,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
-        updatedAt: DateTime.now(),
-      ),
-    ];
+    );
   }
+
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: Colors.red[400],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Error Loading Orders',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.red[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Retry loading orders
+                ref.invalidate(platformOrdersProvider);
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
 
   Color _getStatusColor(OrderStatus status) {
     switch (status) {
@@ -499,6 +598,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   }
 
   void _showFilterDialog() {
+    debugPrint('🔍 [ADMIN-ORDERS] Filter dialog opened');
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -517,6 +618,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                 )),
               ],
               onChanged: (value) {
+                debugPrint('🔍 [ADMIN-ORDERS] Filter status changed: $value');
                 setState(() {
                   _selectedStatus = value;
                 });
@@ -531,6 +633,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
           ),
           ElevatedButton(
             onPressed: () {
+              debugPrint('🔍 [ADMIN-ORDERS] Filter applied - Status: $_selectedStatus');
               Navigator.of(context).pop();
               setState(() {}); // Refresh the list
             },
@@ -548,6 +651,8 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
   }
 
   void _handleOrderAction(String action, Order order) {
+    debugPrint('🔍 [ADMIN-ORDERS] Order action triggered: $action for ${order.orderNumber}');
+
     String message;
     switch (action) {
       case 'view':
@@ -569,6 +674,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
         message = 'Unknown action';
     }
 
+    debugPrint('🔍 [ADMIN-ORDERS] Action result: $message');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );

@@ -956,12 +956,15 @@ class CustomerOrderService {
   /// Get customer orders with network error handling
   Future<List<Order>> getCustomerOrders(String customerId, {int limit = 200}) async {
     try {
-      _logger.info('CustomerOrderService: Fetching orders for customer: $customerId');
+      _logger.info('CustomerOrderService: ===== FETCHING ORDERS FOR CUSTOMER =====');
+      _logger.info('CustomerOrderService: Customer ID: $customerId');
+      _logger.info('CustomerOrderService: Limit: $limit');
 
       // Debug: Check current authenticated user
       final currentUser = _supabase.auth.currentUser;
       _logger.info('CustomerOrderService: Current authenticated user: ${currentUser?.id}');
       _logger.info('CustomerOrderService: Current user email: ${currentUser?.email}');
+      _logger.info('CustomerOrderService: User matches customer ID: ${currentUser?.id == customerId}');
 
       // Check for network connectivity issues first
       if (!await _isNetworkAvailable()) {
@@ -969,17 +972,27 @@ class CustomerOrderService {
         return [];
       }
 
+      // Note: Orders table uses user_id directly as customer_id
+      // No resolution needed - customerId parameter is already the user_id
+
+      _logger.info('CustomerOrderService: Executing database query...');
+      _logger.info('CustomerOrderService: Query: SELECT * FROM orders WHERE customer_id = $customerId ORDER BY created_at DESC LIMIT $limit');
+
+      // Add debug logging for auth context
+      final user = _supabase.auth.currentUser;
+      _logger.info('CustomerOrderService: Current auth user: ${user?.id}, email: ${user?.email}');
+
       final response = await _supabase
           .from('orders')
           .select('''
             *,
-            vendors!inner(
+            vendor:vendors!orders_vendor_id_fkey(
               id,
               business_name
             ),
-            order_items(
+            order_items:order_items(
               *,
-              menu_items(
+              menu_item:menu_items!order_items_menu_item_id_fkey(
                 id,
                 name,
                 description,
@@ -998,8 +1011,52 @@ class CustomerOrderService {
             },
           );
 
-      _logger.info('CustomerOrderService: Query executed, got ${response.length} orders');
-      _logger.info('CustomerOrderService: Raw response: $response');
+      _logger.info('CustomerOrderService: Query executed successfully');
+      _logger.info('CustomerOrderService: Got ${response.length} orders from database');
+
+      if (response.isEmpty) {
+        _logger.warning('CustomerOrderService: No orders found for customer: $customerId');
+
+        // Debug: Check if customer exists and is linked to auth user
+        try {
+          final customerCheck = await _supabase
+              .from('customers')
+              .select('id, email, contact_person_name')
+              .eq('id', customerId)
+              .maybeSingle();
+
+          _logger.info('CustomerOrderService: Customer check result: $customerCheck');
+
+          if (customerCheck != null) {
+            // Check total orders in DB for this customer (bypassing RLS with service role if needed)
+            final orderCountResponse = await _supabase
+                .from('orders')
+                .select('id')
+                .eq('customer_id', customerId);
+
+            final orderCount = orderCountResponse.length;
+            _logger.info('CustomerOrderService: Total orders in DB for customer $customerId: $orderCount');
+          }
+        } catch (e) {
+          _logger.warning('CustomerOrderService: Customer/order check failed: $e');
+        }
+
+        return [];
+      }
+
+      // Log order statuses from raw response
+      final rawStatuses = <String, int>{};
+      for (final orderData in response) {
+        final status = orderData['status']?.toString() ?? 'unknown';
+        rawStatuses[status] = (rawStatuses[status] ?? 0) + 1;
+      }
+      _logger.info('CustomerOrderService: Raw order status distribution: $rawStatuses');
+
+      // Log first few orders for debugging
+      for (int i = 0; i < response.length && i < 3; i++) {
+        final orderData = response[i];
+        _logger.info('CustomerOrderService: Raw order ${i + 1}: ID=${orderData['id']}, Number=${orderData['order_number']}, Status=${orderData['status']}, Items=${orderData['order_items']?.length ?? 0}');
+      }
 
       // Debug: Check if order_items are included in the response
       for (int i = 0; i < response.length && i < 3; i++) {
@@ -1017,9 +1074,13 @@ class CustomerOrderService {
       int successCount = 0;
       int failureCount = 0;
 
+      _logger.info('CustomerOrderService: Starting to parse ${response.length} orders...');
+
       for (int i = 0; i < response.length; i++) {
         final json = response[i];
         try {
+          _logger.info('CustomerOrderService: Parsing order ${i + 1}/${response.length} - ID: ${json['id']}, Status: ${json['status']}');
+
           // Create a copy of the JSON data for processing
           final orderData = Map<String, dynamic>.from(json);
 
@@ -1045,15 +1106,18 @@ class CustomerOrderService {
               if (item is Map<String, dynamic>) {
                 _logger.info('CustomerOrderService: Processing item ${itemIndex + 1}: ${item.keys}');
 
-                // Extract name from joined menu_items data if available
-                if (item['menu_items'] != null && item['menu_items'] is Map<String, dynamic>) {
-                  final menuItem = item['menu_items'] as Map<String, dynamic>;
-                  _logger.info('CustomerOrderService: Found menu_items data: ${menuItem.keys}');
+                // Extract name from joined menu item data (supports both 'menu_item' alias and 'menu_items')
+                Map<String, dynamic>? menuItem;
+                if (item['menu_item'] is Map<String, dynamic>) {
+                  menuItem = item['menu_item'] as Map<String, dynamic>;
+                } else if (item['menu_items'] is Map<String, dynamic>) {
+                  menuItem = item['menu_items'] as Map<String, dynamic>;
+                }
 
-                  if (menuItem['name'] != null) {
-                    item['name'] = menuItem['name'];
-                    _logger.info('CustomerOrderService: Set item name to: ${menuItem['name']}');
-                  }
+                if (menuItem != null) {
+                  _logger.info('CustomerOrderService: Found menu item data: ${menuItem.keys}');
+
+                  item['name'] ??= menuItem['name'];
                   if (menuItem['description'] != null) {
                     item['description'] = menuItem['description'];
                   }
@@ -1061,7 +1125,7 @@ class CustomerOrderService {
                     item['image_url'] = menuItem['image_url'];
                   }
                 } else {
-                  _logger.warning('CustomerOrderService: No menu_items data found for item ${itemIndex + 1}');
+                  _logger.warning('CustomerOrderService: No menu item data found for item ${itemIndex + 1}');
                 }
               }
             }
@@ -1084,13 +1148,15 @@ class CustomerOrderService {
           final order = Order.fromJson(orderData);
           orders.add(order);
           successCount++;
-          _logger.info('CustomerOrderService: Successfully parsed order ${order.orderNumber}');
-          _logger.info('CustomerOrderService: Parsed order has ${order.items.length} items');
+          _logger.info('CustomerOrderService: ✅ Successfully parsed order ${order.orderNumber}');
+          _logger.info('CustomerOrderService: ✅ Parsed order status: ${order.status.value} (${order.status.displayName})');
+          _logger.info('CustomerOrderService: ✅ Parsed order has ${order.items.length} items');
+          _logger.info('CustomerOrderService: ✅ Parsed order created at: ${order.createdAt}');
 
           // Debug: Log first few items
-          for (int itemIndex = 0; itemIndex < order.items.length && itemIndex < 3; itemIndex++) {
+          for (int itemIndex = 0; itemIndex < order.items.length && itemIndex < 2; itemIndex++) {
             final item = order.items[itemIndex];
-            _logger.info('CustomerOrderService: Item ${itemIndex + 1}: ${item.name} (qty: ${item.quantity})');
+            _logger.info('CustomerOrderService: ✅ Item ${itemIndex + 1}: ${item.name} (qty: ${item.quantity})');
           }
         } catch (e, stackTrace) {
           failureCount++;
@@ -1120,10 +1186,18 @@ class CustomerOrderService {
       final processingTime = stopwatch.elapsedMilliseconds;
 
       _logger.info(
-        'CustomerOrderService: Order parsing completed - '
+        'CustomerOrderService: ===== ORDER PARSING COMPLETED ===== '
         'Success: $successCount, Failed: $failureCount, Total: ${response.length}, '
         'Processing time: ${processingTime}ms'
       );
+
+      // Final status distribution of successfully parsed orders
+      final finalStatuses = <String, int>{};
+      for (final order in orders) {
+        final status = order.status.value;
+        finalStatuses[status] = (finalStatuses[status] ?? 0) + 1;
+      }
+      _logger.info('CustomerOrderService: Final parsed order status distribution: $finalStatuses');
 
       if (failureCount > 0) {
         _logger.warning(
@@ -1132,6 +1206,7 @@ class CustomerOrderService {
         );
       }
 
+      _logger.info('CustomerOrderService: ===== RETURNING ${orders.length} ORDERS =====');
       return orders;
     } catch (e, stackTrace) {
       _logger.error('CustomerOrderService: Error fetching customer orders', e, stackTrace);

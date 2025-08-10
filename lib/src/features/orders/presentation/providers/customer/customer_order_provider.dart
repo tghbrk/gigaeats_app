@@ -279,47 +279,55 @@ final orderByIdProvider = FutureProvider.family<Order?, String>((ref, orderId) a
 class CurrentCustomerOrdersNotifier extends AsyncNotifier<List<Order>> {
   @override
   Future<List<Order>> build() async {
-    debugPrint('🔍 CurrentCustomerOrdersNotifier: ===== BUILD CALLED =====');
+    debugPrint('🔍 [ORDERS-PROVIDER] ===== CurrentCustomerOrdersNotifier BUILD CALLED =====');
 
     // Get current authenticated user ID directly
     final authState = ref.watch(authStateProvider);
     final userId = authState.user?.id;
 
-    debugPrint('🔍 CurrentCustomerOrdersNotifier: Current user ID: $userId');
+    debugPrint('🔍 [ORDERS-PROVIDER] Current user ID: $userId');
+    debugPrint('🔍 [ORDERS-PROVIDER] Auth state status: ${authState.status}');
 
     if (userId == null) {
-      debugPrint('🔍 CurrentCustomerOrdersNotifier: No authenticated user, returning empty list');
+      debugPrint('🔍 [ORDERS-PROVIDER] No authenticated user, returning empty list');
       return [];
     }
 
-    debugPrint('🔍 CurrentCustomerOrdersNotifier: Fetching orders for user: $userId');
+    debugPrint('🔍 [ORDERS-PROVIDER] Fetching orders for user: $userId');
     final orderService = ref.watch(customerOrderServiceProvider);
     final orders = await orderService.getCustomerOrders(userId);
-    debugPrint('🔍 CurrentCustomerOrdersNotifier: Retrieved ${orders.length} orders');
+    debugPrint('🔍 [ORDERS-PROVIDER] Retrieved ${orders.length} orders from service');
 
+    // Enhanced debugging for order status distribution
+    final statusCounts = <String, int>{};
     for (final order in orders) {
-      debugPrint('🔍 CurrentCustomerOrdersNotifier: Order ${order.orderNumber} - ${order.items.length} items');
+      final status = order.status.value;
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+
+      debugPrint('🔍 [ORDERS-PROVIDER] Order ${order.orderNumber} - Status: ${order.status.value} (${order.status.displayName}) - ${order.items.length} items');
 
       // Debug: Log first few items for each order
-      for (int i = 0; i < order.items.length && i < 3; i++) {
+      for (int i = 0; i < order.items.length && i < 2; i++) {
         final item = order.items[i];
-        debugPrint('🔍 CurrentCustomerOrdersNotifier: - Item ${i + 1}: ${item.name} (qty: ${item.quantity}, price: RM${item.unitPrice})');
+        debugPrint('🔍 [ORDERS-PROVIDER] - Item ${i + 1}: ${item.name} (qty: ${item.quantity}, price: RM${item.unitPrice})');
       }
 
       if (order.items.isEmpty) {
-        debugPrint('🔍 CurrentCustomerOrdersNotifier: ⚠️ Order ${order.orderNumber} has NO ITEMS - this is the bug!');
+        debugPrint('🔍 [ORDERS-PROVIDER] ⚠️ Order ${order.orderNumber} has NO ITEMS - this is a data issue!');
       }
     }
 
-    debugPrint('🔍 CurrentCustomerOrdersNotifier: ===== RETURNING ${orders.length} ORDERS =====');
+    debugPrint('🔍 [ORDERS-PROVIDER] Order status distribution: $statusCounts');
+    debugPrint('🔍 [ORDERS-PROVIDER] ===== RETURNING ${orders.length} ORDERS =====');
     return orders;
   }
 
   /// Force refresh orders
   Future<void> refresh() async {
-    debugPrint('🔍 CurrentCustomerOrdersNotifier: ===== REFRESH CALLED =====');
+    debugPrint('🔍 [ORDERS-PROVIDER] ===== REFRESH CALLED =====');
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => build());
+    debugPrint('🔍 [ORDERS-PROVIDER] ===== REFRESH COMPLETED =====');
   }
 }
 
@@ -329,23 +337,48 @@ final currentCustomerOrdersProvider = AsyncNotifierProvider<CurrentCustomerOrder
 });
 
 /// Real-time provider for current customer orders with live updates
+/// Currently disabled - use currentCustomerOrdersProvider instead
 final currentCustomerOrdersRealtimeProvider = StreamProvider<List<Order>>((ref) {
-  // TODO: Fix AsyncValue access - temporarily return empty stream
-  debugPrint('🔄 CustomerOrdersRealtime: Temporarily disabled due to AsyncValue access issues');
-  return Stream.value(<Order>[]);
+  debugPrint('🔄 [REALTIME-PROVIDER] Real-time provider called but disabled');
+  debugPrint('🔄 [REALTIME-PROVIDER] Use currentCustomerOrdersProvider.notifier.refresh() instead');
 
+  // Return empty stream since real-time functionality is disabled
+  // This prevents any dependencies on this provider from breaking
+  return Stream.value(<Order>[]);
 });
 
 /// Provider for current customer recent orders (limited to 5 most recent)
 final currentCustomerRecentOrdersProvider = FutureProvider<List<Order>>((ref) async {
+  debugPrint('🔍 [RECENT-ORDERS-PROVIDER] ===== currentCustomerRecentOrdersProvider CALLED =====');
+
   // Get current authenticated user ID directly
   final authState = ref.watch(authStateProvider);
   final userId = authState.user?.id;
 
+  debugPrint('🔍 [RECENT-ORDERS-PROVIDER] Current user ID: $userId');
+  debugPrint('🔍 [RECENT-ORDERS-PROVIDER] Auth state status: ${authState.status}');
+
   if (userId == null) {
+    debugPrint('🔍 [RECENT-ORDERS-PROVIDER] No authenticated user, returning empty list');
     return [];
   }
 
+  debugPrint('🔍 [RECENT-ORDERS-PROVIDER] Fetching orders for user: $userId');
   final orderService = ref.watch(customerOrderServiceProvider);
-  return orderService.getCustomerOrders(userId);
+  final orders = await orderService.getCustomerOrders(userId);
+  debugPrint('🔍 [RECENT-ORDERS-PROVIDER] Retrieved ${orders.length} orders from service');
+
+  // Enhanced debugging for recent orders
+  final statusCounts = <String, int>{};
+  for (final order in orders) {
+    final status = order.status.value;
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+
+    debugPrint('🔍 [RECENT-ORDERS-PROVIDER] Order ${order.orderNumber} - Status: ${order.status.value} (${order.status.displayName}) - ${order.items.length} items');
+  }
+
+  debugPrint('🔍 [RECENT-ORDERS-PROVIDER] Order status distribution: $statusCounts');
+  debugPrint('🔍 [RECENT-ORDERS-PROVIDER] ===== RETURNING ${orders.length} ORDERS =====');
+
+  return orders;
 });

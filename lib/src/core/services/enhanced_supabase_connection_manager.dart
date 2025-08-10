@@ -249,8 +249,8 @@ class EnhancedSupabaseConnectionManager with WidgetsBindingObserver {
       // Cancel existing subscription if any
       await _subscriptions[config.id]?.cancel();
 
-      // Create new subscription
-      final subscription = _supabase
+      // Create new subscription and store it immediately to satisfy analyzer
+      _subscriptions[config.id] = _supabase
           .from(config.table)
           .stream(primaryKey: ['id'])
           .listen(
@@ -278,8 +278,6 @@ class EnhancedSupabaseConnectionManager with WidgetsBindingObserver {
               config.onError?.call(error);
             },
           );
-
-      _subscriptions[config.id] = subscription;
 
       debugPrint('✅ [CONNECTION-MANAGER] Subscription created: ${config.id}');
     } catch (e) {

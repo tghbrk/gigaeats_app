@@ -78,7 +78,17 @@ class _CustomerOrderHistoryListViewState extends ConsumerState<CustomerOrderHist
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    debugPrint('🛒 CustomerOrderHistoryListView: Building with ${widget.groupedHistory.length} groups for status: ${widget.statusFilter.displayName}');
+    debugPrint('🛒 CustomerOrderHistoryListView: isLoading: ${widget.isLoading}');
+
+    // Debug: Log details about each group
+    for (int i = 0; i < widget.groupedHistory.length; i++) {
+      final group = widget.groupedHistory[i];
+      debugPrint('🛒 CustomerOrderHistoryListView: Group $i - ${group.displayDate}: ${group.totalOrders} total (${group.activeCount} active, ${group.completedCount} completed, ${group.cancelledCount} cancelled)');
+    }
+
     if (widget.groupedHistory.isEmpty && !widget.isLoading) {
+      debugPrint('🛒 CustomerOrderHistoryListView: No groups found and not loading, showing empty state');
       return _buildEmptyState(theme);
     }
 
@@ -112,6 +122,7 @@ class _CustomerOrderHistoryListViewState extends ConsumerState<CustomerOrderHist
   }
 
   Widget _buildDailyGroup(CustomerGroupedOrderHistory group) {
+    debugPrint('🛒 CustomerOrderHistoryListView: Building daily group for ${group.displayDate} with ${group.totalOrders} orders');
     return SliverToBoxAdapter(
       child: CustomerDailyOrderGroup(
         groupedHistory: group,
@@ -167,9 +178,9 @@ class _CustomerOrderHistoryListViewState extends ConsumerState<CustomerOrderHist
     IconData icon;
     
     switch (widget.statusFilter) {
-      case CustomerOrderFilterStatus.all:
-        message = 'No orders found for the selected period';
-        icon = Icons.shopping_bag_outlined;
+      case CustomerOrderFilterStatus.active:
+        message = 'No active orders found for the selected period';
+        icon = Icons.schedule_outlined;
         break;
       case CustomerOrderFilterStatus.completed:
         message = 'No completed orders found for the selected period';

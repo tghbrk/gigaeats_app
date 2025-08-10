@@ -111,15 +111,23 @@ class CustomerOrderMemoryOptimizer {
     final completedSpent = completedOrders
         .fold(0.0, (sum, order) => sum + order.totalAmount);
     
+    // Calculate active orders (not completed or cancelled)
+    final allOrders = [...completedOrders, ...cancelledOrders];
+    final activeOrders = allOrders
+        .where((order) => order.status != OrderStatus.delivered && order.status != OrderStatus.cancelled)
+        .toList();
+
     return CustomerGroupedOrderHistory(
       dateKey: dateKey,
       displayDate: displayDate,
       date: date,
       completedOrders: completedOrders,
       cancelledOrders: cancelledOrders,
+      activeOrders: activeOrders,
       totalOrders: totalOrders,
       completedCount: completedOrders.length,
       cancelledCount: cancelledOrders.length,
+      activeCount: activeOrders.length,
       totalSpent: totalSpent,
       completedSpent: completedSpent,
     );

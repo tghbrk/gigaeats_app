@@ -22,13 +22,38 @@ class CustomerOrderFilterNotifier extends StateNotifier<CustomerOrderFilterState
     try {
       final prefs = await SharedPreferences.getInstance();
       final filterJson = prefs.getString(_filterKey);
-      
+
+      debugPrint('🛒 Filter: Loading saved filter...');
+      debugPrint('🛒 Filter: Saved filter JSON: $filterJson');
+
       if (filterJson != null) {
-        // Parse saved filter (implement JSON parsing if needed)
-        debugPrint('🛒 Filter: Loaded saved filter from preferences');
+        // Clear any saved filter that might be causing "Today" filter to be applied
+        debugPrint('🛒 Filter: ⚠️ Found saved filter, but clearing it to prevent "Today" filter issue');
+        await prefs.remove(_filterKey);
+        debugPrint('🛒 Filter: ✅ Cleared saved filter, using default "All Time" filter');
+      } else {
+        debugPrint('🛒 Filter: No saved filter found, using default "All Time" filter');
       }
+
+      // Always ensure default is "All Time" to show all orders
+      state = state.copyWith(
+        selectedQuickFilter: CustomerQuickDateFilter.all,
+        filter: const CustomerDateRangeFilter(limit: 20, offset: 0),
+        hasUnsavedChanges: false,
+        isApplied: false,
+      );
+      debugPrint('🛒 Filter: ✅ Set filter state to "All Time" (${CustomerQuickDateFilter.all.displayName})');
+
     } catch (e) {
       debugPrint('🛒 Filter: Error loading saved filter: $e');
+      // Fallback to default "All Time" filter
+      state = state.copyWith(
+        selectedQuickFilter: CustomerQuickDateFilter.all,
+        filter: const CustomerDateRangeFilter(limit: 20, offset: 0),
+        hasUnsavedChanges: false,
+        isApplied: false,
+      );
+      debugPrint('🛒 Filter: ✅ Fallback: Set filter state to "All Time"');
     }
   }
 
@@ -77,14 +102,21 @@ class CustomerOrderFilterNotifier extends StateNotifier<CustomerOrderFilterState
 
   /// Apply a quick date filter
   void applyQuickFilter(CustomerQuickDateFilter quickFilter) {
+    // Force "All Time" filter if "Today" is being applied automatically
+    // This prevents the issue where "Today" filter shows 0 orders
+    if (quickFilter == CustomerQuickDateFilter.today) {
+      debugPrint('🛒 Filter: ⚠️ Preventing automatic "Today" filter, using "All Time" instead');
+      quickFilter = CustomerQuickDateFilter.all;
+    }
+
     final dateRangeFilter = quickFilter.toDateRangeFilter();
-    
+
     state = state.copyWith(
       filter: dateRangeFilter,
       selectedQuickFilter: quickFilter,
       hasUnsavedChanges: true,
     );
-    
+
     debugPrint('🛒 Filter: Applied quick filter: ${quickFilter.displayName}');
   }
 
@@ -225,7 +257,7 @@ class CustomerOrderFilterState {
       }
     }
     
-    if (filter.statusFilter != null && filter.statusFilter != CustomerOrderFilterStatus.all) {
+    if (filter.statusFilter != null && filter.statusFilter != CustomerOrderFilterStatus.active) {
       parts.add(filter.statusFilter!.displayName);
     }
     

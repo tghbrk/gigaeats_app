@@ -220,10 +220,10 @@ class CustomerDateRangeFilter {
       isPersistent: json['isPersistent'] ?? false,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       metadata: json['metadata'],
-      statusFilter: json['statusFilter'] != null 
+      statusFilter: json['statusFilter'] != null
           ? CustomerOrderFilterStatus.values.firstWhere(
               (e) => e.name == json['statusFilter'],
-              orElse: () => CustomerOrderFilterStatus.all,
+              orElse: () => CustomerOrderFilterStatus.active,
             )
           : null,
     );
@@ -286,14 +286,14 @@ enum CustomerFilterPerformanceImpact {
 
 /// Order status filter options for customers
 enum CustomerOrderFilterStatus {
-  all,
+  active,
   completed,
   cancelled;
 
   String get displayName {
     switch (this) {
-      case CustomerOrderFilterStatus.all:
-        return 'All Orders';
+      case CustomerOrderFilterStatus.active:
+        return 'Active Orders';
       case CustomerOrderFilterStatus.completed:
         return 'Completed Orders';
       case CustomerOrderFilterStatus.cancelled:
@@ -303,8 +303,8 @@ enum CustomerOrderFilterStatus {
 
   String get description {
     switch (this) {
-      case CustomerOrderFilterStatus.all:
-        return 'Show both completed and cancelled orders';
+      case CustomerOrderFilterStatus.active:
+        return 'Show pending and in-progress orders';
       case CustomerOrderFilterStatus.completed:
         return 'Show only successfully delivered orders';
       case CustomerOrderFilterStatus.cancelled:

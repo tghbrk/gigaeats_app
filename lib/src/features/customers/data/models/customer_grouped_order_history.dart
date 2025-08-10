@@ -11,9 +11,11 @@ class CustomerGroupedOrderHistory {
   final DateTime date;
   final List<Order> completedOrders;
   final List<Order> cancelledOrders;
+  final List<Order> activeOrders; // New: orders that are not completed or cancelled
   final int totalOrders;
   final int completedCount;
   final int cancelledCount;
+  final int activeCount; // New: count of active orders
   final double totalSpent;
   final double completedSpent;
 
@@ -23,15 +25,17 @@ class CustomerGroupedOrderHistory {
     required this.date,
     required this.completedOrders,
     required this.cancelledOrders,
+    required this.activeOrders, // New parameter
     required this.totalOrders,
     required this.completedCount,
     required this.cancelledCount,
+    required this.activeCount, // New parameter
     required this.totalSpent,
     required this.completedSpent,
   });
 
-  /// Get all orders (completed + cancelled) for this date
-  List<Order> get allOrders => [...completedOrders, ...cancelledOrders];
+  /// Get all orders (completed + cancelled + active) for this date
+  List<Order> get allOrders => [...completedOrders, ...cancelledOrders, ...activeOrders];
 
   /// Check if this date has any orders
   bool get hasOrders => totalOrders > 0;
@@ -42,6 +46,9 @@ class CustomerGroupedOrderHistory {
   /// Check if this date has cancelled orders
   bool get hasCancelledOrders => cancelledCount > 0;
 
+  /// Check if this date has active orders (not completed or cancelled)
+  bool get hasActiveOrders => activeCount > 0;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -51,7 +58,8 @@ class CustomerGroupedOrderHistory {
           displayDate == other.displayDate &&
           date == other.date &&
           listEquals(completedOrders, other.completedOrders) &&
-          listEquals(cancelledOrders, other.cancelledOrders);
+          listEquals(cancelledOrders, other.cancelledOrders) &&
+          listEquals(activeOrders, other.activeOrders);
 
   @override
   int get hashCode => Object.hash(
@@ -60,6 +68,7 @@ class CustomerGroupedOrderHistory {
         date,
         Object.hashAll(completedOrders),
         Object.hashAll(cancelledOrders),
+        Object.hashAll(activeOrders),
       );
 
   @override
@@ -68,7 +77,8 @@ class CustomerGroupedOrderHistory {
       'displayDate: $displayDate, '
       'totalOrders: $totalOrders, '
       'completedCount: $completedCount, '
-      'cancelledCount: $cancelledCount'
+      'cancelledCount: $cancelledCount, '
+      'activeCount: $activeCount'
       ')';
 
   /// Create grouped customer order history from a list of orders
@@ -113,6 +123,9 @@ class CustomerGroupedOrderHistory {
       final cancelledOrders = dayOrders
           .where((order) => order.status == OrderStatus.cancelled)
           .toList();
+      final activeOrders = dayOrders
+          .where((order) => order.status != OrderStatus.delivered && order.status != OrderStatus.cancelled)
+          .toList();
 
       // Calculate spending totals
       final totalSpent = dayOrders.fold(0.0, (sum, order) => sum + order.totalAmount);
@@ -141,15 +154,17 @@ class CustomerGroupedOrderHistory {
         date: date,
         completedOrders: completedOrders,
         cancelledOrders: cancelledOrders,
+        activeOrders: activeOrders,
         totalOrders: dayOrders.length,
         completedCount: completedOrders.length,
         cancelledCount: cancelledOrders.length,
+        activeCount: activeOrders.length,
         totalSpent: totalSpent,
         completedSpent: completedSpent,
       ));
 
       debugPrint('🛒 CustomerGroupedOrderHistory: $displayDate - ${dayOrders.length} orders '
-          '(${completedOrders.length} completed, ${cancelledOrders.length} cancelled)');
+          '(${completedOrders.length} completed, ${cancelledOrders.length} cancelled, ${activeOrders.length} active)');
     }
 
     // Sort by date (most recent first)
@@ -209,18 +224,20 @@ class CustomerGroupedOrderHistory {
     final allOrders = groups.expand((group) => group.allOrders).toList();
     final completedOrders = groups.expand((group) => group.completedOrders).toList();
     final cancelledOrders = groups.expand((group) => group.cancelledOrders).toList();
-    
+    final activeOrders = groups.expand((group) => group.activeOrders).toList();
+
     return CustomerOrderHistorySummary(
       totalOrders: allOrders.length,
       completedOrders: completedOrders.length,
       cancelledOrders: cancelledOrders.length,
+      activeOrders: activeOrders.length, // New field
       totalSpent: allOrders.fold(0.0, (sum, order) => sum + order.totalAmount),
       completedSpent: completedOrders.fold(0.0, (sum, order) => sum + order.totalAmount),
-      averageOrderValue: allOrders.isEmpty 
-          ? 0.0 
+      averageOrderValue: allOrders.isEmpty
+          ? 0.0
           : allOrders.fold(0.0, (sum, order) => sum + order.totalAmount) / allOrders.length,
-      dateRange: groups.isEmpty 
-          ? null 
+      dateRange: groups.isEmpty
+          ? null
           : CustomerDateRange(
               start: groups.last.date,
               end: groups.first.date,
@@ -235,6 +252,7 @@ class CustomerOrderHistorySummary {
   final int totalOrders;
   final int completedOrders;
   final int cancelledOrders;
+  final int activeOrders; // New field for active orders
   final double totalSpent;
   final double completedSpent;
   final double averageOrderValue;
@@ -244,6 +262,7 @@ class CustomerOrderHistorySummary {
     required this.totalOrders,
     required this.completedOrders,
     required this.cancelledOrders,
+    required this.activeOrders, // New parameter
     required this.totalSpent,
     required this.completedSpent,
     required this.averageOrderValue,
@@ -264,6 +283,7 @@ class CustomerOrderHistorySummary {
           totalOrders == other.totalOrders &&
           completedOrders == other.completedOrders &&
           cancelledOrders == other.cancelledOrders &&
+          activeOrders == other.activeOrders &&
           totalSpent == other.totalSpent &&
           completedSpent == other.completedSpent &&
           averageOrderValue == other.averageOrderValue &&
@@ -274,6 +294,7 @@ class CustomerOrderHistorySummary {
         totalOrders,
         completedOrders,
         cancelledOrders,
+        activeOrders,
         totalSpent,
         completedSpent,
         averageOrderValue,
@@ -285,6 +306,7 @@ class CustomerOrderHistorySummary {
       'totalOrders: $totalOrders, '
       'completedOrders: $completedOrders, '
       'cancelledOrders: $cancelledOrders, '
+      'activeOrders: $activeOrders, '
       'totalSpent: RM${totalSpent.toStringAsFixed(2)}, '
       'averageOrderValue: RM${averageOrderValue.toStringAsFixed(2)}'
       ')';

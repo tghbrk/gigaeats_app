@@ -149,10 +149,23 @@ class CustomerDailyOrderGroup extends ConsumerWidget {
 
   Widget _buildOrdersList(ThemeData theme) {
     final ordersToShow = _getOrdersToShow();
-    
+
+    debugPrint('🛒 CustomerDailyOrderGroup._buildOrdersList: ${groupedHistory.displayDate} for status: ${statusFilter.displayName}');
+    debugPrint('🛒 CustomerDailyOrderGroup._buildOrdersList: Group has ${groupedHistory.totalOrders} total orders (${groupedHistory.activeCount} active, ${groupedHistory.completedCount} completed, ${groupedHistory.cancelledCount} cancelled)');
+    debugPrint('🛒 CustomerDailyOrderGroup._buildOrdersList: _getOrdersToShow() returned ${ordersToShow.length} orders');
+
+    // Debug: Log the status of each order to show
+    for (int i = 0; i < ordersToShow.length; i++) {
+      final order = ordersToShow[i];
+      debugPrint('🛒 CustomerDailyOrderGroup._buildOrdersList: Order $i - ID: ${order.id}, Status: ${order.status.value}, Amount: RM${order.totalAmount}');
+    }
+
     if (ordersToShow.isEmpty) {
+      debugPrint('🛒 CustomerDailyOrderGroup._buildOrdersList: No orders to show, returning empty section');
       return _buildEmptySection(theme);
     }
+
+    debugPrint('🛒 CustomerDailyOrderGroup._buildOrdersList: Building ${ordersToShow.length} order cards');
 
     if (isCompact) {
       return _buildCompactOrdersList(theme, ordersToShow);
@@ -206,8 +219,8 @@ class CustomerDailyOrderGroup extends ConsumerWidget {
       case CustomerOrderFilterStatus.cancelled:
         message = 'No cancelled orders on this day';
         break;
-      case CustomerOrderFilterStatus.all:
-        message = 'No orders on this day';
+      case CustomerOrderFilterStatus.active:
+        message = 'No active orders on this day';
         break;
     }
 
@@ -226,24 +239,43 @@ class CustomerDailyOrderGroup extends ConsumerWidget {
   }
 
   List<Order> _getOrdersToShow() {
+    debugPrint('🛒 CustomerDailyOrderGroup._getOrdersToShow: Called for status: ${statusFilter.displayName}');
+    debugPrint('🛒 CustomerDailyOrderGroup._getOrdersToShow: Available orders - active: ${groupedHistory.activeOrders.length}, completed: ${groupedHistory.completedOrders.length}, cancelled: ${groupedHistory.cancelledOrders.length}');
+
+    List<Order> result;
     switch (statusFilter) {
+      case CustomerOrderFilterStatus.active:
+        // Show only active orders (pending, confirmed, preparing, ready, out_for_delivery)
+        result = groupedHistory.activeOrders;
+        debugPrint('🛒 CustomerDailyOrderGroup._getOrdersToShow: Returning ${result.length} active orders');
+        break;
       case CustomerOrderFilterStatus.completed:
-        return groupedHistory.completedOrders;
+        result = groupedHistory.completedOrders;
+        debugPrint('🛒 CustomerDailyOrderGroup._getOrdersToShow: Returning ${result.length} completed orders');
+        break;
       case CustomerOrderFilterStatus.cancelled:
-        return groupedHistory.cancelledOrders;
-      case CustomerOrderFilterStatus.all:
-        return groupedHistory.allOrders;
+        result = groupedHistory.cancelledOrders;
+        debugPrint('🛒 CustomerDailyOrderGroup._getOrdersToShow: Returning ${result.length} cancelled orders');
+        break;
     }
+
+    // Debug: Log each order being returned
+    for (int i = 0; i < result.length; i++) {
+      final order = result[i];
+      debugPrint('🛒 CustomerDailyOrderGroup._getOrdersToShow: Order $i - ID: ${order.id}, Status: ${order.status.value}');
+    }
+
+    return result;
   }
 
   String _getOrderCountText() {
     switch (statusFilter) {
+      case CustomerOrderFilterStatus.active:
+        return '${groupedHistory.activeCount} active';
       case CustomerOrderFilterStatus.completed:
         return '${groupedHistory.completedCount} completed';
       case CustomerOrderFilterStatus.cancelled:
         return '${groupedHistory.cancelledCount} cancelled';
-      case CustomerOrderFilterStatus.all:
-        return '${groupedHistory.totalOrders} orders';
     }
   }
 

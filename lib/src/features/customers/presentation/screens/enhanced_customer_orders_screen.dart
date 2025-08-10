@@ -42,8 +42,32 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
   }
 
   void _initializeLazyLoading() {
+    debugPrint('🛒 Enhanced Orders Screen: Initializing lazy loading...');
+
+    // Ensure filter is set to "All Time" by default
+    final filterNotifier = ref.read(customerOrderFilterProvider.notifier);
+    final currentState = ref.read(customerOrderFilterProvider);
+
+    debugPrint('🛒 Enhanced Orders Screen: Current filter state - selectedQuickFilter: ${currentState.selectedQuickFilter}');
+
+    // Force "All Time" filter if not already set
+    if (currentState.selectedQuickFilter != CustomerQuickDateFilter.all) {
+      debugPrint('🛒 Enhanced Orders Screen: Forcing "All Time" filter to show all orders');
+      filterNotifier.applyQuickFilter(CustomerQuickDateFilter.all);
+    }
+
     final currentFilter = ref.read(currentCustomerOrderFilterProvider);
-    ref.read(customerOrderHistoryLazyProvider(currentFilter).notifier).loadInitial();
+    debugPrint('🛒 Enhanced Orders Screen: Using filter: ${currentFilter.toString()}');
+
+    // Initialize lazy loading for all status filters
+    final activeStatusFilter = currentFilter.copyWith(statusFilter: CustomerOrderFilterStatus.active);
+    final completedStatusFilter = currentFilter.copyWith(statusFilter: CustomerOrderFilterStatus.completed);
+    final cancelledStatusFilter = currentFilter.copyWith(statusFilter: CustomerOrderFilterStatus.cancelled);
+
+    debugPrint('🛒 Enhanced Orders Screen: Initializing lazy providers for all status filters');
+    ref.read(customerOrderHistoryLazyProvider(activeStatusFilter).notifier).loadInitial();
+    ref.read(customerOrderHistoryLazyProvider(completedStatusFilter).notifier).loadInitial();
+    ref.read(customerOrderHistoryLazyProvider(cancelledStatusFilter).notifier).loadInitial();
   }
 
   @override
@@ -134,8 +158,8 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
         controller: _tabController,
         tabs: const [
           Tab(
-            icon: Icon(Icons.all_inclusive),
-            text: 'All Orders',
+            icon: Icon(Icons.schedule),
+            text: 'Active Orders',
           ),
           Tab(
             icon: Icon(Icons.check_circle),
@@ -163,8 +187,8 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
     return TabBarView(
       controller: _tabController,
       children: [
-        // All orders
-        _buildOrderHistoryView(CustomerOrderFilterStatus.all),
+        // Active orders
+        _buildOrderHistoryView(CustomerOrderFilterStatus.active),
         
         // Completed orders
         _buildOrderHistoryView(CustomerOrderFilterStatus.completed),
@@ -181,18 +205,29 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
         // Get current filter and apply status filter
         final currentFilter = ref.watch(currentCustomerOrderFilterProvider);
         final filteredFilter = currentFilter.copyWith(statusFilter: statusFilter);
-        
+
+        debugPrint('🛒 Enhanced Orders Screen: Watching lazy provider for status: ${statusFilter.displayName}');
+        debugPrint('🛒 Enhanced Orders Screen: Filter details - ${filteredFilter.toString()}');
+
         // Watch the lazy loading state
         final lazyState = ref.watch(customerOrderHistoryLazyProvider(filteredFilter));
-        
+
         debugPrint('🛒 Enhanced Orders Screen: Building view for status: ${statusFilter.displayName}');
-        debugPrint('🛒 Enhanced Orders Screen: Lazy state - ${lazyState.items.length} groups, loading: ${lazyState.isLoading}');
-        
+        debugPrint('🛒 Enhanced Orders Screen: Lazy state - ${lazyState.items.length} groups, loading: ${lazyState.isLoading}, error: ${lazyState.error}');
+
+        // Debug: Log details about each group in the lazy state
+        for (int i = 0; i < lazyState.items.length; i++) {
+          final group = lazyState.items[i];
+          debugPrint('🛒 Enhanced Orders Screen: LazyState Group $i - ${group.displayDate}: ${group.totalOrders} total (${group.activeCount} active, ${group.completedCount} completed, ${group.cancelledCount} cancelled)');
+        }
+
         if (lazyState.items.isEmpty && lazyState.isLoading) {
+          debugPrint('🛒 Enhanced Orders Screen: Showing loading state (empty + loading)');
           return _buildLoadingState();
         }
-        
+
         if (lazyState.items.isEmpty && !lazyState.isLoading) {
+          debugPrint('🛒 Enhanced Orders Screen: Showing empty state (empty + not loading)');
           return _buildEmptyState(statusFilter);
         }
         
@@ -234,10 +269,10 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
     IconData icon;
     
     switch (statusFilter) {
-      case CustomerOrderFilterStatus.all:
-        title = 'No orders found';
-        subtitle = 'You haven\'t placed any orders yet. Start exploring restaurants!';
-        icon = Icons.shopping_bag_outlined;
+      case CustomerOrderFilterStatus.active:
+        title = 'No active orders';
+        subtitle = 'You don\'t have any pending or in-progress orders. Start exploring restaurants!';
+        icon = Icons.schedule_outlined;
         break;
       case CustomerOrderFilterStatus.completed:
         title = 'No completed orders';
@@ -279,7 +314,7 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            if (statusFilter == CustomerOrderFilterStatus.all)
+            if (statusFilter == CustomerOrderFilterStatus.active)
               FilledButton.icon(
                 onPressed: () => context.go('/customer/restaurants'),
                 icon: const Icon(Icons.restaurant),
@@ -387,6 +422,12 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
 
   void _onFilterChanged() {
     debugPrint('🛒 Enhanced Orders Screen: Filter changed, refreshing data');
+
+    // Log current filter state for debugging
+    final currentState = ref.read(customerOrderFilterProvider);
+    debugPrint('🛒 Enhanced Orders Screen: Current filter after change - selectedQuickFilter: ${currentState.selectedQuickFilter}');
+    debugPrint('🛒 Enhanced Orders Screen: Current filter after change - hasDateFilter: ${currentState.filter.hasDateFilter}');
+
     _refreshOrders();
   }
 

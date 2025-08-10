@@ -55,17 +55,22 @@ final enhancedCustomerOrderHistoryProvider = FutureProvider.family<List<Order>, 
       switch (filter.statusFilter!) {
         case CustomerOrderFilterStatus.completed:
           query = query.eq('status', 'delivered');
+          debugPrint('🛒 Enhanced History: Filtering for completed orders only (delivered)');
           break;
         case CustomerOrderFilterStatus.cancelled:
           query = query.eq('status', 'cancelled');
+          debugPrint('🛒 Enhanced History: Filtering for cancelled orders only');
           break;
-        case CustomerOrderFilterStatus.all:
-          query = query.inFilter('status', ['delivered', 'cancelled']);
+        case CustomerOrderFilterStatus.active:
+          // Show only active orders (pending, confirmed, preparing, ready, out_for_delivery)
+          query = query.inFilter('status', ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery']);
+          debugPrint('🛒 Enhanced History: Filtering for active orders only (pending, confirmed, preparing, ready, out_for_delivery)');
           break;
       }
     } else {
-      // Default to completed and cancelled orders only
-      query = query.inFilter('status', ['delivered', 'cancelled']);
+      // Default to showing ALL orders when no specific status filter is applied
+      debugPrint('🛒 Enhanced History: No status filter specified, showing all order statuses');
+      // Don't apply any status filter - show all orders regardless of status
     }
 
     // Apply date filtering if specified
@@ -87,7 +92,18 @@ final enhancedCustomerOrderHistoryProvider = FutureProvider.family<List<Order>, 
 
     debugPrint('🛒 Enhanced History: Retrieved ${response.length} orders');
 
-    return response.map((json) => Order.fromJson(json)).toList();
+    // Parse orders and log status distribution
+    final orders = response.map((json) => Order.fromJson(json)).toList();
+
+    // Log status distribution for debugging
+    final statusCounts = <String, int>{};
+    for (final order in orders) {
+      final status = order.status.value;
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    }
+    debugPrint('🛒 Enhanced History: Order status distribution: $statusCounts');
+
+    return orders;
   } catch (e) {
     debugPrint('🛒 Enhanced History: Error fetching orders: $e');
     throw Exception('Failed to fetch customer order history: $e');
@@ -294,8 +310,8 @@ final customerOrderCountProvider = FutureProvider.family<int, CustomerDateRangeF
         case CustomerOrderFilterStatus.cancelled:
           query = query.eq('status', 'cancelled');
           break;
-        case CustomerOrderFilterStatus.all:
-          query = query.inFilter('status', ['delivered', 'cancelled']);
+        case CustomerOrderFilterStatus.active:
+          query = query.inFilter('status', ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery']);
           break;
       }
     } else {

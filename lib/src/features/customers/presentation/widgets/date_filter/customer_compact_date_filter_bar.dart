@@ -79,7 +79,7 @@ class CustomerCompactDateFilterBar extends ConsumerWidget {
 
     // Add status filter indicator
     if (filterState.filter.statusFilter != null && 
-        filterState.filter.statusFilter != CustomerOrderFilterStatus.all) {
+        filterState.filter.statusFilter != CustomerOrderFilterStatus.active) {
       displayText += ' • ${filterState.filter.statusFilter!.displayName}';
     }
 

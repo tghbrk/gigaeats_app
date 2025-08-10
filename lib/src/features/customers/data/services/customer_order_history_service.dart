@@ -44,7 +44,7 @@ class CustomerOrderHistoryService extends BaseRepository {
           case CustomerOrderFilterStatus.cancelled:
             statusFilter = ['cancelled'];
             break;
-          case CustomerOrderFilterStatus.all:
+          case CustomerOrderFilterStatus.active:
             statusFilter = ['delivered', 'cancelled'];
             break;
         }
@@ -83,7 +83,7 @@ class CustomerOrderHistoryService extends BaseRepository {
           case CustomerOrderFilterStatus.cancelled:
             statusFilter = ['cancelled'];
             break;
-          case CustomerOrderFilterStatus.all:
+          case CustomerOrderFilterStatus.active:
             statusFilter = ['delivered', 'cancelled'];
             break;
         }
@@ -122,7 +122,7 @@ class CustomerOrderHistoryService extends BaseRepository {
           case CustomerOrderFilterStatus.cancelled:
             statusFilter = ['cancelled'];
             break;
-          case CustomerOrderFilterStatus.all:
+          case CustomerOrderFilterStatus.active:
             statusFilter = ['delivered', 'cancelled'];
             break;
         }

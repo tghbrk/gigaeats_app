@@ -476,7 +476,7 @@ class _CustomerOrderDateFilterState extends ConsumerState<CustomerOrderDateFilte
       _tempStartDate = null;
       _tempEndDate = null;
       _tempQuickFilter = CustomerQuickDateFilter.all;
-      _tempStatusFilter = CustomerOrderFilterStatus.all;
+      _tempStatusFilter = CustomerOrderFilterStatus.active;
     });
   }
 

@@ -541,8 +541,9 @@ class _EnhancedOrderConfirmationScreenState extends ConsumerState<EnhancedOrderC
   }
 
   void _viewOrderHistory() {
-    _logger.info('📋 [ORDER-CONFIRMATION] Navigating to order history');
-    context.go('/orders');
+    _logger.info('📋 [ORDER-CONFIRMATION] Navigating to customer order history');
+    // Navigate to the enhanced customer orders screen
+    context.go('/customer/orders');
   }
 
   void _continueShopping() {

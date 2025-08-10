@@ -431,7 +431,30 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
   }
 
   Widget _buildRecentOrdersSection(BuildContext context) {
+    debugPrint('🔍 [CUSTOMER-DASHBOARD] ===== _buildRecentOrdersSection CALLED =====');
+
     final recentOrdersAsync = ref.watch(currentCustomerRecentOrdersProvider);
+
+    debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent orders async state: ${recentOrdersAsync.runtimeType}');
+    recentOrdersAsync.when(
+      data: (orders) {
+        debugPrint('🔍 [CUSTOMER-DASHBOARD] Received ${orders.length} orders from recent orders provider');
+        final statusCounts = <String, int>{};
+        for (final order in orders) {
+          final status = order.status.value;
+          statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+        }
+        debugPrint('🔍 [CUSTOMER-DASHBOARD] Status distribution: $statusCounts');
+
+        // Log recent orders details
+        for (int i = 0; i < orders.length && i < 5; i++) {
+          final order = orders[i];
+          debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent order ${i + 1}: ${order.orderNumber} - ${order.status.value} (${order.status.displayName}) - ${order.items.length} items');
+        }
+      },
+      loading: () => debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent orders are loading...'),
+      error: (error, stack) => debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent orders error: $error'),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

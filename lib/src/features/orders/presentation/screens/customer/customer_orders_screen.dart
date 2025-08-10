@@ -36,9 +36,26 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] ===== BUILD CALLED =====');
+
     // Use AsyncNotifierProvider for better state management
     final ordersAsync = ref.watch(currentCustomerOrdersProvider);
     final theme = Theme.of(context);
+
+    debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Orders async state: ${ordersAsync.runtimeType}');
+    ordersAsync.when(
+      data: (orders) {
+        debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Received ${orders.length} orders from provider');
+        final statusCounts = <String, int>{};
+        for (final order in orders) {
+          final status = order.status.value;
+          statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+        }
+        debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Status distribution: $statusCounts');
+      },
+      loading: () => debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Orders are loading...'),
+      error: (error, stack) => debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Orders error: $error'),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -109,12 +126,21 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
       ),
       body: ordersAsync.when(
         data: (orders) {
+          debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Building TabBarView with ${orders.length} orders');
+
+          // Get filtered orders for each tab
+          final activeOrders = _getActiveOrders(orders);
+          final completedOrders = _getCompletedOrders(orders);
+          final cancelledOrders = _getCancelledOrders(orders);
+
+          debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Tab distribution - Active: ${activeOrders.length}, Completed: ${completedOrders.length}, Cancelled: ${cancelledOrders.length}');
+
           return TabBarView(
             controller: _tabController,
             children: [
-              _buildOrdersList(_getActiveOrders(orders)),
-              _buildOrdersList(_getCompletedOrders(orders)),
-              _buildOrdersList(_getCancelledOrders(orders)),
+              _buildOrdersList(activeOrders),
+              _buildOrdersList(completedOrders),
+              _buildOrdersList(cancelledOrders),
             ],
           );
         },
@@ -131,14 +157,21 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
 
   List<Order> _getActiveOrders(List<Order> orders) {
     debugPrint('🔍 [TAB-FILTER] _getActiveOrders called with ${orders.length} total orders');
+
+    // Log all order statuses for debugging
+    final allStatuses = orders.map((o) => '${o.orderNumber}:${o.status.value}').join(', ');
+    debugPrint('🔍 [TAB-FILTER] All order statuses: $allStatuses');
+
     final activeOrders = orders.where((order) =>
         order.status != OrderStatus.delivered &&
         order.status != OrderStatus.cancelled
     ).toList();
 
     debugPrint('🔍 [TAB-FILTER] Active orders: ${activeOrders.length}');
+    debugPrint('🔍 [TAB-FILTER] Excluding statuses: ${OrderStatus.delivered.value}, ${OrderStatus.cancelled.value}');
+
     for (final order in activeOrders) {
-      debugPrint('🔍 [TAB-FILTER] Active - ${order.orderNumber} (${order.status.displayName}) - ${order.items.length} items');
+      debugPrint('🔍 [TAB-FILTER] Active - ${order.orderNumber} (${order.status.value}/${order.status.displayName}) - ${order.items.length} items');
     }
 
     return activeOrders;
@@ -146,11 +179,34 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
 
   List<Order> _getCompletedOrders(List<Order> orders) {
     debugPrint('🔍 [TAB-FILTER] _getCompletedOrders called with ${orders.length} total orders');
+
+    // Log all order statuses for debugging
+    final allStatuses = orders.map((o) => '${o.orderNumber}:${o.status.value}').join(', ');
+    debugPrint('🔍 [TAB-FILTER] All order statuses: $allStatuses');
+
     final completedOrders = orders.where((order) => order.status == OrderStatus.delivered).toList();
 
     debugPrint('🔍 [TAB-FILTER] Completed orders: ${completedOrders.length}');
+    debugPrint('🔍 [TAB-FILTER] Looking for status: ${OrderStatus.delivered.value} (${OrderStatus.delivered.displayName})');
+
     for (final order in completedOrders) {
-      debugPrint('🔍 [TAB-FILTER] Completed - ${order.orderNumber} (${order.status.displayName}) - ${order.items.length} items');
+      debugPrint('🔍 [TAB-FILTER] Completed - ${order.orderNumber} (${order.status.displayName}) - ${order.items.length} items - Created: ${order.createdAt}');
+    }
+
+    // Also check for any orders that might be considered "completed" but have different status
+    final potentialCompleted = orders.where((order) =>
+      order.status.value.contains('deliver') ||
+      order.status.value.contains('complete') ||
+      order.status.value.contains('finish')
+    ).toList();
+
+    if (potentialCompleted.length != completedOrders.length) {
+      debugPrint('🔍 [TAB-FILTER] ⚠️ Found ${potentialCompleted.length} potential completed orders vs ${completedOrders.length} actual');
+      for (final order in potentialCompleted) {
+        if (!completedOrders.contains(order)) {
+          debugPrint('🔍 [TAB-FILTER] ⚠️ Potential completed order not in completed list: ${order.orderNumber} (${order.status.value})');
+        }
+      }
     }
 
     return completedOrders;
@@ -158,11 +214,14 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
 
   List<Order> _getCancelledOrders(List<Order> orders) {
     debugPrint('🔍 [TAB-FILTER] _getCancelledOrders called with ${orders.length} total orders');
+
     final cancelledOrders = orders.where((order) => order.status == OrderStatus.cancelled).toList();
 
     debugPrint('🔍 [TAB-FILTER] Cancelled orders: ${cancelledOrders.length}');
+    debugPrint('🔍 [TAB-FILTER] Looking for status: ${OrderStatus.cancelled.value} (${OrderStatus.cancelled.displayName})');
+
     for (final order in cancelledOrders) {
-      debugPrint('🔍 [TAB-FILTER] Cancelled - ${order.orderNumber} (${order.status.displayName}) - ${order.items.length} items');
+      debugPrint('🔍 [TAB-FILTER] Cancelled - ${order.orderNumber} (${order.status.value}/${order.status.displayName}) - ${order.items.length} items');
     }
 
     return cancelledOrders;
@@ -879,7 +938,12 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
         // Invalidate providers to trigger real-time updates
         if (mounted) {
           // Invalidate the current customer orders provider to refresh the list
-          ref.invalidate(currentCustomerOrdersRealtimeProvider);
+          debugPrint('🔄 [CUSTOMER-ORDERS-SCREEN] Invalidating currentCustomerOrdersProvider after pickup confirmation');
+          ref.invalidate(currentCustomerOrdersProvider);
+
+          // Also invalidate the recent orders provider used by dashboard
+          debugPrint('🔄 [CUSTOMER-ORDERS-SCREEN] Invalidating currentCustomerRecentOrdersProvider for dashboard sync');
+          ref.invalidate(currentCustomerRecentOrdersProvider);
 
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(

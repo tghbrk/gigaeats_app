@@ -3,15 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../../lib/src/features/customers/presentation/screens/enhanced_customer_orders_screen.dart';
-import '../../lib/main.dart' as app;
+import 'package:gigaeats_app/src/features/customers/presentation/screens/enhanced_customer_orders_screen.dart';
+import 'package:gigaeats_app/main.dart' as app;
 
 /// Comprehensive integration tests for enhanced customer order history functionality
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('Enhanced Customer Order History Integration Tests', () {
-    late WidgetTester tester;
 
     setUpAll(() async {
       debugPrint('🧪 Integration Test: Setting up test environment');
@@ -33,7 +32,7 @@ void main() {
       debugPrint('🧪 Testing: Customer Order History Screen Load');
 
       // Initialize the app
-      await app.main();
+      app.main();
       await tester.pumpAndSettle();
 
       // Navigate to customer order history (this would need proper navigation setup)

@@ -276,9 +276,11 @@ class CustomerOrderTestExecutor {
         date: testDate,
         completedOrders: [],
         cancelledOrders: [],
+        activeOrders: [],
         totalOrders: 0,
         completedCount: 0,
         cancelledCount: 0,
+        activeCount: 0,
         totalSpent: 0.0,
         completedSpent: 0.0,
       );

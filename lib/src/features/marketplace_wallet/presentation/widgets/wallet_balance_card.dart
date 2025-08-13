@@ -22,9 +22,14 @@ class WalletBalanceCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final walletState = ref.watch(currentUserWalletProvider);
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      splashColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+      highlightColor: AppTheme.primaryColor.withValues(alpha: 0.05),
+      onTap: () => _navigateToWallet(context),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -102,7 +107,53 @@ class WalletBalanceCard extends ConsumerWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
+  }
+
+  void _navigateToWallet(BuildContext context) {
+    switch (userRole) {
+      case 'driver':
+        context.push('/driver/wallet');
+        break;
+      case 'vendor':
+        // TODO: Add vendor wallet route when implemented
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vendor wallet coming soon'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        break;
+      case 'customer':
+        context.push('/customer/wallet');
+        break;
+      case 'sales_agent':
+        // TODO: Add sales agent wallet route when implemented
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sales agent wallet coming soon'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        break;
+      case 'admin':
+        // TODO: Add admin wallet route when implemented
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Admin wallet coming soon'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Wallet not available for this role'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+    }
   }
 
   Widget _buildWalletStatus(BuildContext context, StakeholderWallet? wallet) {

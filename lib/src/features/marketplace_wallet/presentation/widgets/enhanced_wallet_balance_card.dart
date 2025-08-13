@@ -26,6 +26,11 @@ class EnhancedWalletBalanceCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final walletState = ref.watch(customerWalletProvider);
 
+    // Debug: Log what the UI is receiving
+    print('🎨🎨🎨 [ENHANCED-WALLET-BALANCE-CARD] Building with wallet balance: ${walletState.wallet?.formattedAvailableBalance ?? 'null'}');
+    print('🎨🎨🎨 [ENHANCED-WALLET-BALANCE-CARD] Wallet state: isLoading=${walletState.isLoading}, hasError=${walletState.hasError}');
+    print('🎨🎨🎨 [ENHANCED-WALLET-BALANCE-CARD] Raw available balance: ${walletState.wallet?.availableBalance}');
+
     return Container(
       margin: EdgeInsets.symmetric(vertical: compact ? 8 : 16),
       child: Card(

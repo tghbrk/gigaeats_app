@@ -41,7 +41,12 @@ class CustomerWalletBalanceCard extends ConsumerWidget {
 
     return Card(
       elevation: 4,
-      child: Container(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        splashColor: Colors.white24,
+        highlightColor: Colors.white10,
+        onTap: () => context.push('/customer/wallet'),
+        child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -114,7 +119,8 @@ class CustomerWalletBalanceCard extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildWalletStatus(BuildContext context, CustomerWalletState walletState) {

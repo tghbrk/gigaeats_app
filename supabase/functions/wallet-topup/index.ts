@@ -218,26 +218,10 @@ serve(async (req) => {
 
     console.log(`✅ [WALLET-TOPUP-V4] Payment intent created: ${paymentIntent.id}`);
 
-    // If using saved payment method and payment succeeded, update wallet
+    // If using saved payment method and payment succeeded, create a wallet transaction (trigger will update balance)
     if (payment_method_id && paymentIntent.status === 'succeeded') {
-      console.log(`💰 [WALLET-TOPUP-V5] Payment succeeded, updating wallet balance`);
+      console.log(`💰 [WALLET-TOPUP-V7] Payment succeeded, inserting wallet transaction`);
 
-      // Update wallet balance
-      const { error: updateError } = await supabaseClient
-        .from('stakeholder_wallets')
-        .update({
-          available_balance: wallet.available_balance + amount,
-          last_activity_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', wallet.id);
-
-      if (updateError) {
-        console.error(`❌ [WALLET-TOPUP-V5] Failed to update wallet: ${updateError.message}`);
-        throw new Error(`Failed to update wallet: ${updateError.message}`);
-      }
-
-      // Create transaction record in the correct wallet_transactions table
       const { error: transactionError } = await supabaseClient
         .from('wallet_transactions')
         .insert({
@@ -264,12 +248,11 @@ serve(async (req) => {
       if (transactionError) {
         console.error(`❌ [WALLET-TOPUP-V7] Failed to create transaction: ${transactionError.message}`);
         console.error(`❌ [WALLET-TOPUP-V7] Transaction error details:`, transactionError);
-        // Still don't throw here as the payment succeeded, but log more details for debugging
       } else {
         console.log(`✅ [WALLET-TOPUP-V7] Transaction record created successfully`);
       }
 
-      console.log(`✅ [WALLET-TOPUP-V4] Wallet top-up completed successfully`);
+      console.log(`✅ [WALLET-TOPUP-V7] Wallet top-up completed successfully`);
     }
 
     return new Response(

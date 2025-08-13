@@ -86,8 +86,8 @@ async function handlePaymentSuccess(
 
   try {
     // Handle wallet top-up payments
-    if (isWalletTopup && walletId && transactionId) {
-      await handleWalletTopupSuccess(supabase, paymentIntent, walletId, transactionId)
+    if (isWalletTopup && walletId) {
+      await handleWalletTopupSuccess(supabase, paymentIntent, walletId)
       return
     }
     // Update payment transaction status
@@ -388,8 +388,7 @@ async function releaseFundsFromEscrow(
 async function handleWalletTopupSuccess(
   supabase: any,
   paymentIntent: Stripe.PaymentIntent,
-  walletId: string,
-  transactionId: string
+  walletId: string
 ): Promise<void> {
 
   console.log(`💰 Processing wallet top-up success for wallet ${walletId}`)
@@ -414,7 +413,6 @@ async function handleWalletTopupSuccess(
       .from('stakeholder_wallets')
       .update({
         available_balance: newBalance,
-        total_earned: supabase.rpc('increment_total_earned', { wallet_id: walletId, amount: amount }),
         updated_at: new Date().toISOString(),
         last_activity_at: new Date().toISOString()
       })
@@ -424,34 +422,43 @@ async function handleWalletTopupSuccess(
       throw new Error(`Failed to update wallet balance: ${updateError.message}`)
     }
 
-    // Update transaction status
-    const { error: transactionError } = await supabase
+    // Insert a wallet transaction for this top-up
+    const { error: transactionInsertError } = await supabase
       .from('wallet_transactions')
-      .update({
+      .insert({
+        wallet_id: walletId,
+        transaction_type: 'credit',
+        amount: amount,
+        currency: paymentIntent.currency?.toUpperCase() || 'MYR',
+        balance_before: wallet.available_balance,
         balance_after: newBalance,
-        processed_at: new Date().toISOString(),
+        reference_type: 'wallet_topup',
+        reference_id: null,
+        description: 'Wallet top-up via Stripe (webhook)',
+        processed_by: paymentIntent.metadata.user_id || 'system',
+        processing_fee: 0,
         metadata: {
           stripe_payment_intent_id: paymentIntent.id,
           payment_status: 'completed',
           amount_received: amount
-        }
+        },
+        processed_at: new Date().toISOString()
       })
-      .eq('id', transactionId)
 
-    if (transactionError) {
-      throw new Error(`Failed to update transaction: ${transactionError.message}`)
+    if (transactionInsertError) {
+      throw new Error(`Failed to insert wallet transaction: ${transactionInsertError.message}`)
     }
 
     // Log successful wallet top-up
     await logFinancialAudit(supabase, {
       event_type: 'wallet_topup_completed',
-      entity_type: 'wallet_transaction',
-      entity_id: transactionId,
+      entity_type: 'wallet',
+      entity_id: walletId,
       user_id: paymentIntent.metadata.user_id || 'system',
       amount: amount,
       old_status: 'pending',
       new_status: 'completed',
-      description: `Wallet top-up completed via Stripe`,
+      description: `Wallet top-up completed via Stripe webhook`,
       metadata: {
         stripe_payment_intent_id: paymentIntent.id,
         wallet_id: walletId,
@@ -468,8 +475,8 @@ async function handleWalletTopupSuccess(
     // Log the error
     await logFinancialAudit(supabase, {
       event_type: 'wallet_topup_error',
-      entity_type: 'wallet_transaction',
-      entity_id: transactionId,
+      entity_type: 'wallet',
+      entity_id: walletId,
       user_id: paymentIntent.metadata.user_id || 'system',
       amount: paymentIntent.amount / 100,
       description: `Error processing wallet top-up: ${error.message}`,

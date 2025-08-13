@@ -100,32 +100,16 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
 
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return AppBar(
-      title: const Text('Order History'),
-      backgroundColor: theme.colorScheme.surface,
-      foregroundColor: theme.colorScheme.onSurface,
-      elevation: 0,
-      scrolledUnderElevation: 1,
+      title: const Text('My Orders'),
+      backgroundColor: theme.colorScheme.primary,
+      foregroundColor: theme.colorScheme.onPrimary,
+      elevation: 2,
+      scrolledUnderElevation: 2,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
         onPressed: () => context.pop(),
       ),
       actions: [
-        // Filter summary button
-        Consumer(
-          builder: (context, ref, child) {
-            final hasActiveFilters = ref.watch(hasActiveCustomerOrderFiltersProvider);
-            
-            return IconButton(
-              onPressed: () => _showFilterDialog(),
-              icon: Badge(
-                isLabelVisible: hasActiveFilters,
-                child: const Icon(Icons.tune),
-              ),
-              tooltip: 'Filter orders',
-            );
-          },
-        ),
-        
         // Refresh button
         IconButton(
           onPressed: _refreshOrders,
@@ -413,12 +397,7 @@ class _EnhancedCustomerOrdersScreenState extends ConsumerState<EnhancedCustomerO
     );
   }
 
-  void _showFilterDialog() {
-    showCustomerDateFilterDialog(
-      context,
-      onFilterApplied: _onFilterChanged,
-    );
-  }
+
 
   void _onFilterChanged() {
     debugPrint('🛒 Enhanced Orders Screen: Filter changed, refreshing data');

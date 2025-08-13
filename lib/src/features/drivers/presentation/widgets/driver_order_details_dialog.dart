@@ -355,7 +355,16 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
 
   Widget _buildOrderItems(ThemeData theme) {
     final totalItems = order.items.fold<int>(0, (sum, item) => sum + item.quantity);
-    
+
+    // Debug logging for data flow
+    debugPrint('🧾 [ORDER-ITEMS] Rendering ${order.items.length} order item(s), total qty=$totalItems');
+    for (final item in order.items) {
+      debugPrint('🧾 [ORDER-ITEMS] Item: qty=${item.quantity}, name="${item.name}", desc="${item.description}", total=${item.totalPrice}');
+      if (item.customizations != null && item.customizations!.isNotEmpty) {
+        debugPrint('🧾 [ORDER-ITEMS] → raw customizations: ${item.customizations}');
+      }
+    }
+
     return _buildSection(
       theme,
       'Order Items ($totalItems items)',
@@ -392,7 +401,7 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  item.name,
+                  (item.name.isNotEmpty ? item.name : 'Item'),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -407,6 +416,15 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
               ),
             ],
           ),
+          if (item.description.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              item.description,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
           if (item.customizations != null && item.customizations!.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
@@ -818,10 +836,73 @@ class DriverOrderDetailsDialog extends ConsumerWidget {
     return DateFormat('MMM dd, yyyy • HH:mm').format(dateTime);
   }
 
+  /// Formats customization map into driver-friendly text
+  /// Expected shapes observed in data:
+  /// - {template_id: {id, name, price, template_id, template_name}}
+  /// - or {group_name: string | {name, price}}
+  /// - or a List of such maps
   String _formatCustomizations(Map<String, dynamic> customizations) {
-    return customizations.entries
-        .map((entry) => '${entry.key}: ${entry.value}')
-        .join(', ');
+    try {
+      final parts = <String>[];
+
+      // Prefer iterating over values, since keys may be UUIDs
+      for (final value in customizations.values) {
+        if (value == null) continue;
+
+        if (value is Map) {
+          final group = (value['template_name'] ?? value['group'] ?? value['group_name'] ?? '').toString();
+          final optionName = (value['name'] ?? value['option'] ?? value['label'] ?? '').toString();
+          final price = _tryParseDouble(value['price'] ?? value['additional_price'] ?? value['additionalCost']);
+
+          String formatted = '';
+          if (group.isNotEmpty) {
+            formatted = '$group: ';
+          }
+          formatted += optionName.isNotEmpty ? optionName : 'Selected';
+          if (price != null && price > 0) {
+            formatted += ' (+RM ${price.toStringAsFixed(2)})';
+          }
+          parts.add(formatted.trim());
+        } else if (value is List) {
+          // Handle list of selections
+          for (final item in value) {
+            if (item is Map) {
+              final group = (item['template_name'] ?? item['group'] ?? item['group_name'] ?? '').toString();
+              final optionName = (item['name'] ?? item['option'] ?? item['label'] ?? '').toString();
+              final price = _tryParseDouble(item['price'] ?? item['additional_price'] ?? item['additionalCost']);
+              String formatted = '';
+              if (group.isNotEmpty) formatted = '$group: ';
+              formatted += optionName.isNotEmpty ? optionName : 'Selected';
+              if (price != null && price > 0) {
+                formatted += ' (+RM ${price.toStringAsFixed(2)})';
+              }
+              parts.add(formatted.trim());
+            } else if (item != null) {
+              parts.add(item.toString());
+            }
+          }
+        } else if (value is String) {
+          parts.add(value);
+        } else {
+          // Fallback: include raw value to avoid hiding useful info
+          parts.add(value.toString());
+        }
+      }
+
+      final result = parts.join(' • ');
+      debugPrint('🧾 [ORDER-ITEMS] Formatted customizations: $result');
+      return result;
+    } catch (e) {
+      debugPrint('⚠️ [ORDER-ITEMS] Failed to format customizations. Raw: $customizations, error: $e');
+      // Fallback to basic representation
+      return customizations.values.map((v) => v.toString()).join(' • ');
+    }
+  }
+
+  double? _tryParseDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString());
   }
 
   Future<void> _openMaps(String address) async {

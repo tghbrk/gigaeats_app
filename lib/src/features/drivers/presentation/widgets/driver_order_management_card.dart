@@ -99,28 +99,33 @@ class _DriverOrderManagementCardState extends ConsumerState<DriverOrderManagemen
 
     switch (status) {
       case OrderStatus.ready:
-        backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.1);
-        textColor = theme.colorScheme.primary;
+        // Use primary container colors for better contrast
+        backgroundColor = theme.colorScheme.primaryContainer;
+        textColor = theme.colorScheme.onPrimaryContainer;
         displayText = 'Ready';
         break;
       case OrderStatus.confirmed:
-        backgroundColor = Colors.blue.withValues(alpha: 0.1);
-        textColor = Colors.blue;
+        // Use tertiary container for confirmed status
+        backgroundColor = theme.colorScheme.tertiaryContainer;
+        textColor = theme.colorScheme.onTertiaryContainer;
         displayText = 'Confirmed';
         break;
       case OrderStatus.outForDelivery:
-        backgroundColor = Colors.orange.withValues(alpha: 0.1);
-        textColor = Colors.orange;
+        // Use secondary container for in-progress status
+        backgroundColor = theme.colorScheme.secondaryContainer;
+        textColor = theme.colorScheme.onSecondaryContainer;
         displayText = 'Out for Delivery';
         break;
       case OrderStatus.delivered:
-        backgroundColor = Colors.green.withValues(alpha: 0.1);
-        textColor = Colors.green;
+        // Use a custom success color with proper contrast
+        backgroundColor = const Color(0xFF1DB954).withValues(alpha: 0.15); // Success green background
+        textColor = const Color(0xFF0D5D2A); // Dark green text for contrast
         displayText = 'Delivered';
         break;
       case OrderStatus.cancelled:
-        backgroundColor = Colors.red.withValues(alpha: 0.1);
-        textColor = Colors.red;
+        // Use error container colors for cancelled status
+        backgroundColor = theme.colorScheme.errorContainer;
+        textColor = theme.colorScheme.onErrorContainer;
         displayText = 'Cancelled';
         break;
       default:

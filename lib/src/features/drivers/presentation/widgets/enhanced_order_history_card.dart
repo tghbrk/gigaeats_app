@@ -86,31 +86,31 @@ class EnhancedOrderHistoryCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isDelivered 
+                isDelivered
                     ? Icons.check_circle
-                    : isCancelled 
+                    : isCancelled
                         ? Icons.cancel
                         : Icons.help_outline,
                 size: 14,
-                color: isDelivered 
-                    ? theme.colorScheme.primary
-                    : isCancelled 
-                        ? theme.colorScheme.error
+                color: isDelivered
+                    ? theme.colorScheme.onPrimaryContainer
+                    : isCancelled
+                        ? theme.colorScheme.onErrorContainer
                         : theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 4),
               Text(
-                isDelivered 
+                isDelivered
                     ? 'Delivered'
-                    : isCancelled 
+                    : isCancelled
                         ? 'Cancelled'
                         : order.status.displayName,
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: isDelivered 
-                      ? theme.colorScheme.primary
-                      : isCancelled 
-                          ? theme.colorScheme.error
+                  color: isDelivered
+                      ? theme.colorScheme.onPrimaryContainer
+                      : isCancelled
+                          ? theme.colorScheme.onErrorContainer
                           : theme.colorScheme.onSurfaceVariant,
                 ),
               ),

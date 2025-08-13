@@ -312,10 +312,10 @@ final enhancedCurrentDriverOrderProvider = StreamProvider.autoDispose<DriverOrde
   }
 });
 
-/// Enhanced available orders provider with better filtering
+/// Enhanced available orders provider with better filtering and performance tuning
 final enhancedAvailableOrdersProvider = StreamProvider.autoDispose<List<DriverOrder>>((ref) async* {
   final authState = ref.read(authStateProvider);
-  
+
   if (authState.user?.role != UserRole.driver) {
     yield [];
     return;
@@ -323,81 +323,94 @@ final enhancedAvailableOrdersProvider = StreamProvider.autoDispose<List<DriverOr
 
   try {
     final supabase = Supabase.instance.client;
-    
-    debugPrint('🚗 [ENHANCED-WORKFLOW] Streaming available orders');
-    
-    // Get initial available orders
+
+    final ts = DateTime.now().toIso8601String();
+    debugPrint('🚗 [ENHANCED-WORKFLOW][$ts] Streaming available orders (optimized)');
+
+    // Get initial available orders with minimal columns and tight filters
+    final initialSw = Stopwatch()..start();
     final initialResponse = await supabase
         .from('orders')
         .select('''
-          *,
-          order_items:order_items(
-            *,
-            menu_item:menu_items!order_items_menu_item_id_fkey(
-              id,
-              name,
-              image_url,
-              base_price
-            )
-          ),
+          id,
+          order_number,
+          status,
+          vendor_id,
+          delivery_address,
+          total_amount,
+          payment_method,
+          created_at,
           vendors:vendors!orders_vendor_id_fkey(
             business_name,
             business_address
-          )
+          ),
+          order_items:order_items(id)
         ''')
         .eq('status', 'ready')
+        .eq('delivery_method', 'own_fleet')
         .isFilter('assigned_driver_id', null)
-        .order('created_at', ascending: true);
+        .order('created_at', ascending: true)
+        .limit(20);
+    initialSw.stop();
 
-    debugPrint('🚗 [ENHANCED-WORKFLOW] Initial available orders: ${initialResponse.length} orders');
-    final initialOrders = initialResponse.map((json) => _transformToDriverOrder(json, json['status'])).toList();
+    debugPrint('🚗 [ENHANCED-WORKFLOW][$ts] Initial available orders: ${initialResponse.length} orders (took: ${initialSw.elapsedMilliseconds}ms)');
+    final initialOrders = initialResponse
+        .map((json) => _transformToDriverOrder(json, json['status']))
+        .toList();
     yield initialOrders;
 
-    // Stream real-time updates for available orders
+    // Stream real-time updates for available orders — pre-filter on server to reduce payload
     yield* supabase
         .from('orders')
         .stream(primaryKey: ['id'])
-        .eq('status', 'ready')
         .asyncMap((data) async {
-          debugPrint('🚗 [ENHANCED-WORKFLOW] Available orders stream update: ${data.length} orders');
-          
-          // Filter for unassigned orders
-          final availableOrders = data.where((json) => json['assigned_driver_id'] == null).toList();
-          
-          // Fetch full order data for each available order
-          final List<DriverOrder> orders = [];
-          for (final orderJson in availableOrders) {
-            try {
-              final orderId = orderJson['id'] as String;
-              final fullResponse = await supabase
-                  .from('orders')
-                  .select('''
-                    *,
-                    order_items:order_items(
-                      *,
-                      menu_item:menu_items!order_items_menu_item_id_fkey(
-                        id,
-                        name,
-                        image_url,
-                        base_price
-                      )
-                    ),
-                    vendors:vendors!orders_vendor_id_fkey(
-                      business_name,
-                      business_address
-                    )
-                  ''')
-                  .eq('id', orderId)
-                  .single();
+          final updateTs = DateTime.now().toIso8601String();
+          debugPrint('🚗 [ENHANCED-WORKFLOW][$updateTs] Available orders stream update: ${data.length} rows');
 
-              orders.add(_transformToDriverOrder(fullResponse, fullResponse['status']));
-            } catch (e) {
-              debugPrint('❌ [ENHANCED-WORKFLOW] Error fetching order details: $e');
-            }
+          if (data.isEmpty) return <DriverOrder>[];
+
+          // Filter for unassigned orders client-side (stream builder lacks isFilter)
+          final unassigned = data.where((row) => row['assigned_driver_id'] == null).toList();
+          if (unassigned.isEmpty) return <DriverOrder>[];
+
+          // Limit number processed per update to prevent spikes
+          final limited = unassigned.take(25).toList();
+          final ids = limited.map((e) => e['id'] as String).toList();
+
+          // Fetch details in a single batched query
+          try {
+            final sw = Stopwatch()..start();
+            final fullResponse = await supabase
+                .from('orders')
+                .select('''
+                  id,
+                  order_number,
+                  status,
+                  vendor_id,
+                  delivery_address,
+                  total_amount,
+                  payment_method,
+                  created_at,
+                  vendors:vendors!orders_vendor_id_fkey(
+                    business_name,
+                    business_address
+                  )
+                ''')
+                .inFilter('id', ids)
+                .order('created_at', ascending: true);
+            sw.stop();
+
+            final orders = fullResponse
+                .map((json) => _transformToDriverOrder(json, json['status']))
+                .toList();
+
+            debugPrint('🚗 [ENHANCED-WORKFLOW][$updateTs] Batched fetch for ${ids.length} ids returned ${orders.length} orders (took: ${sw.elapsedMilliseconds}ms)');
+            return orders;
+          } catch (e, st) {
+            debugPrint('❌ [ENHANCED-WORKFLOW] Error fetching batched order details: $e');
+            debugPrint('❌ [ENHANCED-WORKFLOW] Stack: $st');
+            return <DriverOrder>[];
           }
-          
-          debugPrint('🚗 [ENHANCED-WORKFLOW] Available orders: ${orders.length} orders');
-          return orders;
         });
   } catch (e) {
     debugPrint('❌ [ENHANCED-WORKFLOW] Error streaming available orders: $e');

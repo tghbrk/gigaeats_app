@@ -37,6 +37,7 @@ final activeDriverOrdersProvider = FutureProvider<List<Order>>((ref) async {
             menu_item:menu_items!order_items_menu_item_id_fkey(
               id,
               name,
+              description,
               image_url
             )
           ),
@@ -81,6 +82,7 @@ final availableOrdersProvider = FutureProvider<List<Order>>((ref) async {
             menu_item:menu_items!order_items_menu_item_id_fkey(
               id,
               name,
+              description,
               image_url
             )
           ),

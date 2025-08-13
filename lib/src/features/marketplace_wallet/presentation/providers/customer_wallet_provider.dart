@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -87,8 +88,11 @@ class CustomerWalletState {
 class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
   final CustomerWalletRepository _repository;
   final Ref _ref;
+  StreamSubscription<CustomerWallet?>? _walletSub;
 
-  CustomerWalletNotifier(this._repository, this._ref) : super(const CustomerWalletState());
+  CustomerWalletNotifier(this._repository, this._ref) : super(const CustomerWalletState()) {
+    _subscribeToRealtime();
+  }
 
   /// Load customer wallet data
   Future<void> loadWallet({bool forceRefresh = false}) async {
@@ -117,6 +121,7 @@ class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
       }
 
       debugPrint('🔍 [CUSTOMER-WALLET-PROVIDER] Loading customer wallet (retry: ${state.retryCount})');
+      debugPrint('🔍 [CUSTOMER-WALLET-PROVIDER] Current state wallet balance: ${state.wallet?.formattedAvailableBalance ?? "null"}');
 
       // Try to get existing wallet first
       final existingWalletResult = await _repository.getCustomerWallet();
@@ -174,13 +179,17 @@ class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
           ).incrementRetry();
         },
         (wallet) {
-          debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Wallet loaded: ${wallet?.formattedAvailableBalance ?? 'null'}');
+          debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Wallet loaded from DB: ${wallet?.formattedAvailableBalance ?? 'null'}');
+          debugPrint('🔍 [CUSTOMER-WALLET-PROVIDER] Previous state wallet: ${state.wallet?.formattedAvailableBalance ?? 'null'}');
+
           state = state.copyWith(
             wallet: wallet,
             isLoading: false,
             isRefreshing: false,
             lastUpdated: DateTime.now(),
           ).resetRetry();
+
+          debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] State updated with wallet: ${state.wallet?.formattedAvailableBalance ?? 'null'}');
         },
       );
     } catch (e) {
@@ -219,7 +228,13 @@ class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
 
   /// Refresh wallet data
   Future<void> refreshWallet() async {
+    debugPrint('🔄 [CUSTOMER-WALLET-PROVIDER] Manual refresh wallet requested');
     await loadWallet(forceRefresh: true);
+
+    // Re-establish realtime subscription in case it was disconnected
+    _subscribeToRealtime();
+
+    debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Manual refresh wallet completed');
   }
 
   /// Retry loading wallet with exponential backoff
@@ -337,6 +352,55 @@ class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
     // The verification provider already calls loadWallet(forceRefresh: true) when verification completes
   }
 
+  /// Subscribe to real-time wallet updates and update local state/cache
+  void _subscribeToRealtime() {
+    try {
+      debugPrint(' [CUSTOMER-WALLET-PROVIDER] Subscribing to wallet realtime stream');
+      _walletSub?.cancel();
+      _walletSub = _repository.getCustomerWalletStream().listen(
+        (wallet) async {
+          if (wallet != null) {
+            debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Realtime wallet update received!');
+            debugPrint('   💰 New balance: ${wallet.formattedAvailableBalance}');
+            debugPrint('   🕒 Updated at: ${wallet.updatedAt}');
+            debugPrint('   🆔 Wallet ID: ${wallet.id}');
+
+            // Update state immediately for instant UI feedback
+            final previousBalance = state.wallet?.availableBalance ?? 0.0;
+            state = state.copyWith(
+              wallet: wallet,
+              lastUpdated: DateTime.now(),
+            );
+
+            debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] State updated! Balance changed from RM ${previousBalance.toStringAsFixed(2)} to ${wallet.formattedAvailableBalance}');
+          } else {
+            debugPrint('⚠️ [CUSTOMER-WALLET-PROVIDER] Realtime stream emitted null wallet');
+          }
+        },
+        onError: (e) {
+          debugPrint('❌ [CUSTOMER-WALLET-PROVIDER] Realtime stream error: $e');
+          // Try to re-establish connection after error
+          Future.delayed(const Duration(seconds: 5), () {
+            debugPrint('🔄 [CUSTOMER-WALLET-PROVIDER] Attempting to re-establish realtime connection');
+            _subscribeToRealtime();
+          });
+        },
+        onDone: () {
+          debugPrint('⚠️ [CUSTOMER-WALLET-PROVIDER] Realtime stream completed unexpectedly');
+          // Try to re-establish connection
+          Future.delayed(const Duration(seconds: 2), () {
+            debugPrint('🔄 [CUSTOMER-WALLET-PROVIDER] Re-establishing realtime connection after completion');
+            _subscribeToRealtime();
+          });
+        },
+      );
+
+      debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Realtime subscription established');
+    } catch (e) {
+      debugPrint('❌ [CUSTOMER-WALLET-PROVIDER] Failed to subscribe to realtime: $e');
+    }
+  }
+
   /// Update wallet verification status locally (optimistic update)
   /// This can be used for immediate UI feedback while waiting for database update
   void updateVerificationStatusOptimistically(bool isVerified) {
@@ -364,6 +428,13 @@ class CustomerWalletNotifier extends StateNotifier<CustomerWalletState> {
 
       debugPrint('✅ [CUSTOMER-WALLET-PROVIDER] Wallet verification status optimistically updated');
     }
+  }
+
+  @override
+  void dispose() {
+    debugPrint(' [CUSTOMER-WALLET-PROVIDER] Disposing wallet provider and cleaning up realtime subscription');
+    _walletSub?.cancel();
+    super.dispose();
   }
 }
 

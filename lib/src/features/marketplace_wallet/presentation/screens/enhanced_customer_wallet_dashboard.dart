@@ -13,6 +13,7 @@ import '../widgets/wallet_security_status.dart';
 import '../widgets/wallet_promotional_banner.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../data/models/customer_wallet.dart';
 
 /// Enhanced customer wallet dashboard with Material Design 3 interface
 class EnhancedCustomerWalletDashboard extends ConsumerStatefulWidget {
@@ -27,6 +28,7 @@ class _EnhancedCustomerWalletDashboardState extends ConsumerState<EnhancedCustom
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   final AppLogger _logger = AppLogger();
+
 
   @override
   void initState() {
@@ -59,12 +61,108 @@ class _EnhancedCustomerWalletDashboardState extends ConsumerState<EnhancedCustom
   }
 
   Future<void> _refreshData() async {
-    _logger.info('🔄 [WALLET-DASHBOARD] Refreshing wallet data');
-    await Future.wait([
-      ref.read(customerWalletProvider.notifier).refreshWallet(),
-      ref.read(customerTransactionManagementProvider.notifier).refresh(),
-    ]);
+    _logger.info('🔄 [WALLET-DASHBOARD] Manual pull-to-refresh triggered');
+    debugPrint('🔄 [WALLET-DASHBOARD] Current wallet balance before refresh: ${ref.read(customerWalletProvider).wallet?.formattedAvailableBalance ?? 'null'}');
+
+    try {
+      // Show loading state
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Text('Refreshing wallet data...'),
+              ],
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
+
+      // Force refresh both wallet and transactions
+      await Future.wait([
+        ref.read(customerWalletProvider.notifier).refreshWallet(),
+        ref.read(customerTransactionManagementProvider.notifier).refresh(),
+      ]);
+
+      final newBalance = ref.read(customerWalletProvider).wallet?.formattedAvailableBalance ?? 'null';
+      debugPrint('✅ [WALLET-DASHBOARD] Refresh completed. New wallet balance: $newBalance');
+
+      // Show success feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  size: 16,
+                ),
+                const SizedBox(width: 12),
+                Text('Wallet updated: $newBalance'),
+              ],
+            ),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+    } catch (e) {
+      _logger.error('❌ [WALLET-DASHBOARD] Refresh failed: $e');
+
+      // Show error feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  Icons.error,
+                  color: Theme.of(context).colorScheme.onError,
+                  size: 16,
+                ),
+                const SizedBox(width: 12),
+                const Text('Failed to refresh wallet. Please try again.'),
+              ],
+            ),
+            duration: const Duration(seconds: 4),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Theme.of(context).colorScheme.onError,
+              onPressed: () => _refreshData(),
+            ),
+          ),
+        );
+      }
+
+      // Re-throw to let RefreshIndicator handle the error state
+      rethrow;
+    }
   }
+
+  /// Check if wallet data appears stale (older than 5 minutes)
+  bool _isWalletDataStale(CustomerWallet wallet) {
+    final now = DateTime.now();
+    final walletAge = now.difference(wallet.updatedAt);
+
+    // Consider data stale if it's older than 5 minutes
+    // This helps users identify when they might need to refresh
+    return walletAge.inMinutes > 5;
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -79,9 +177,57 @@ class _EnhancedCustomerWalletDashboardState extends ConsumerState<EnhancedCustom
         child: RefreshIndicator(
           onRefresh: _refreshData,
           color: theme.colorScheme.primary,
+          backgroundColor: theme.colorScheme.surface,
+          strokeWidth: 3.0,
+          displacement: 60.0,
+          triggerMode: RefreshIndicatorTriggerMode.anywhere,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
+              // Pull-to-refresh instruction banner (only show if wallet has stale data)
+              if (walletState.wallet != null && _isWalletDataStale(walletState.wallet!))
+                SliverToBoxAdapter(
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.refresh,
+                          color: theme.colorScheme.onPrimaryContainer,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Pull down to refresh your wallet balance',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _refreshData,
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Refresh'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: theme.colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               // Wallet Balance Card
               SliverToBoxAdapter(
                 child: Padding(

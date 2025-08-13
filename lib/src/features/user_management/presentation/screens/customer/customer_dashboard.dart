@@ -19,6 +19,9 @@ import '../../../../orders/data/models/order.dart';
 import '../../../../marketplace_wallet/presentation/providers/customer_wallet_provider.dart';
 import '../../../../marketplace_wallet/presentation/widgets/customer_wallet_balance_card.dart';
 
+
+
+
 class CustomerDashboard extends ConsumerStatefulWidget {
   const CustomerDashboard({super.key});
 
@@ -27,6 +30,7 @@ class CustomerDashboard extends ConsumerStatefulWidget {
 }
 
 class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +51,8 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
       // ref.read(loyaltyProvider.notifier).loadLoyaltyData(forceRefresh: true);
     });
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -96,11 +102,18 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
               const SizedBox(height: 24),
 
               // Wallet Balance Card
-              const CustomerWalletBalanceCard(compact: true),
+              Consumer(
+                builder: (context, ref, child) {
+                  final walletState = ref.watch(customerWalletProvider);
+                  final balanceKey = walletState.wallet?.availableBalance.toString() ?? 'no-wallet';
+                  return CustomerWalletBalanceCard(
+                    key: ValueKey('wallet-balance-$balanceKey'),
+                    compact: true,
+                  );
+                },
+              ),
               const SizedBox(height: 24),
 
-              _buildQuickActions(context),
-              const SizedBox(height: 24),
               _buildStatsSection(context),
               const SizedBox(height: 24),
               _buildRecentOrdersSection(context),
@@ -180,171 +193,8 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                context,
-                icon: Icons.restaurant,
-                title: 'Browse Restaurants',
-                subtitle: 'Find your favorite food',
-                onTap: () => context.push('/customer/restaurants'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
-                context,
-                icon: Icons.shopping_cart,
-                title: 'My Cart',
-                subtitle: 'View cart items',
-                onTap: () => context.push('/customer/cart'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                context,
-                icon: Icons.history,
-                title: 'Order History',
-                subtitle: 'View past orders',
-                onTap: () => context.push('/customer/orders'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
-                context,
-                icon: Icons.account_balance_wallet,
-                title: 'Wallet',
-                subtitle: 'Manage payments & balance',
-                onTap: () => context.push('/customer/wallet'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Consumer(
-                builder: (context, ref, child) {
-                  final addressesState = ref.watch(address_provider.customerAddressesProvider);
-                  final addressCount = addressesState.addresses.length;
 
-                  String subtitle;
-                  if (addressCount == 0) {
-                    subtitle = 'Add delivery address';
-                  } else if (addressCount == 1) {
-                    subtitle = '1 address saved';
-                  } else {
-                    subtitle = '$addressCount addresses saved';
-                  }
 
-                  return _buildActionCard(
-                    context,
-                    icon: Icons.location_on,
-                    title: 'Addresses',
-                    subtitle: subtitle,
-                    onTap: () => context.push('/customer/addresses'),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(), // Empty space for symmetry
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    String? badge,
-  }) {
-    final theme = Theme.of(context);
-    
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Stack(
-                children: [
-                  Icon(
-                    icon,
-                    size: 32,
-                    color: theme.colorScheme.primary,
-                  ),
-                  if (badge != null)
-                    Positioned(
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          badge,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildStatsSection(BuildContext context) {
     // TODO: Restore when customerStatsProvider watch is implemented

@@ -43,6 +43,66 @@ class CustomerWalletRepository extends BaseRepository {
       debugPrint('🔍 [CUSTOMER-WALLET-REPO] Executing wallet query at ${queryStartTime.toIso8601String()}...');
       debugPrint('🔍 [CUSTOMER-WALLET-REPO] Query: SELECT specific_fields FROM stakeholder_wallets WHERE user_id = ${currentUser.id} AND user_role = customer');
 
+      // Force primary database query using RPC to bypass read replicas
+      debugPrint('🔍 [CUSTOMER-WALLET-REPO] Using RPC to force primary DB query');
+      debugPrint('🔍 [CUSTOMER-WALLET-REPO] User ID for RPC: ${currentUser.id}');
+
+      try {
+        // Try RPC call with proper error handling
+        final rpcResponse = await client.rpc('get_fresh_customer_wallet', params: {
+          'p_user_id': currentUser.id,
+        });
+
+        debugPrint('🔍 [CUSTOMER-WALLET-REPO] RPC raw response: ${rpcResponse?.toString() ?? 'NULL'}');
+
+        // Handle both single object and array responses
+        Map<String, dynamic>? response;
+        if (rpcResponse is List && rpcResponse.isNotEmpty) {
+          response = rpcResponse.first as Map<String, dynamic>;
+        } else if (rpcResponse is Map<String, dynamic>) {
+          response = rpcResponse;
+        }
+
+        if (response != null) {
+          final queryEndTime = DateTime.now();
+          final queryDuration = queryEndTime.difference(queryStartTime);
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] RPC query completed in ${queryDuration.inMilliseconds}ms');
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] RPC parsed response: $response');
+
+          final customerWallet = CustomerWallet(
+            id: response['id'],
+            userId: response['user_id'],
+            availableBalance: (response['available_balance'] is String)
+                ? double.parse(response['available_balance'])
+                : (response['available_balance'] as num?)?.toDouble() ?? 0.0,
+            pendingBalance: (response['pending_balance'] is String)
+                ? double.parse(response['pending_balance'])
+                : (response['pending_balance'] as num?)?.toDouble() ?? 0.0,
+            totalSpent: (response['total_withdrawn'] is String)
+                ? double.parse(response['total_withdrawn'])
+                : (response['total_withdrawn'] as num?)?.toDouble() ?? 0.0,
+            currency: response['currency'] ?? 'MYR',
+            isActive: response['is_active'] ?? true,
+            isVerified: response['is_verified'] ?? false,
+            createdAt: DateTime.parse(response['created_at']),
+            updatedAt: DateTime.parse(response['updated_at']),
+            lastActivityAt: response['last_activity_at'] != null
+                ? DateTime.parse(response['last_activity_at'])
+                : null,
+          );
+
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] Customer wallet found via RPC: ${customerWallet.formattedAvailableBalance}');
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] RPC wallet updated at: ${customerWallet.updatedAt}');
+          return customerWallet;
+        } else {
+          debugPrint('🔍 [CUSTOMER-WALLET-REPO] RPC returned null/empty response');
+        }
+      } catch (e, stackTrace) {
+        debugPrint('🔍 [CUSTOMER-WALLET-REPO] RPC failed with error: $e');
+        debugPrint('🔍 [CUSTOMER-WALLET-REPO] RPC stack trace: $stackTrace');
+      }
+
+      // Fallback to regular query if RPC fails
       final response = await client
           .from('stakeholder_wallets')
           .select('''

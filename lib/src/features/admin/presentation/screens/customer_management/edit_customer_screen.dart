@@ -163,7 +163,7 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<CustomerType>(
-                        value: _selectedType,
+                        initialValue: _selectedType,
                         decoration: const InputDecoration(
                           labelText: 'Customer Type',
                           border: OutlineInputBorder(),

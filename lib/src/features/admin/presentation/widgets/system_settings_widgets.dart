@@ -389,7 +389,7 @@ class _SystemSettingFormDialogState extends State<SystemSettingFormDialog> {
               
               // Category
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   border: OutlineInputBorder(),

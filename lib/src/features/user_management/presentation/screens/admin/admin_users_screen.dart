@@ -399,7 +399,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<UserRole?>(
-              value: _selectedRole,
+              initialValue: _selectedRole,
               decoration: const InputDecoration(labelText: 'Role'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('All Roles')),

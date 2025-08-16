@@ -99,7 +99,7 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                 
                 // Customer Type Dropdown
                 DropdownButtonFormField<CustomerType>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Customer Type',
                     border: OutlineInputBorder(),

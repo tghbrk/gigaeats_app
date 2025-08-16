@@ -321,7 +321,7 @@ class AdminOrderSearchAndFilterBar extends ConsumerWidget {
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: 'Today',
+              initialValue: 'Today',
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -914,7 +914,7 @@ class _AdminOrderFilterDialogState extends ConsumerState<AdminOrderFilterDialog>
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<String?>(
-            value: selectedStatus,
+            initialValue: selectedStatus,
             decoration: const InputDecoration(labelText: 'Status'),
             items: const [
               DropdownMenuItem(value: null, child: Text('All Statuses')),

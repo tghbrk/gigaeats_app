@@ -276,7 +276,7 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
       children: [
         // Customer Type
         DropdownButtonFormField<CustomerType>(
-          value: _selectedType,
+          initialValue: _selectedType,
           decoration: const InputDecoration(
             labelText: 'Customer Type *',
             border: OutlineInputBorder(),

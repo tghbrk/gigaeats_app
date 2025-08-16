@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../shared/widgets/dashboard_card.dart';
+import '../../../../design_system/design_system.dart';
+import '../../../../data/models/user_role.dart';
 import '../../../../shared/widgets/quick_action_button.dart';
 import '../../../user_management/presentation/screens/admin/admin_profile_screen.dart';
 import '../../../user_management/presentation/screens/admin/admin_notification_settings_screen.dart';
@@ -17,37 +18,12 @@ class AdminDashboard extends ConsumerStatefulWidget {
 class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _selectedIndex = 0;
 
-  final List<NavigationDestination> _destinations = [
-    const NavigationDestination(
-      icon: Icon(Icons.dashboard_outlined),
-      selectedIcon: Icon(Icons.dashboard),
-      label: 'Dashboard',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.people_outlined),
-      selectedIcon: Icon(Icons.people),
-      label: 'Users',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.store_outlined),
-      selectedIcon: Icon(Icons.store),
-      label: 'Vendors',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.receipt_long_outlined),
-      selectedIcon: Icon(Icons.receipt_long),
-      label: 'Orders',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.analytics_outlined),
-      selectedIcon: Icon(Icons.analytics),
-      label: 'Reports',
-    ),
-  ];
+  // Use GE navigation configuration for admin role
+  final _navigationConfig = GERoleNavigationConfig.admin;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GEScreen(
       body: IndexedStack(
         index: _selectedIndex,
         children: const [
@@ -58,14 +34,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           _AdminReportsTab(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: GEBottomNavigation.navigationBar(
+        destinations: _navigationConfig.destinations,
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
-        destinations: _destinations,
+        userRole: UserRole.admin,
       ),
     );
   }
@@ -76,22 +53,25 @@ class _AdminDashboardTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+    return GEScreen.scrollable(
+      appBar: GEAppBar.withRole(
+        title: 'Admin Dashboard',
+        userRole: UserRole.admin,
+        onNotificationTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const AdminNotificationSettingsScreen(),
+            ),
+          );
+        },
+        onProfileTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const AdminProfileScreen(),
+            ),
+          );
+        },
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const AdminNotificationSettingsScreen(),
-                ),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.developer_mode),
             onPressed: () {
@@ -99,127 +79,55 @@ class _AdminDashboardTab extends ConsumerWidget {
             },
             tooltip: 'Developer Tools',
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const AdminProfileScreen(),
-                ),
-              );
-            },
-          ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // TODO: Implement refresh logic
-          await Future.delayed(const Duration(seconds: 1));
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Welcome Section
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.colorScheme.primary,
-                      theme.colorScheme.primary.withValues(alpha: 0.8),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+      onRefresh: () async {
+        // TODO: Implement refresh logic
+        await Future.delayed(const Duration(seconds: 1));
+      },
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GESection(
+            title: 'Platform Overview',
+            subtitle: 'Monitor key metrics and system performance',
+            child: GEGrid(
+              crossAxisCount: 2,
+              children: [
+                GEDashboardCard(
+                  title: 'Total Revenue',
+                  value: 'RM 125,450',
+                  subtitle: '+18% this month',
+                  icon: Icons.account_balance_wallet,
+                  trend: '+18%',
+                  isPositiveTrend: true,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Admin Dashboard',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Platform overview and management',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ],
+                GEDashboardCard(
+                  title: 'Active Users',
+                  value: '1,247',
+                  subtitle: '89 new this week',
+                  icon: Icons.people,
                 ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Platform Stats
-              Row(
-                children: [
-                  Expanded(
-                    child: DashboardCard(
-                      title: 'Total Revenue',
-                      value: 'RM 125,450',
-                      subtitle: '+18% this month',
-                      icon: Icons.account_balance_wallet,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DashboardCard(
-                      title: 'Active Users',
-                      value: '1,247',
-                      subtitle: '89 new this week',
-                      icon: Icons.people,
-                      color: Colors.blue,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: DashboardCard(
-                      title: 'Total Orders',
-                      value: '3,456',
-                      subtitle: '234 today',
-                      icon: Icons.receipt_long,
-                      color: Colors.purple,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DashboardCard(
-                      title: 'Active Vendors',
-                      value: '89',
-                      subtitle: '12 pending approval',
-                      icon: Icons.store,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Quick Actions
-              Text(
-                'Quick Actions',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                GEDashboardCard(
+                  title: 'Total Orders',
+                  value: '3,456',
+                  subtitle: '234 today',
+                  icon: Icons.receipt_long,
                 ),
-              ),
-              const SizedBox(height: 16),
+                GEDashboardCard(
+                  title: 'Active Vendors',
+                  value: '89',
+                  subtitle: '12 pending approval',
+                  icon: Icons.store,
+                ),
+              ],
+            ),
+          ),
+          GESection(
+            title: 'Quick Actions',
+            subtitle: 'Common administrative tasks',
+            child: Column(
+              children: [
               
               Row(
                 children: [
@@ -254,69 +162,16 @@ class _AdminDashboardTab extends ConsumerWidget {
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 24),
-              
-              // Recent Activities
-              Text(
-                'Recent Activities',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // TODO: Replace with actual activity list
-              ...List.generate(5, (index) {
-                final activities = [
-                  'New vendor registration: Restoran XYZ',
-                  'Large order placed: RM 2,500',
-                  'User complaint resolved',
-                  'Commission payout processed',
-                  'System maintenance completed',
-                ];
-                final icons = [
-                  Icons.store_mall_directory,
-                  Icons.shopping_cart,
-                  Icons.support_agent,
-                  Icons.payment,
-                  Icons.build,
-                ];
-                final colors = [
-                  Colors.green,
-                  Colors.blue,
-                  Colors.orange,
-                  Colors.purple,
-                  Colors.grey,
-                ];
-                
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: colors[index].withValues(alpha: 0.1),
-                      child: Icon(
-                        icons[index],
-                        color: colors[index],
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(activities[index]),
-                    subtitle: Text('${index + 1} hour${index == 0 ? '' : 's'} ago'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      // TODO: Navigate to activity details
-                    },
-                  ),
-                );
-              }),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
+
+
 
 // Placeholder tabs - to be implemented
 class _AdminUsersTab extends StatelessWidget {

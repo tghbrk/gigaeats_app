@@ -120,7 +120,7 @@ class _UserCreationDialogState extends ConsumerState<UserCreationDialog> {
                 
                 // Role Selection
                 DropdownButtonFormField<UserRole>(
-                  value: _selectedRole,
+                  initialValue: _selectedRole,
                   decoration: const InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(),
@@ -336,7 +336,7 @@ class _UserEditDialogState extends ConsumerState<UserEditDialog> {
                 
                 // Role Selection
                 DropdownButtonFormField<UserRole>(
-                  value: _selectedRole,
+                  initialValue: _selectedRole,
                   decoration: const InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(),

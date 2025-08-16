@@ -248,7 +248,7 @@ class _AuditLogFilterDialogState extends State<AuditLogFilterDialog> {
           children: [
             // Action Type
             DropdownButtonFormField<String?>(
-              value: _filter.actionType,
+              initialValue: _filter.actionType,
               decoration: const InputDecoration(
                 labelText: 'Action Type',
                 border: OutlineInputBorder(),
@@ -271,7 +271,7 @@ class _AuditLogFilterDialogState extends State<AuditLogFilterDialog> {
             
             // Target Type
             DropdownButtonFormField<String?>(
-              value: _filter.targetType,
+              initialValue: _filter.targetType,
               decoration: const InputDecoration(
                 labelText: 'Target Type',
                 border: OutlineInputBorder(),

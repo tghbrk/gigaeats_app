@@ -151,9 +151,9 @@ class GigaEatsApp extends ConsumerWidget {
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
 
-      // Theme Configuration
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      // Theme Configuration - Using new GETheme system
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
       themeMode: ThemeMode.system,
 
       // Localization Configuration

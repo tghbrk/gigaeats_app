@@ -1,36 +1,52 @@
 import 'package:flutter/material.dart';
 
 import '../../features/menu/presentation/theme/template_theme_extension.dart';
+import '../../design_system/theme/theme.dart';
+import '../../design_system/tokens/tokens.dart';
+import '../../data/models/user_role.dart';
 
 class AppTheme {
-  // Color Palette - Malaysian-inspired colors
-  static const Color primaryColor = Color(0xFF1B5E20); // Deep Green
-  static const Color primaryVariant = Color(0xFF2E7D32); // Medium Green
-  static const Color secondaryColor = Color(0xFFFF6F00); // Orange
-  static const Color secondaryVariant = Color(0xFFFF8F00); // Light Orange
+  // Legacy color constants for backward compatibility
+  // These are now mapped to design tokens
+  static const Color primaryColor = GEPalette.gigaGreen;
+  static const Color primaryVariant = GEPalette.gigaGreenLight;
+  static const Color secondaryColor = GEPalette.gigaOrange;
+  static const Color secondaryVariant = GEPalette.gigaOrange;
 
-  static const Color backgroundColor = Color(0xFFF5F5F5);
-  static const Color surfaceColor = Color(0xFFFFFFFF);
-  static const Color errorColor = Color(0xFFD32F2F);
-  static const Color warningColor = Color(0xFFF57C00);
-  static const Color successColor = Color(0xFF388E3C);
-  static const Color infoColor = Color(0xFF1976D2);
+  static const Color backgroundColor = GEPalette.neutral50;
+  static const Color surfaceColor = Colors.white;
+  static const Color errorColor = GEPalette.danger;
+  static const Color warningColor = GEPalette.warning;
+  static const Color successColor = GEPalette.success;
+  static const Color infoColor = GEPalette.info;
 
   // Text Colors
-  static const Color textPrimary = Color(0xFF212121);
-  static const Color textSecondary = Color(0xFF757575);
-  static const Color textHint = Color(0xFFBDBDBD);
-  static const Color textOnPrimary = Color(0xFFFFFFFF);
+  static const Color textPrimary = GEPalette.neutral900;
+  static const Color textSecondary = GEPalette.neutral600;
+  static const Color textHint = GEPalette.neutral400;
+  static const Color textOnPrimary = Colors.white;
 
   // Border Colors
-  static const Color borderColor = Color(0xFFE0E0E0);
-  static const Color dividerColor = Color(0xFFEEEEEE);
+  static const Color borderColor = GEPalette.neutral300;
+  static const Color dividerColor = GEPalette.neutral200;
 
   // Shadow Colors
   static const Color shadowColor = Color(0x1A000000);
 
-  // Light Theme
-  static ThemeData lightTheme = ThemeData(
+  /// Get light theme with optional role customization
+  ///
+  /// This method now uses the new GETheme system while maintaining
+  /// backward compatibility with existing code.
+  static ThemeData lightTheme({UserRole? userRole}) => GETheme.light(userRole: userRole);
+
+  /// Get dark theme with optional role customization
+  ///
+  /// This method now uses the new GETheme system while maintaining
+  /// backward compatibility with existing code.
+  static ThemeData darkTheme({UserRole? userRole}) => GETheme.dark(userRole: userRole);
+
+  // Legacy light theme for backward compatibility
+  static ThemeData get legacyLightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     primarySwatch: MaterialColor(
@@ -240,8 +256,8 @@ class AppTheme {
     ),
   );
 
-  // Dark Theme
-  static ThemeData darkTheme = ThemeData(
+  // Legacy dark theme for backward compatibility
+  static ThemeData get legacyDarkTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(

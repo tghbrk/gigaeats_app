@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/app_routes.dart';
 import '../../data/models/user_role.dart';
 import '../../presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -87,7 +88,6 @@ import '../../features/drivers/presentation/screens/driver_bank_account_add_scre
 import '../../features/drivers/presentation/screens/driver_wallet_document_upload_screen.dart';
 import '../../features/drivers/presentation/screens/driver_wallet_instant_verification_screen.dart';
 import '../../features/drivers/presentation/providers/enhanced_navigation_provider.dart';
-import '../../core/constants/app_constants.dart';
 import '../../shared/test_screens/data_test_screen.dart';
 import '../../shared/test_screens/test_menu_screen.dart';
 import '../../shared/test_screens/order_creation_test_screen.dart';

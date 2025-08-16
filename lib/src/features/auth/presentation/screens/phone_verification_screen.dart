@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 class PhoneVerificationScreen extends ConsumerStatefulWidget {
   final String? phoneNumber;
@@ -227,7 +228,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                   const SizedBox(height: 32),
 
                   // Send OTP Button
-                  CustomButton(
+                  GEButton.primary(
                     text: 'Send Verification Code',
                     onPressed: _isLoading ? null : _sendOtp,
                     isLoading: _isLoading,
@@ -255,7 +256,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                   const SizedBox(height: 32),
 
                   // Verify OTP Button
-                  CustomButton(
+                  GEButton.primary(
                     text: 'Verify Code',
                     onPressed: _isLoading ? null : _verifyOtp,
                     isLoading: _isLoading,

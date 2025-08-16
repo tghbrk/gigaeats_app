@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -326,7 +327,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 24),
 
                 // Register Button
-                CustomButton(
+                GEButton.primary(
                   text: 'Create Account',
                   onPressed: _isLoading ? null : _handleRegister,
                   isLoading: _isLoading,

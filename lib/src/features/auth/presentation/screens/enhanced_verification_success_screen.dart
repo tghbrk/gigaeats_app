@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:async';
 
 import '../../../../core/router/app_router.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../providers/auth_provider.dart';
 import '../../../../data/models/user_role.dart';
 
@@ -381,12 +381,11 @@ class _EnhancedVerificationSuccessScreenState extends ConsumerState<EnhancedVeri
                   children: [
                     if (isAuthenticated && user != null) ...[
                       // User is authenticated - show dashboard button
-                      CustomButton(
-                        text: _isAutoRedirecting 
-                            ? 'Go to Dashboard Now' 
+                      GEButton.primary(
+                        text: _isAutoRedirecting
+                            ? 'Go to Dashboard Now'
                             : 'Go to Dashboard',
                         onPressed: _navigateToDashboard,
-                        type: ButtonType.primary,
                       ),
                       const SizedBox(height: 12),
                       TextButton(
@@ -404,10 +403,9 @@ class _EnhancedVerificationSuccessScreenState extends ConsumerState<EnhancedVeri
                       ),
                     ] else ...[
                       // User needs to sign in manually
-                      CustomButton(
+                      GEButton.primary(
                         text: 'Sign In Now',
                         onPressed: _navigateToLogin,
-                        type: ButtonType.primary,
                       ),
                       const SizedBox(height: 12),
                       TextButton(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../data/models/user_role.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Role selection screen for GigaEats signup
 /// Phase 4: Frontend Implementation
@@ -293,7 +293,7 @@ class _SignupRoleSelectionScreenState extends State<SignupRoleSelectionScreen>
   }
 
   Widget _buildContinueButton() {
-    return CustomButton(
+    return GEButton.primary(
       onPressed: _selectedRole != null ? _handleContinue : null,
       text: _selectedRole != null
           ? 'Continue as ${_selectedRole!.displayName}'

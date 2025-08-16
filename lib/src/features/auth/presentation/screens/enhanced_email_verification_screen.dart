@@ -6,7 +6,7 @@ import 'dart:async';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/config/auth_config.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../providers/enhanced_auth_provider.dart';
 
 class EnhancedEmailVerificationScreen extends ConsumerStatefulWidget {
@@ -386,37 +386,34 @@ class _EnhancedEmailVerificationScreenState extends ConsumerState<EnhancedEmailV
     return Column(
       children: [
         // Resend email button with countdown
-        CustomButton(
-          text: _resendCountdown > 0 
+        GEButton.outline(
+          text: _resendCountdown > 0
               ? 'Resend in ${_resendCountdown}s'
-              : _isResending 
-                  ? 'Sending...' 
+              : _isResending
+                  ? 'Sending...'
                   : 'Resend Verification Email',
           onPressed: (_isResending || _resendCountdown > 0) ? null : _resendVerificationEmail,
           isLoading: _isResending,
-          type: ButtonType.outline,
         ),
 
         const SizedBox(height: 12),
 
         // Manual check button
-        CustomButton(
+        GEButton.secondary(
           text: _isCheckingVerification ? 'Checking...' : 'Check Verification Status',
           onPressed: _isCheckingVerification ? null : _checkVerificationStatus,
           isLoading: _isCheckingVerification,
-          type: ButtonType.secondary,
         ),
 
         const SizedBox(height: 16),
 
         // Back to login button
-        CustomButton(
+        GEButton.ghost(
           text: 'Back to Login',
           onPressed: () {
             _autoCheckTimer?.cancel();
             context.go('/login');
           },
-          type: ButtonType.text,
         ),
       ],
     );

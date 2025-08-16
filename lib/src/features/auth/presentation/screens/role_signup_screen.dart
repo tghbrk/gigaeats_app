@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/auth_config.dart';
 import '../../../../data/models/user_role.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../providers/enhanced_auth_provider.dart';
 
 /// Role-specific signup screen for GigaEats authentication
@@ -357,9 +357,9 @@ class _RoleSignupScreenState extends ConsumerState<RoleSignupScreen>
   }
 
   Widget _buildSignupButton(EnhancedAuthState authState) {
-    return CustomButton(
-      onPressed: authState.status == EnhancedAuthStatus.loading || !_acceptedTerms 
-          ? null 
+    return GEButton.primary(
+      onPressed: authState.status == EnhancedAuthStatus.loading || !_acceptedTerms
+          ? null
           : _handleSignup,
       isLoading: authState.status == EnhancedAuthStatus.loading,
       text: 'Create ${widget.role.displayName} Account',

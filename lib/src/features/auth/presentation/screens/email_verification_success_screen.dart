@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../shared/widgets/custom_button.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_routes.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../providers/auth_provider.dart';
 
 class EmailVerificationSuccessScreen extends ConsumerStatefulWidget {
@@ -208,10 +208,9 @@ class _EmailVerificationSuccessScreenState
                   children: [
                     if (isAuthenticated) ...[
                       // User is authenticated - show dashboard button
-                      CustomButton(
+                      GEButton.primary(
                         text: 'Go to Dashboard',
                         onPressed: _navigateToDashboard,
-                        type: ButtonType.primary,
                       ),
                       const SizedBox(height: 12),
                       TextButton(
@@ -226,10 +225,9 @@ class _EmailVerificationSuccessScreenState
                       ),
                     ] else ...[
                       // User needs to sign in manually
-                      CustomButton(
+                      GEButton.primary(
                         text: 'Sign In Now',
                         onPressed: _navigateToLogin,
-                        type: ButtonType.primary,
                       ),
                       const SizedBox(height: 12),
                       TextButton(

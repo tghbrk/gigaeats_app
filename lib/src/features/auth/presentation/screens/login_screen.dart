@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../../../../core/router/app_router.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -232,7 +233,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 24),
 
                 // Login Button
-                CustomButton(
+                GEButton.primary(
                   text: 'Sign In',
                   onPressed: _isLoading ? null : _handleLogin,
                   isLoading: _isLoading,

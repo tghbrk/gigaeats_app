@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/custom_button.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../providers/auth_provider.dart';
 
 class EmailVerificationErrorScreen extends ConsumerStatefulWidget {
@@ -134,11 +134,10 @@ class _EmailVerificationErrorScreenState extends ConsumerState<EmailVerification
     // Always show resend button if we have an email
     if (widget.email != null && widget.email!.isNotEmpty) {
       buttons.add(
-        CustomButton(
+        GEButton.primary(
           text: _isResending ? 'Sending...' : 'Send New Verification Email',
           onPressed: _isResending ? null : _resendVerificationEmail,
           isLoading: _isResending,
-          type: ButtonType.primary,
         ),
       );
       buttons.add(const SizedBox(height: 12));
@@ -148,29 +147,26 @@ class _EmailVerificationErrorScreenState extends ConsumerState<EmailVerification
     switch (widget.errorCode) {
       case 'otp_expired':
         buttons.add(
-          CustomButton(
+          GEButton.outline(
             text: 'Back to Email Verification',
             onPressed: () => _navigateToEmailVerification(),
-            type: ButtonType.outline,
           ),
         );
         break;
       case 'access_denied':
       case 'invalid_request':
         buttons.add(
-          CustomButton(
+          GEButton.outline(
             text: 'Try Different Email',
             onPressed: () => context.go('/register'),
-            type: ButtonType.outline,
           ),
         );
         break;
       default:
         buttons.add(
-          CustomButton(
+          GEButton.outline(
             text: 'Back to Login',
             onPressed: () => context.go(AppRoutes.login),
-            type: ButtonType.outline,
           ),
         );
     }

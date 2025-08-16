@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../providers/auth_provider.dart';
 
 class EmailVerificationScreen extends ConsumerStatefulWidget {
@@ -128,17 +128,16 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
               const SizedBox(height: 32),
 
               // Resend email button
-              CustomButton(
+              GEButton.outline(
                 text: _isResending ? 'Sending...' : 'Resend Verification Email',
                 onPressed: _isResending ? null : _resendVerificationEmail,
                 isLoading: _isResending,
-                type: ButtonType.outline,
               ),
 
               const SizedBox(height: 16),
 
               // Back to login button
-              CustomButton(
+              GEButton.ghost(
                 text: 'Back to Login',
                 onPressed: () {
                   // Clear pending verification state and navigate
@@ -146,7 +145,6 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                   // Use pushReplacement to avoid router redirect issues
                   context.pushReplacement('/login');
                 },
-                type: ButtonType.text,
               ),
               
               const Spacer(),

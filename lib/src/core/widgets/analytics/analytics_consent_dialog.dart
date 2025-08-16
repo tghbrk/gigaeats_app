@@ -202,7 +202,7 @@ class _AnalyticsConsentDialogState extends ConsumerState<AnalyticsConsentDialog>
           Switch(
             value: value,
             onChanged: enabled ? onChanged : null,
-            activeColor: AppTheme.primaryColor,
+            activeThumbColor: AppTheme.primaryColor,
           ),
         ],
       ),

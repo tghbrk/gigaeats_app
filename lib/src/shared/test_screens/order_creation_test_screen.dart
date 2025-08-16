@@ -11,7 +11,7 @@ import '../../features/orders/data/models/order.dart';
 // import '../../features/sales_agent/presentation/providers/cart_provider.dart';
 import '../../features/orders/presentation/providers/order_provider.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
-import '../widgets/custom_button.dart';
+import '../../design_system/widgets/buttons/ge_button.dart';
 
 class OrderCreationTestScreen extends ConsumerStatefulWidget {
   const OrderCreationTestScreen({super.key});
@@ -354,10 +354,9 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                     // Login Test User Button
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.primary(
                         text: 'Login as Test User (test6@gigaeats.com)',
                         onPressed: _loginTestUser,
-                        backgroundColor: Colors.indigo,
                       ),
                     ),
 
@@ -366,7 +365,7 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                     // Logout Button
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.secondary(
                         text: 'Logout',
                         onPressed: () async {
                           try {
@@ -377,7 +376,6 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                             _addLog('❌ Logout error: $e');
                           }
                         },
-                        backgroundColor: Colors.grey,
                       ),
                     ),
 
@@ -386,7 +384,7 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                     // Debug Auth Status Button
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.outline(
                         text: 'Debug Auth Status',
                         onPressed: () async {
                           try {
@@ -405,7 +403,6 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                             _addLog('❌ Debug error: $e');
                           }
                         },
-                        backgroundColor: Colors.teal,
                       ),
                     ),
 
@@ -414,10 +411,9 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                     // Setup Cart Button
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.primary(
                         text: 'Setup Test Cart',
                         onPressed: _setupTestCart,
-                        backgroundColor: Colors.blue,
                       ),
                     ),
                     
@@ -426,7 +422,7 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                     // Test Order Scenarios
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.primary(
                         text: _isCreatingOrder ? 'Creating Order...' : 'Create KL Corporate Order',
                         onPressed: _isCreatingOrder ? null : () => _createTestOrder(
                           scenario: 'KL Corporate',
@@ -441,7 +437,6 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                           ),
                           notes: 'Corporate lunch order for 10 people',
                         ),
-                        backgroundColor: Colors.green,
                       ),
                     ),
 
@@ -449,7 +444,7 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
 
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.primary(
                         text: _isCreatingOrder ? 'Creating Order...' : 'Create Selangor Residential Order',
                         onPressed: _isCreatingOrder ? null : () => _createTestOrder(
                           scenario: 'Selangor Residential',
@@ -464,7 +459,6 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                           ),
                           notes: 'Family dinner order - please call upon arrival',
                         ),
-                        backgroundColor: Colors.orange,
                       ),
                     ),
 
@@ -472,7 +466,7 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
 
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.primary(
                         text: _isCreatingOrder ? 'Creating Order...' : 'Create Johor Order',
                         onPressed: _isCreatingOrder ? null : () => _createTestOrder(
                           scenario: 'Johor',
@@ -487,7 +481,6 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                           ),
                           notes: 'Office catering - vegetarian options preferred',
                         ),
-                        backgroundColor: Colors.purple,
                       ),
                     ),
 
@@ -496,14 +489,13 @@ class _OrderCreationTestScreenState extends ConsumerState<OrderCreationTestScree
                     // Clear Cart Button
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.secondary(
                         text: 'Clear Cart',
                         onPressed: () {
                           // TODO: Restore cartProvider when provider is implemented - commented out for analyzer cleanup
                           // ref.read(cartProvider.notifier).clearCart();
                           _addLog('🗑️ Cart cleared');
                         },
-                        backgroundColor: Colors.red,
                       ),
                     ),
                   ],

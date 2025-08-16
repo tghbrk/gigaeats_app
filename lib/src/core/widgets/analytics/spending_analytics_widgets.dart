@@ -1156,7 +1156,7 @@ class _ExportDataDialogState extends State<ExportDataDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<String>(
-            value: _selectedFormat,
+            initialValue: _selectedFormat,
             decoration: const InputDecoration(
               labelText: 'Export Format',
               border: OutlineInputBorder(),
@@ -1296,7 +1296,7 @@ class _CreateBudgetDialogState extends State<CreateBudgetDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedPeriod,
+              initialValue: _selectedPeriod,
               decoration: const InputDecoration(
                 labelText: 'Budget Period',
                 border: OutlineInputBorder(),

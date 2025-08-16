@@ -4,8 +4,8 @@ import 'package:equatable/equatable.dart';
 import '../../core/errors/failures.dart';
 
 /// Base use case interface
-abstract class UseCase<Type, Params> {
-  Future<Either<Failure, Type>> call(Params params);
+abstract class UseCase<T, Params> {
+  Future<Either<Failure, T>> call(Params params);
 }
 
 /// Use case for operations that don't require parameters
@@ -17,13 +17,13 @@ class NoParams extends Equatable {
 }
 
 /// Base use case for stream operations
-abstract class StreamUseCase<Type, Params> {
-  Stream<Either<Failure, Type>> call(Params params);
+abstract class StreamUseCase<T, Params> {
+  Stream<Either<Failure, T>> call(Params params);
 }
 
 /// Base use case for synchronous operations
-abstract class SyncUseCase<Type, Params> {
-  Either<Failure, Type> call(Params params);
+abstract class SyncUseCase<T, Params> {
+  Either<Failure, T> call(Params params);
 }
 
 /// Use case result wrapper

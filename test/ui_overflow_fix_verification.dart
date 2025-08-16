@@ -13,7 +13,7 @@ void main() {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: DropdownButtonFormField<String>(
-                  value: null,
+                  initialValue: null,
                   isExpanded: true, // This is the key fix
                   decoration: const InputDecoration(
                     labelText: 'Category',

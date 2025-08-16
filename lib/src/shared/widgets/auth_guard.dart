@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/app_routes.dart';
 // TODO: Restore app_router import when needed
 // import '../../core/router/app_router.dart';
 import '../../core/services/access_control_service.dart';

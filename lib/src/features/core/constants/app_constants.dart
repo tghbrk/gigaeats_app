@@ -75,6 +75,7 @@ class AppConstants {
   static const String keyUserToken = 'user_token';
   static const String keyUserRole = 'user_role';
   static const String keyUserId = 'user_id';
+  static const String keySettings = 'app_settings';
 
   // Supported Languages
   static const List<String> supportedLanguages = ['en', 'ms', 'zh'];
@@ -82,11 +83,16 @@ class AppConstants {
 
   // Delivery Configuration
   static const double minOrderAmount = 20.0; // RM 20 minimum order
+  static const double maxOrderAmount = 5000.0; // RM 5000 maximum order
   static const double freeDeliveryThreshold = 200.0; // RM 200 for free delivery
   static const double standardDeliveryFee = 15.0; // RM 15 standard delivery
   static const double expressDeliveryFee = 25.0; // RM 25 express delivery
   static const int standardDeliveryTimeMinutes = 60; // 1 hour
   static const int expressDeliveryTimeMinutes = 30; // 30 minutes
+
+  // Pricing and Savings Configuration
+  static const double significantPriceChangeThreshold = 50.0; // RM 50 significant price change
+  static const double minSavingsThreshold = 10.0; // RM 10 minimum savings to recommend
 
   // Commission Rates
   static const double platformCommissionRate = 0.15; // 15% platform commission
@@ -142,4 +148,21 @@ class AppConstants {
   static const bool enableDebugLogging = true;
   static const bool enableNetworkLogging = true;
   static const bool enablePerformanceLogging = true;
+
+  // Cuisine Types Configuration
+  static const List<String> availableCuisineTypes = [
+    'Malaysian',
+    'Chinese',
+    'Indian',
+    'Western',
+    'Japanese',
+    'Korean',
+    'Thai',
+    'Italian',
+    'Middle Eastern',
+    'Fusion',
+    'Vegetarian',
+    'Halal',
+    'Other',
+  ];
 }

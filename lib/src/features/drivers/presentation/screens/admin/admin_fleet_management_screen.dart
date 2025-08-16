@@ -193,7 +193,7 @@ class _AdminFleetManagementScreenState extends ConsumerState<AdminFleetManagemen
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
-                  value: _statusFilter,
+                  initialValue: _statusFilter,
                   items: [
                     const DropdownMenuItem<DriverStatus?>(
                       value: null,
@@ -227,7 +227,7 @@ class _AdminFleetManagementScreenState extends ConsumerState<AdminFleetManagemen
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
-                  value: _vendorFilter,
+                  initialValue: _vendorFilter,
                   items: const [
                     DropdownMenuItem<String?>(
                       value: null,

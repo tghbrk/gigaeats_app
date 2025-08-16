@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/customization_template_providers.dart';
 import '../../../data/models/customization_template.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../widgets/vendor/template_option_form.dart';
 
 /// Screen for creating and editing customization templates
@@ -169,7 +169,7 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
             
             // Template Type
             DropdownButtonFormField<String>(
-              value: _selectedType,
+              initialValue: _selectedType,
               decoration: const InputDecoration(
                 labelText: 'Selection Type *',
                 border: OutlineInputBorder(),
@@ -397,18 +397,16 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
       child: Row(
         children: [
           Expanded(
-            child: CustomButton(
+            child: GEButton.secondary(
               text: 'Cancel',
               onPressed: () => Navigator.of(context).pop(),
-              type: ButtonType.secondary,
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: CustomButton(
+            child: GEButton.primary(
               text: _isEditing ? 'Update Template' : 'Create Template',
               onPressed: _saveTemplate,
-              type: ButtonType.primary,
               isLoading: _isLoading,
             ),
           ),

@@ -5,6 +5,11 @@ import '../../../../user_management/presentation/providers/vendor_provider.dart'
 import '../../../../user_management/domain/vendor.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../../../design_system/layout/ge_screen.dart';
+import '../../../../../design_system/navigation/ge_app_bar.dart';
+import '../../../../../design_system/navigation/ge_bottom_navigation.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
+import '../../../../data/models/user_role.dart';
 
 class CustomerRestaurantsScreen extends ConsumerStatefulWidget {
   const CustomerRestaurantsScreen({super.key});
@@ -40,7 +45,6 @@ class _CustomerRestaurantsScreenState extends ConsumerState<CustomerRestaurantsS
   @override
   Widget build(BuildContext context) {
     final vendorState = ref.watch(vendorsProvider);
-    final theme = Theme.of(context);
 
     // Debug logging for UI state
     _logger.info('🏪 [RESTAURANTS-SCREEN] Building UI with state:');
@@ -51,11 +55,10 @@ class _CustomerRestaurantsScreenState extends ConsumerState<CustomerRestaurantsS
     _logger.info('  - Selected cuisine: $_selectedCuisine');
     _logger.info('  - Sort by: $_sortBy');
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Restaurants'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
+    return GEScreen(
+      appBar: GEAppBar.withRole(
+        title: 'Restaurants',
+        userRole: UserRole.customer,
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
@@ -76,7 +79,30 @@ class _CustomerRestaurantsScreenState extends ConsumerState<CustomerRestaurantsS
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigation(context),
+      bottomNavigationBar: GEBottomNavigation.navigationBar(
+        destinations: GERoleNavigationConfig.customer.destinations,
+        selectedIndex: 1, // Restaurants is selected
+        onDestinationSelected: (index) {
+          switch (index) {
+            case 0:
+              context.go('/customer/dashboard');
+              break;
+            case 1:
+              // Already on restaurants
+              break;
+            case 2:
+              context.push('/customer/cart');
+              break;
+            case 3:
+              context.push('/customer/orders');
+              break;
+            case 4:
+              context.push('/customer/profile');
+              break;
+          }
+        },
+        userRole: UserRole.customer,
+      ),
     );
   }
 
@@ -320,14 +346,12 @@ class _CustomerRestaurantsScreenState extends ConsumerState<CustomerRestaurantsS
                           ),
                         ),
                       ),
-                      CustomButton(
+                      GEButton.primary(
                         text: 'View Menu',
                         onPressed: vendor.isActive
                             ? () => context.push('/customer/restaurant/${vendor.id}')
                             : null,
-                        // TODO: Fix ButtonType import
-                        // type: ButtonType.primary,
-                        // isExpanded: false,
+                        size: GEButtonSize.small,
                       ),
                     ],
                   ),
@@ -416,13 +440,10 @@ class _CustomerRestaurantsScreenState extends ConsumerState<CustomerRestaurantsS
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            CustomButton(
+            GEButton.primary(
               text: 'Try Again',
               // TODO: Fix vendorsProvider import
               onPressed: () {}, // => ref.read(vendorsProvider.notifier).loadVendors(),
-              // TODO: Fix ButtonType import
-              // type: ButtonType.primary,
-              // isExpanded: false,
             ),
           ],
         ),
@@ -510,51 +531,5 @@ class _CustomerRestaurantsScreenState extends ConsumerState<CustomerRestaurantsS
     }
   }
 
-  Widget _buildBottomNavigation(BuildContext context) {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 1, // Restaurants is selected
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            context.go('/customer/dashboard');
-            break;
-          case 1:
-            // Already on restaurants
-            break;
-          case 2:
-            context.push('/customer/cart');
-            break;
-          case 3:
-            context.push('/customer/orders');
-            break;
-          case 4:
-            context.push('/customer/profile');
-            break;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.restaurant),
-          label: 'Restaurants',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart),
-          label: 'Cart',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.receipt),
-          label: 'Orders',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-    );
-  }
+
 }

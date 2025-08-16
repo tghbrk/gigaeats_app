@@ -9,7 +9,7 @@ import '../../../../orders/presentation/widgets/customer/enhanced_customization_
 import '../../../../vendors/presentation/providers/vendor_provider.dart';
 import '../../widgets/customer/feature_chip.dart';
 
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../../shared/widgets/custom_error_widget.dart';
 import '../../../../../core/utils/logger.dart';
@@ -562,10 +562,9 @@ class _CustomerMenuItemDetailsScreenState extends ConsumerState<CustomerMenuItem
               const Divider(height: 16),
             ],
 
-            CustomButton(
+            GEButton.primary(
               text: 'Add to Cart - RM ${totalPrice.toStringAsFixed(2)}',
               onPressed: () => _addToCart(product, vendor),
-              type: ButtonType.primary,
             ),
           ],
         ),

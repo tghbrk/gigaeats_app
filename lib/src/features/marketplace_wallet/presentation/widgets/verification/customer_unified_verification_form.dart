@@ -311,7 +311,7 @@ class _CustomerUnifiedVerificationFormState extends ConsumerState<CustomerUnifie
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedBank,
+          initialValue: _selectedBank,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             hintText: 'Choose your bank',

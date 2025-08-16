@@ -9,7 +9,7 @@ import '../../widgets/vendor/template_usage_chart.dart';
 import '../../widgets/vendor/template_insights_widget.dart';
 import '../../widgets/vendor/template_performance_list.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Comprehensive template analytics dashboard for vendors
 class TemplateAnalyticsDashboardScreen extends ConsumerStatefulWidget {
@@ -463,10 +463,9 @@ class _TemplateAnalyticsDashboardScreenState extends ConsumerState<TemplateAnaly
               ),
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.primary(
               text: 'Retry',
               onPressed: _refreshAnalytics,
-              type: ButtonType.primary,
               icon: Icons.refresh,
             ),
           ],
@@ -690,10 +689,9 @@ class _TemplateAnalyticsTabContentState extends ConsumerState<TemplateAnalyticsT
               ),
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.primary(
               text: 'Retry',
               onPressed: () => _refreshAnalytics(),
-              type: ButtonType.primary,
               icon: Icons.refresh,
             ),
           ],

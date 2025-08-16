@@ -200,7 +200,7 @@ class _AddDriverDialogState extends ConsumerState<AddDriverDialog> {
 
                       // Vehicle Type Dropdown
                       DropdownButtonFormField<String>(
-                        value: _selectedVehicleType,
+                        initialValue: _selectedVehicleType,
                         decoration: const InputDecoration(
                           labelText: 'Vehicle Type *',
                           prefixIcon: Icon(Icons.directions_car),
@@ -280,7 +280,7 @@ class _AddDriverDialogState extends ConsumerState<AddDriverDialog> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: null,
+                              initialValue: null,
                               decoration: const InputDecoration(
                                 labelText: 'Color',
                                 border: OutlineInputBorder(),

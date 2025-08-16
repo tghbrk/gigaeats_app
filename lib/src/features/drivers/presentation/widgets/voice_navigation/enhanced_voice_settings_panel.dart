@@ -165,7 +165,7 @@ class _EnhancedVoiceSettingsPanelState extends ConsumerState<EnhancedVoiceSettin
             
             // Language Dropdown
             DropdownButtonFormField<String>(
-              value: _currentPreferences.language,
+              initialValue: _currentPreferences.language,
               decoration: const InputDecoration(
                 labelText: 'Voice Language',
                 border: OutlineInputBorder(),

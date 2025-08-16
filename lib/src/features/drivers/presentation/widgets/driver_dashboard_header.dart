@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/driver_dashboard_providers.dart';
 import 'driver_status_toggle.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_routes.dart';
 
 /// Header widget for the driver dashboard with greeting, status, and quick stats
 class DriverDashboardHeader extends ConsumerStatefulWidget {

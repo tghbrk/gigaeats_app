@@ -400,7 +400,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
               // Group type
               DropdownButtonFormField<GroupType>(
-                value: _selectedType,
+                initialValue: _selectedType,
                 decoration: const InputDecoration(
                   labelText: 'Group Type',
                   border: OutlineInputBorder(),

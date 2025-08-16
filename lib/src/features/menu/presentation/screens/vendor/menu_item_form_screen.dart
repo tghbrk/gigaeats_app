@@ -11,7 +11,7 @@ import '../../widgets/vendor/enhanced_customization_section.dart';
 import '../../providers/customization_template_providers.dart';
 import '../../providers/enhanced_template_providers.dart';
 import '../../widgets/vendor/category_dialogs.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../../presentation/providers/repository_providers.dart' show currentVendorProvider, vendorRepositoryProvider;
@@ -388,7 +388,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
                 // Unit
                 DropdownButtonFormField<String>(
-                  value: _selectedUnit,
+                  initialValue: _selectedUnit,
                   decoration: const InputDecoration(
                     labelText: 'Unit *',
                     border: OutlineInputBorder(),
@@ -550,7 +550,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
             // Status
             DropdownButtonFormField<MenuItemStatus>(
-              value: _status,
+              initialValue: _status,
               decoration: const InputDecoration(
                 labelText: 'Status *',
                 border: OutlineInputBorder(),
@@ -936,7 +936,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
           const SizedBox(width: 16),
           Expanded(
             flex: 2,
-            child: CustomButton(
+            child: GEButton.primary(
               text: widget.menuItemId != null ? 'Update Item' : 'Add Item',
               onPressed: _isSaving ? null : _saveMenuItem,
               isLoading: _isSaving,

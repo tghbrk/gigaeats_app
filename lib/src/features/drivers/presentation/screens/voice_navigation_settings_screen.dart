@@ -201,7 +201,7 @@ class _VoiceNavigationSettingsScreenState extends ConsumerState<VoiceNavigationS
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: voiceState.currentLanguage,
+              initialValue: voiceState.currentLanguage,
               decoration: const InputDecoration(
                 labelText: 'Voice Language',
                 border: OutlineInputBorder(),

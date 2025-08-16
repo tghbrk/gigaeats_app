@@ -6,7 +6,7 @@ import '../../../data/models/product.dart';
 
 // TODO: Fix cart provider import path - cart provider doesn't exist yet
 // import '../../../../sales_agent/presentation/providers/cart_provider.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 class ProductDetailsScreen extends ConsumerStatefulWidget {
   final Product product;
@@ -290,7 +290,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
           ],
         ),
         child: SafeArea(
-          child: CustomButton(
+          child: GEButton.primary(
             text: 'Add to Cart - RM ${(_calculateTotalPrice()).toStringAsFixed(2)}',
             onPressed: product.availability.isAvailable ? _addToCart : null,
           ),

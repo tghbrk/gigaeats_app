@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/customer_support_provider.dart';
 import '../../data/models/support_category.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
 
 /// Screen for creating a new support ticket
@@ -101,7 +101,7 @@ class _CreateSupportTicketScreenState extends ConsumerState<CreateSupportTicketS
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<SupportCategory>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   hintText: 'Select a category',
                   border: OutlineInputBorder(
@@ -246,10 +246,9 @@ class _CreateSupportTicketScreenState extends ConsumerState<CreateSupportTicketS
               // Submit button
               SizedBox(
                 width: double.infinity,
-                child: CustomButton(
+                child: GEButton.primary(
                   text: _isSubmitting ? 'Creating Ticket...' : 'Create Ticket',
                   onPressed: _isSubmitting ? null : _submitTicket,
-                  type: ButtonType.primary,
                   icon: Icons.send,
                 ),
               ),

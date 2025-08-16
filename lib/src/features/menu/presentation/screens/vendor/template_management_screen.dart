@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/customization_template_providers.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../widgets/vendor/template_card.dart';
 import 'template_form_screen.dart';
 import 'template_analytics_dashboard_screen.dart';
@@ -240,10 +240,9 @@ class _TemplateManagementScreenState extends ConsumerState<TemplateManagementScr
               ),
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.primary(
               text: 'Create First Template',
               onPressed: () => _navigateToCreateTemplate(),
-              type: ButtonType.primary,
               icon: Icons.add,
             ),
           ],
@@ -282,10 +281,9 @@ class _TemplateManagementScreenState extends ConsumerState<TemplateManagementScr
               ),
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.secondary(
               text: 'Retry',
               onPressed: () => _refreshData(),
-              type: ButtonType.secondary,
               icon: Icons.refresh,
             ),
           ],

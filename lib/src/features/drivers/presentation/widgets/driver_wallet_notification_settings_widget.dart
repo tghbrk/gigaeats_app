@@ -173,7 +173,7 @@ class DriverWalletNotificationSettingsWidget extends ConsumerWidget {
           Switch(
             value: state.isEnabled,
             onChanged: (value) => notifier.setNotificationsEnabled(value),
-            activeColor: theme.primaryColor,
+            activeThumbColor: theme.primaryColor,
           ),
         ],
       ),
@@ -219,7 +219,7 @@ class DriverWalletNotificationSettingsWidget extends ConsumerWidget {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: theme.primaryColor,
+          activeThumbColor: theme.primaryColor,
         ),
       ],
     );
@@ -346,7 +346,7 @@ class DriverWalletNotificationQuickSettings extends ConsumerWidget {
             Switch(
               value: notificationState.isEnabled,
               onChanged: (value) => notificationNotifier.setNotificationsEnabled(value),
-              activeColor: theme.primaryColor,
+              activeThumbColor: theme.primaryColor,
             ),
           ],
         ),

@@ -161,7 +161,7 @@ class _EarningsExportWidgetState extends ConsumerState<EarningsExportWidget> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<ExportDateRange>(
-              value: _selectedDateRange,
+              initialValue: _selectedDateRange,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),

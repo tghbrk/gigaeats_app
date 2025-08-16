@@ -312,7 +312,7 @@ class _WalletAnalyticsSettingsScreenState extends ConsumerState<WalletAnalyticsS
       trailing: Switch(
         value: value,
         onChanged: enabled ? onChanged : null,
-        activeColor: AppTheme.primaryColor,
+        activeThumbColor: AppTheme.primaryColor,
       ),
       children: [
         Padding(
@@ -363,7 +363,7 @@ class _WalletAnalyticsSettingsScreenState extends ConsumerState<WalletAnalyticsS
       subtitle: Text(subtitle),
       value: value,
       onChanged: enabled ? onChanged : null,
-      activeColor: AppTheme.primaryColor,
+      activeThumbColor: AppTheme.primaryColor,
     );
   }
 

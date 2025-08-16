@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/customer_support_provider.dart';
 import '../../data/models/support_ticket.dart';
 import '../../data/models/faq_item.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../shared/widgets/custom_error_widget.dart';
 
 /// Main customer support screen
@@ -273,10 +273,9 @@ class _CustomerSupportScreenState extends ConsumerState<CustomerSupportScreen>
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              CustomButton(
+              GEButton.primary(
                 text: 'Create Ticket',
                 onPressed: () => context.push('/customer/support/create-ticket'),
-                type: ButtonType.primary,
                 icon: Icons.add,
               ),
             ],
@@ -415,10 +414,9 @@ class _CustomerSupportScreenState extends ConsumerState<CustomerSupportScreen>
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: CustomButton(
+                    child: GEButton.primary(
                       text: 'Create Support Ticket',
                       onPressed: () => context.push('/customer/support/create-ticket'),
-                      type: ButtonType.primary,
                       icon: Icons.support_agent,
                     ),
                   ),

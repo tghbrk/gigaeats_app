@@ -192,7 +192,7 @@ class _EnhancedTemplateManagementState extends ConsumerState<EnhancedTemplateMan
               // Category Filter
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   decoration: InputDecoration(
                     labelText: 'Category',
                     border: OutlineInputBorder(
@@ -918,7 +918,7 @@ class _QuickCreateTemplateDialogState extends State<_QuickCreateTemplateDialog> 
           children: [
             // Template Type Selection
             DropdownButtonFormField<String>(
-              value: _selectedTemplate,
+              initialValue: _selectedTemplate,
               decoration: const InputDecoration(
                 labelText: 'Template Type',
                 border: OutlineInputBorder(),

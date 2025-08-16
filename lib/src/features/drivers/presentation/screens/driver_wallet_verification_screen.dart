@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../../../../data/models/user_role.dart';
 import '../../../../shared/widgets/auth_guard.dart';
 import '../../../../shared/widgets/loading_widget.dart';

@@ -687,7 +687,7 @@ class CategoryDropdownSelector extends ConsumerWidget {
         }
 
         return DropdownButtonFormField<String>(
-          value: selectedCategory?.id,
+          initialValue: selectedCategory?.id,
           isExpanded: true,
           decoration: InputDecoration(
             labelText: 'Category',

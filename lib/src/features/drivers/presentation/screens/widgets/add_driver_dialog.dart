@@ -114,7 +114,7 @@ class _AddDriverDialogState extends ConsumerState<AddDriverDialog> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<VehicleType>(
-                  value: _selectedVehicleType,
+                  initialValue: _selectedVehicleType,
                   decoration: const InputDecoration(
                     labelText: 'Vehicle Type',
                     border: OutlineInputBorder(),

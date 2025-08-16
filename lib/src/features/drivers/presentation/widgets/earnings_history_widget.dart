@@ -395,7 +395,7 @@ class _EarningsHistoryWidgetState extends ConsumerState<EarningsHistoryWidget>
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<EarningsStatus?>(
-                      value: _selectedStatus,
+                      initialValue: _selectedStatus,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -438,7 +438,7 @@ class _EarningsHistoryWidgetState extends ConsumerState<EarningsHistoryWidget>
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _sortBy,
+                      initialValue: _sortBy,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),

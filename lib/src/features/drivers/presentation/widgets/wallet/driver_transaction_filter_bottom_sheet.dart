@@ -347,7 +347,7 @@ class _DriverTransactionFilterBottomSheetState
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _filter.sortBy,
+                initialValue: _filter.sortBy,
                 decoration: const InputDecoration(
                   labelText: 'Sort By',
                   border: OutlineInputBorder(),
@@ -369,7 +369,7 @@ class _DriverTransactionFilterBottomSheetState
             const SizedBox(width: 16),
             Expanded(
               child: DropdownButtonFormField<bool>(
-                value: _filter.ascending,
+                initialValue: _filter.ascending,
                 decoration: const InputDecoration(
                   labelText: 'Order',
                   border: OutlineInputBorder(),

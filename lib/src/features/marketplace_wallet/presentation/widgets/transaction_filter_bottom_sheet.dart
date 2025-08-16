@@ -386,7 +386,7 @@ class _TransactionFilterBottomSheetState extends State<TransactionFilterBottomSh
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _filter.sortBy,
+                initialValue: _filter.sortBy,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                 ),
@@ -407,7 +407,7 @@ class _TransactionFilterBottomSheetState extends State<TransactionFilterBottomSh
             const SizedBox(width: 16),
             Expanded(
               child: DropdownButtonFormField<bool>(
-                value: _filter.ascending,
+                initialValue: _filter.ascending,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                 ),

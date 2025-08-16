@@ -308,7 +308,7 @@ class _EnhancedVoiceNavigationControlsState extends ConsumerState<EnhancedVoiceN
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: preferences.language,
+          initialValue: preferences.language,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

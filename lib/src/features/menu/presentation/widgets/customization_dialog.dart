@@ -146,7 +146,7 @@ class _CustomizationDialogState extends State<CustomizationDialog> {
                           debugPrint('🔧 [CUSTOMIZATION-DIALOG] Selected type: $_selectedType');
 
                           return DropdownButtonFormField<String>(
-                            value: currentValue,
+                            initialValue: currentValue,
                             decoration: const InputDecoration(
                               labelText: 'Selection Type *',
                               border: OutlineInputBorder(),

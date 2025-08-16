@@ -7,7 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../orders/data/models/order.dart' hide PaymentMethod, PaymentStatus;
 import '../../data/models/payment_method.dart';
 import '../../data/services/payment_service.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/custom_error_widget.dart';
 
@@ -136,7 +136,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            child: CustomButton(
+            child: GEButton.primary(
               text: _isProcessing ? 'Processing...' : 'Pay RM ${widget.order.totalAmount.toStringAsFixed(2)}',
               onPressed: _selectedPaymentMethod != null && !_isProcessing
                   ? _processPayment

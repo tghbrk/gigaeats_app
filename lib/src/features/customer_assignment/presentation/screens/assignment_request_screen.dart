@@ -293,7 +293,7 @@ class _AssignmentRequestScreenState extends ConsumerState<AssignmentRequestScree
                         
                         // Priority Selection
                         DropdownButtonFormField<AssignmentRequestPriority>(
-                          value: _selectedPriority,
+                          initialValue: _selectedPriority,
                           decoration: const InputDecoration(
                             labelText: 'Priority',
                             border: OutlineInputBorder(),

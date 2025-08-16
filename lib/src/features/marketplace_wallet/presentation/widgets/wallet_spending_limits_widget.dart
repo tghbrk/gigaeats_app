@@ -68,7 +68,7 @@ class _SpendingLimitDialogState extends State<SpendingLimitDialog> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<SpendingLimitPeriod>(
-                value: _selectedPeriod,
+                initialValue: _selectedPeriod,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

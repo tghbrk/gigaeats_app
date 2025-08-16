@@ -1407,7 +1407,7 @@ class _WalletAnalyticsExportDialogState extends ConsumerState<WalletAnalyticsExp
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedFormat,
+              initialValue: _selectedFormat,
               decoration: const InputDecoration(
                 labelText: 'Export Format',
                 border: OutlineInputBorder(),

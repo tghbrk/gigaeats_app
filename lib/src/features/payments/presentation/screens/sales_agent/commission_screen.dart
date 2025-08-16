@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 class CommissionScreen extends ConsumerStatefulWidget {
   const CommissionScreen({super.key});
@@ -116,7 +116,7 @@ class _CommissionScreenState extends ConsumerState<CommissionScreen>
         Row(
           children: [
             Expanded(
-              child: CustomButton(
+              child: GEButton.primary(
                 text: 'Request Payout',
                 onPressed: _requestPayout,
                 icon: Icons.account_balance_wallet,
@@ -124,11 +124,10 @@ class _CommissionScreenState extends ConsumerState<CommissionScreen>
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: CustomButton(
+              child: GEButton.outline(
                 text: 'View Report',
                 onPressed: _viewDetailedReport,
                 icon: Icons.assessment,
-                type: ButtonType.outline,
               ),
             ),
           ],

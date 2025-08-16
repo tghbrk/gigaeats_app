@@ -8,7 +8,7 @@ import '../../widgets/vendor/bulk_menu_item_selector.dart';
 import '../../widgets/vendor/bulk_template_selector.dart';
 import '../../widgets/vendor/bulk_operation_progress.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 // Provider for vendor menu items (reused from menu management)
 final vendorMenuItemsProvider = FutureProvider.family<List<Product>, String>((ref, vendorId) async {
@@ -425,20 +425,18 @@ class _BulkTemplateApplicationScreenState extends ConsumerState<BulkTemplateAppl
       children: [
         SizedBox(
           width: double.infinity,
-          child: CustomButton(
+          child: GEButton.primary(
             text: 'Apply Templates',
             onPressed: canApply ? _applyTemplates : null,
-            type: ButtonType.primary,
             icon: Icons.play_arrow,
           ),
         ),
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
-          child: CustomButton(
+          child: GEButton.secondary(
             text: 'Reset Selection',
             onPressed: _resetSelection,
-            type: ButtonType.secondary,
             icon: Icons.refresh,
           ),
         ),
@@ -463,12 +461,11 @@ class _BulkTemplateApplicationScreenState extends ConsumerState<BulkTemplateAppl
         children: [
           if (_tabController.index > 0)
             Expanded(
-              child: CustomButton(
+              child: GEButton.secondary(
                 text: 'Previous',
                 onPressed: () {
                   _tabController.animateTo(_tabController.index - 1);
                 },
-                type: ButtonType.secondary,
                 icon: Icons.arrow_back,
               ),
             ),
@@ -477,12 +474,11 @@ class _BulkTemplateApplicationScreenState extends ConsumerState<BulkTemplateAppl
           
           if (_tabController.index < 2)
             Expanded(
-              child: CustomButton(
+              child: GEButton.primary(
                 text: 'Next',
                 onPressed: _canProceedToNext() ? () {
                   _tabController.animateTo(_tabController.index + 1);
                 } : null,
-                type: ButtonType.primary,
                 icon: Icons.arrow_forward,
               ),
             ),

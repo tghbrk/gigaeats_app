@@ -25,7 +25,7 @@ import '../../../../marketplace_wallet/presentation/providers/customer_payment_m
 import '../../../../marketplace_wallet/presentation/providers/customer_wallet_provider.dart';
 import '../../../../user_management/domain/customer_profile.dart';
 
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 class CustomerCheckoutScreen extends ConsumerStatefulWidget {
   const CustomerCheckoutScreen({super.key});
@@ -1036,11 +1036,9 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
                   ),
                 ),
                 const SizedBox(width: 12),
-                CustomButton(
+                GEButton.secondary(
                   text: 'Apply',
                   onPressed: _applyPromoCode,
-                  type: ButtonType.secondary,
-                  isExpanded: false,
                 ),
               ],
             ),
@@ -1340,12 +1338,11 @@ class _CustomerCheckoutScreenState extends ConsumerState<CustomerCheckoutScreen>
         ],
       ),
       child: SafeArea(
-        child: CustomButton(
+        child: GEButton.primary(
           text: isLoading
               ? 'Processing...'
               : 'Place Order - RM ${totalAmount.toStringAsFixed(2)}',
           onPressed: canCheckout ? _placeOrder : null,
-          type: ButtonType.primary,
           isLoading: isLoading,
         ),
       ),

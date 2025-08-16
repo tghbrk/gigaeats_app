@@ -234,7 +234,7 @@ class _VendorProfileFormState extends ConsumerState<VendorProfileForm> {
 
           // Business Type
           DropdownButtonFormField<String>(
-            value: _getValidBusinessType(state.businessType),
+            initialValue: _getValidBusinessType(state.businessType),
             decoration: const InputDecoration(
               labelText: 'Business Type *',
               border: OutlineInputBorder(),

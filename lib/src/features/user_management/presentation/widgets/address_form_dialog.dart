@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/customer_profile.dart';
 import '../providers/customer_address_provider.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../core/utils/profile_validators.dart';
 import '../../../../core/utils/logger.dart';
 
@@ -141,7 +141,7 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        CustomButton(
+        GEButton.primary(
           text: _isEditing ? 'Update Address' : 'Add Address',
           onPressed: _isLoading ? null : _saveAddress,
           isLoading: _isLoading,
@@ -156,7 +156,7 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
         Expanded(
           flex: 2,
           child: DropdownButtonFormField<String>(
-            value: _selectedAddressType,
+            initialValue: _selectedAddressType,
             decoration: const InputDecoration(
               labelText: 'Address Type *',
               border: OutlineInputBorder(),
@@ -259,7 +259,7 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
         Expanded(
           flex: 2,
           child: DropdownButtonFormField<String>(
-            value: _selectedState,
+            initialValue: _selectedState,
             decoration: const InputDecoration(
               labelText: 'State *',
               border: OutlineInputBorder(),

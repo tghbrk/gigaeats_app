@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/customer_profile.dart';
 import '../../providers/customer_address_provider.dart';
 import '../../widgets/address_form_dialog.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../../core/utils/logger.dart';
 
 class CustomerAddressesScreen extends ConsumerStatefulWidget {
@@ -537,7 +537,7 @@ class _CustomerAddressesScreenState extends ConsumerState<CustomerAddressesScree
               ),
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.primary(
               text: 'Retry',
               onPressed: () {
                 _logger.info('🔄 [ADDRESSES-SCREEN] Retrying address load');
@@ -579,7 +579,7 @@ class _CustomerAddressesScreenState extends ConsumerState<CustomerAddressesScree
               ),
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.primary(
               text: 'Add Your First Address',
               onPressed: () => _showAddAddressDialog(),
             ),

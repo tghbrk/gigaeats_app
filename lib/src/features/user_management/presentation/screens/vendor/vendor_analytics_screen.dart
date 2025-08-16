@@ -757,42 +757,55 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
   }) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12), // Reduced padding from 16 to 12
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Use minimum space needed
           children: [
             Row(
               children: [
-                Icon(icon, color: color, size: 24),
+                Icon(icon, color: color, size: 20), // Reduced icon size from 24 to 20
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
                   decoration: BoxDecoration(
                     color: (isPositive ? Colors.green : Colors.red).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6), // Reduced border radius
                   ),
                   child: Text(
                     change,
                     style: TextStyle(
                       color: isPositive ? Colors.green : Colors.red,
-                      fontSize: 12,
+                      fontSize: 10, // Reduced font size from 12 to 10
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+            const SizedBox(height: 4), // Reduced spacing from 8 to 4
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith( // Changed from headlineSmall to titleMedium
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ],

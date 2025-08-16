@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/customer_profile_form_provider.dart';
 import '../../../../../shared/widgets/custom_text_field.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../../shared/widgets/custom_error_widget.dart';
 
 
@@ -197,7 +197,7 @@ class _CustomerProfileEditScreenState extends ConsumerState<CustomerProfileEditS
             // Save Button
             SizedBox(
               width: double.infinity,
-              child: CustomButton(
+              child: GEButton.primary(
                 text: formState.isSaving ? 'Saving...' : 'Save Changes',
                 onPressed: formState.isSaving ? null : _saveProfile,
                 icon: formState.isSaving ? null : Icons.save,

@@ -253,7 +253,7 @@ class SalesAgentNotificationSettingsScreen extends ConsumerWidget {
                           //     .updateSinglePreference(setting.key, value);
                         },
                   contentPadding: EdgeInsets.zero,
-                  activeColor: Theme.of(ref.context).colorScheme.primary,
+                  activeThumbColor: Theme.of(ref.context).colorScheme.primary,
                 ),
               );
             }),

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 // TODO: Restore when customer_profile_provider is used
 // import '../providers/customer_profile_provider.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 // TODO: Restore missing URI import when customer_profile model is implemented
 // import '../../data/models/customer_profile.dart';
 // TODO: Restore when auth_utils is used
@@ -281,11 +281,9 @@ class _CustomerSettingsScreenState extends ConsumerState<CustomerSettingsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CustomButton(
+        GEButton.secondary(
           text: 'Sign Out',
           onPressed: _showSignOutDialog,
-          // TODO: Restore when ButtonType is implemented
-          // type: ButtonType.secondary,
           icon: Icons.logout,
         ),
         const SizedBox(height: 16),

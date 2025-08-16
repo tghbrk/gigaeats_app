@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import '../providers/customer_profile_provider.dart';
 // TODO: Restore when auth_provider is implemented
 // import '../../../../features/auth/presentation/providers/auth_provider.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 // TODO: Restore missing URI import when customer_profile domain is implemented
 // import '../../../user_management/domain/customer_profile.dart';
 
@@ -256,7 +256,7 @@ class _CustomerProfileSetupScreenState extends ConsumerState<CustomerProfileSetu
             const SizedBox(width: 16),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _selectedState,
+                initialValue: _selectedState,
                 decoration: const InputDecoration(
                   labelText: 'State',
                   border: OutlineInputBorder(),
@@ -329,11 +329,9 @@ class _CustomerProfileSetupScreenState extends ConsumerState<CustomerProfileSetu
   }
 
   Widget _buildSubmitButton() {
-    return CustomButton(
+    return GEButton.primary(
       text: 'Complete Setup',
       onPressed: _isLoading ? null : _submitProfile,
-      // TODO: Restore when ButtonType is implemented
-      // type: ButtonType.primary,
       isLoading: _isLoading,
       icon: Icons.check,
     );

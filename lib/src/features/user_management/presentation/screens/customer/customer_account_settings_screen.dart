@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/customer_account_settings_provider.dart';
 import '../../../domain/customer_account_settings.dart';
 import '../../../../../shared/widgets/custom_error_widget.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Customer account settings screen with comprehensive preferences
 class CustomerAccountSettingsScreen extends ConsumerStatefulWidget {
@@ -518,7 +518,7 @@ class _CustomerAccountSettingsScreenState extends ConsumerState<CustomerAccountS
       ),
       child: SizedBox(
         width: double.infinity,
-        child: CustomButton(
+        child: GEButton.primary(
           text: settingsState.isSaving ? 'Saving...' : 'Save Changes',
           onPressed: settingsState.isSaving || !settingsState.hasUnsavedChanges
               ? null

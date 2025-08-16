@@ -670,7 +670,7 @@ class _VendorProfileEditScreenState extends ConsumerState<VendorProfileEditScree
     ];
 
     return DropdownButtonFormField<String>(
-      value: state.businessType.isEmpty ? null : state.businessType,
+      initialValue: state.businessType.isEmpty ? null : state.businessType,
       decoration: InputDecoration(
         labelText: 'Business Type *',
         prefixIcon: const Icon(Icons.category),

@@ -2,23 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// TODO: Restore when app_constants is used
-// import '../../../../core/constants/app_constants.dart';
-import '../../../../orders/data/models/order.dart';
 import '../../../../../presentation/providers/repository_providers.dart' show
-    currentVendorProvider,
     vendorDashboardMetricsProvider,
     vendorTotalOrdersProvider,
     vendorRatingMetricsProvider,
     vendorNotificationsProvider,
-    ordersStreamProvider;
-import '../../../../shared/widgets/dashboard_card.dart';
-import '../../../../shared/widgets/quick_action_button.dart';
+    currentVendorProvider;
+import '../../../../../design_system/design_system.dart';
+import '../../../../../data/models/user_role.dart';
+import '../../../../../shared/widgets/quick_action_button.dart';
 import '../../../orders/presentation/screens/vendor/vendor_orders_screen.dart';
 import '../../../menu/presentation/screens/vendor/vendor_menu_screen.dart';
 import 'vendor_analytics_screen.dart';
 import 'vendor_profile_screen.dart';
-
 
 class VendorDashboard extends ConsumerStatefulWidget {
   const VendorDashboard({super.key});
@@ -29,47 +25,23 @@ class VendorDashboard extends ConsumerStatefulWidget {
 
 class _VendorDashboardState extends ConsumerState<VendorDashboard> {
   int _selectedIndex = 0;
-
-  final List<NavigationDestination> _destinations = [
-    const NavigationDestination(
-      icon: Icon(Icons.dashboard_outlined),
-      selectedIcon: Icon(Icons.dashboard),
-      label: 'Dashboard',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.receipt_long_outlined),
-      selectedIcon: Icon(Icons.receipt_long),
-      label: 'Orders',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.restaurant_menu_outlined),
-      selectedIcon: Icon(Icons.restaurant_menu),
-      label: 'Menu',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.analytics_outlined),
-      selectedIcon: Icon(Icons.analytics),
-      label: 'Analytics',
-    ),
-    const NavigationDestination(
-      icon: Icon(Icons.person_outlined),
-      selectedIcon: Icon(Icons.person),
-      label: 'Profile',
-    ),
-  ];
+  
+  // Use GE navigation configuration for vendor role
+  final _navigationConfig = GERoleNavigationConfig.vendor;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GEScreen(
       body: _buildCurrentTab(),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: GEBottomNavigation.navigationBar(
+        destinations: _navigationConfig.destinations,
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
-        destinations: _destinations,
+        userRole: UserRole.vendor,
       ),
     );
   }
@@ -87,22 +59,10 @@ class _VendorDashboardState extends ConsumerState<VendorDashboard> {
       case 2:
         return const VendorMenuScreen();
       case 3:
-        return VendorAnalyticsScreen(onNavigateToTab: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        });
+        return const VendorAnalyticsScreen();
       case 4:
         return const VendorProfileScreen();
       default:
-        // Fallback to dashboard tab but reset index to 0 to prevent confusion
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _selectedIndex != 0) {
-            setState(() {
-              _selectedIndex = 0;
-            });
-          }
-        });
         return _VendorDashboardTab(onNavigateToTab: (index) {
           setState(() {
             _selectedIndex = index;
@@ -113,70 +73,28 @@ class _VendorDashboardState extends ConsumerState<VendorDashboard> {
 }
 
 class _VendorDashboardTab extends ConsumerWidget {
-  final ValueChanged<int>? onNavigateToTab;
+  final Function(int)? onNavigateToTab;
 
   const _VendorDashboardTab({this.onNavigateToTab});
 
-  String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    // Get notification count for app bar
+    final notificationsAsync = ref.watch(vendorNotificationsProvider(true)); // unread only
+    final notificationCount = notificationsAsync.maybeWhen(
+      data: (notifications) => notifications.length,
+      orElse: () => null,
+    );
     
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Vendor Dashboard'),
+    return GEScreen.scrollable(
+      appBar: GEAppBar.withRole(
+        title: 'Vendor Dashboard',
+        userRole: UserRole.vendor,
+        backgroundColor: Colors.green,
+        onNotificationTap: () => _showNotificationsBottomSheet(context, ref),
+        notificationCount: notificationCount,
+        onProfileTap: () => onNavigateToTab?.call(4), // Navigate to profile tab
         actions: [
-          Consumer(
-            builder: (context, ref, child) {
-              // TODO: Restore vendorNotificationsProvider when provider is implemented - commented out for analyzer cleanup
-              // final notificationsAsync = ref.watch(vendorNotificationsProvider(true)); // unread only
-              final notificationsAsync = AsyncValue.data(<Map<String, dynamic>>[]); // Placeholder
-
-              return notificationsAsync.when(
-                data: (notifications) {
-                  final unreadCount = notifications.length;
-                  return IconButton(
-                    icon: unreadCount > 0
-                      ? Badge(
-                          label: Text(unreadCount > 99 ? '99+' : unreadCount.toString()),
-                          child: const Icon(Icons.notifications_outlined),
-                        )
-                      : const Icon(Icons.notifications_outlined),
-                    onPressed: () {
-                      // Show notifications bottom sheet
-                      _showNotificationsBottomSheet(context, ref);
-                    },
-                  );
-                },
-                loading: () => IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: () {
-                    _showNotificationsBottomSheet(context, ref);
-                  },
-                ),
-                error: (_, _) => IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: () {
-                    _showNotificationsBottomSheet(context, ref);
-                  },
-                ),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.developer_mode),
             onPressed: () {
@@ -184,644 +102,428 @@ class _VendorDashboardTab extends ConsumerWidget {
             },
             tooltip: 'Vendor Developer Tools',
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              // TODO: Restore when AppRoutes is implemented
-              // context.go(AppRoutes.settings);
-              context.go('/settings'); // Placeholder route
-            },
+        ],
+      ),
+      onRefresh: () async {
+        // Refresh all dashboard data
+        ref.invalidate(vendorDashboardMetricsProvider);
+        ref.invalidate(vendorTotalOrdersProvider);
+        ref.invalidate(vendorRatingMetricsProvider);
+        ref.invalidate(vendorNotificationsProvider);
+        await Future.delayed(const Duration(milliseconds: 500));
+      },
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Welcome Header
+          _buildWelcomeHeader(ref),
+
+          // Today's Metrics Section
+          GESection(
+            title: 'Today\'s Performance',
+            subtitle: 'Key metrics for today',
+            child: _buildTodayMetrics(ref),
+          ),
+
+          // Weekly Performance Section
+          GESection(
+            title: 'Weekly Performance',
+            subtitle: 'Last 7 days overview',
+            child: _buildWeeklyPerformance(ref),
+          ),
+
+          // Overall Statistics Section
+          GESection(
+            title: 'Overall Statistics',
+            subtitle: 'All-time performance data',
+            child: _buildOverallStats(ref),
+          ),
+
+          // Quick Actions Section
+          GESection(
+            title: 'Quick Actions',
+            subtitle: 'Common vendor tasks',
+            child: _buildQuickActions(),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          debugPrint('🔄 [VENDOR-DASHBOARD] Refreshing vendor data...');
+    );
+  }
 
-          // Refresh all vendor data
-          ref.invalidate(currentVendorProvider);
-          ref.invalidate(vendorDashboardMetricsProvider);
-          ref.invalidate(vendorTotalOrdersProvider);
-          ref.invalidate(vendorRatingMetricsProvider);
-          ref.invalidate(vendorNotificationsProvider);
+  /// Build welcome header with vendor information
+  Widget _buildWelcomeHeader(WidgetRef ref) {
+    final vendorAsync = ref.watch(currentVendorProvider);
 
-          // Wait for the data to refresh
-          try {
-            await Future.wait([
-              ref.read(currentVendorProvider.future),
-              ref.read(vendorDashboardMetricsProvider.future),
-              ref.read(vendorTotalOrdersProvider.future),
-              ref.read(vendorRatingMetricsProvider.future),
-            ]);
-            debugPrint('✅ [VENDOR-DASHBOARD] Data refresh completed');
-          } catch (e) {
-            debugPrint('❌ [VENDOR-DASHBOARD] Data refresh failed: $e');
-          }
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Welcome Section
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.colorScheme.primary,
-                      theme.colorScheme.primary.withValues(alpha: 0.8),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+    return vendorAsync.when(
+      data: (vendor) {
+        if (vendor == null) return const SizedBox.shrink();
+
+        final now = DateTime.now();
+        final greeting = _getTimeBasedGreeting(now);
+
+        return Builder(
+          builder: (context) => Container(
+            padding: const EdgeInsets.all(GESpacing.screenPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$greeting!',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: GETypography.semiBold,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
-                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Consumer(
-                      builder: (context, ref, child) {
-                        debugPrint('🏪 [VENDOR-DASHBOARD] Building header section...');
-                        final vendorAsync = ref.watch(currentVendorProvider);
-                        final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
-
-                        return vendorAsync.when(
-                          data: (vendor) {
-                            final vendorName = vendor?.businessName ?? 'Vendor';
-                            final pendingOrders = metricsAsync.when(
-                              data: (metrics) => metrics['pending_orders'] ?? 0,
-                              loading: () => 0,
-                              error: (_, _) => 0,
-                            );
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Welcome, $vendorName!',
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  pendingOrders > 0
-                                    ? 'You have $pendingOrders new orders to process'
-                                    : 'No pending orders at the moment',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                          loading: () => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Welcome!',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Loading...',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                          error: (error, _) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Welcome!',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Error loading data',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Quick Stats
-              Consumer(
-                builder: (context, ref, child) {
-                  debugPrint('📊 [VENDOR-DASHBOARD] Building quick stats section...');
-                  final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
-
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: metricsAsync.when(
-                          data: (metrics) {
-                            final todayRevenue = metrics['today_revenue'] ?? 0.0;
-                            return DashboardCard(
-                              title: 'Today\'s Revenue',
-                              value: 'RM ${todayRevenue.toStringAsFixed(2)}',
-                              subtitle: 'Today',
-                              icon: Icons.trending_up,
-                              color: Colors.green,
-                            );
-                          },
-                          loading: () => DashboardCard(
-                            title: 'Today\'s Revenue',
-                            value: '...',
-                            subtitle: 'Loading...',
-                            icon: Icons.trending_up,
-                            color: Colors.green,
-                          ),
-                          error: (_, _) => DashboardCard(
-                            title: 'Today\'s Revenue',
-                            value: 'RM 0.00',
-                            subtitle: 'Error',
-                            icon: Icons.trending_up,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: metricsAsync.when(
-                          data: (metrics) {
-                            final pendingOrders = metrics['pending_orders'] ?? 0;
-                            return DashboardCard(
-                              title: 'Pending Orders',
-                              value: '$pendingOrders',
-                              subtitle: pendingOrders > 0 ? 'Needs attention' : 'All caught up',
-                              icon: Icons.pending_actions,
-                              color: pendingOrders > 0 ? Colors.orange : Colors.green,
-                            );
-                          },
-                          loading: () => DashboardCard(
-                            title: 'Pending Orders',
-                            value: '...',
-                            subtitle: 'Loading...',
-                            icon: Icons.pending_actions,
-                            color: Colors.orange,
-                          ),
-                          error: (_, _) => DashboardCard(
-                            title: 'Pending Orders',
-                            value: '0',
-                            subtitle: 'Error',
-                            icon: Icons.pending_actions,
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Consumer(
-                builder: (context, ref, child) {
-                  debugPrint('📈 [VENDOR-DASHBOARD] Building metrics section...');
-                  final totalOrdersAsync = ref.watch(vendorTotalOrdersProvider);
-                  final ratingMetricsAsync = ref.watch(vendorRatingMetricsProvider);
-
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: totalOrdersAsync.when(
-                          data: (totalOrders) => DashboardCard(
-                            title: 'Total Orders',
-                            value: '$totalOrders',
-                            subtitle: 'All time',
-                            icon: Icons.receipt_long,
-                            color: Colors.blue,
-                          ),
-                          loading: () => DashboardCard(
-                            title: 'Total Orders',
-                            value: '...',
-                            subtitle: 'Loading...',
-                            icon: Icons.receipt_long,
-                            color: Colors.blue,
-                          ),
-                          error: (_, _) => DashboardCard(
-                            title: 'Total Orders',
-                            value: '0',
-                            subtitle: 'Error',
-                            icon: Icons.receipt_long,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ratingMetricsAsync.when(
-                          data: (metrics) => DashboardCard(
-                            title: 'Rating',
-                            value: '${metrics['rating']}',
-                            subtitle: 'Based on ${metrics['total_reviews']} orders',
-                            icon: Icons.star,
-                            color: Colors.amber,
-                          ),
-                          loading: () => DashboardCard(
-                            title: 'Rating',
-                            value: '...',
-                            subtitle: 'Loading...',
-                            icon: Icons.star,
-                            color: Colors.amber,
-                          ),
-                          error: (_, _) => DashboardCard(
-                            title: 'Rating',
-                            value: '0.0',
-                            subtitle: 'Error',
-                            icon: Icons.star,
-                            color: Colors.amber,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Quick Actions
-              Text(
-                'Quick Actions',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: QuickActionButton(
-                      icon: Icons.add_circle,
-                      title: 'Add Menu Item', // Changed from label to title
-                      onTap: () {
-                        // Navigate to menu tab
-                        onNavigateToTab?.call(2);
-                      },
-                    ),
+                const SizedBox(height: GESpacing.xs),
+                Text(
+                  'Welcome back to ${vendor.businessName}',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: QuickActionButton(
-                      icon: Icons.inventory,
-                      title: 'Update Stock', // Changed from label to title
-                      onTap: () {
-                        // Navigate to menu tab
-                        onNavigateToTab?.call(2);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: QuickActionButton(
-                      icon: Icons.analytics,
-                      title: 'View Reports', // Changed from label to title
-                      onTap: () {
-                        // Navigate to analytics tab
-                        onNavigateToTab?.call(3);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-
-              
-              const SizedBox(height: 24),
-              
-              // Recent Orders
-              Text(
-                'Recent Orders',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Real orders from Supabase using proper Riverpod provider
-              Consumer(
-                key: const ValueKey('vendor_dashboard_orders_consumer'),
-                builder: (context, ref, child) {
-                  debugPrint('📋 [VENDOR-DASHBOARD] Building orders section...');
-                  final ordersStream = ref.watch(ordersStreamProvider(null));
-
-                  return ordersStream.when(
-                    data: (orders) {
-                      // Show only recent orders (last 5)
-                      final recentOrders = orders.take(5).toList();
-
-                      if (recentOrders.isEmpty) {
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.receipt_long_outlined,
-                                  size: 48,
-                                  color: theme.colorScheme.outline,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'No orders yet',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    color: theme.colorScheme.outline,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Orders will appear here when customers place them',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.outline,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      return Column(
-                        children: recentOrders.map((order) {
-                          Color statusColor;
-                          switch (order.status) {
-                            case OrderStatus.pending:
-                              statusColor = Colors.orange;
-                              break;
-                            case OrderStatus.confirmed:
-                              statusColor = Colors.blue;
-                              break;
-                            case OrderStatus.preparing:
-                              statusColor = Colors.purple;
-                              break;
-                            case OrderStatus.ready:
-                              statusColor = Colors.green;
-                              break;
-                            case OrderStatus.outForDelivery:
-                              statusColor = Colors.indigo;
-                              break;
-                            case OrderStatus.delivered:
-                              statusColor = Colors.teal;
-                              break;
-                            case OrderStatus.cancelled:
-                              statusColor = Colors.red;
-                              break;
-                          }
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: statusColor.withValues(alpha: 0.1),
-                                child: Icon(
-                                  Icons.restaurant,
-                                  color: statusColor,
-                                ),
-                              ),
-                              title: Text('Order #${order.id.substring(0, 8)}'),
-                              subtitle: Text(
-                                '${order.customerName} • ${_formatDateTime(order.createdAt)}',
-                              ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  order.status.name.toUpperCase(),
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              onTap: () {
-                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] Dashboard order card tapped for order: ${order.id}');
-                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] Order number: ${order.orderNumber}');
-                                final route = '/vendor/dashboard/order-details/${order.id}';
-                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] Navigating to route: $route');
-                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] About to call context.push()...');
-                                context.push(route);
-                                debugPrint('🔍 [DASHBOARD-ORDER-TAP] context.push() completed');
-                              },
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                    error: (error, stack) => Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'Error loading orders: $error',
-                          style: TextStyle(color: theme.colorScheme.error),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                const SizedBox(height: GESpacing.sm),
+                Text(
+                  _getFormattedDate(now),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+
+  /// Build today's metrics section with GE components
+  Widget _buildTodayMetrics(WidgetRef ref) {
+    final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
+
+    return metricsAsync.when(
+      data: (metrics) {
+        final todayRevenue = metrics['today_revenue'] ?? 0.0;
+        final activeOrders = (metrics['pending_orders'] ?? 0) +
+                           (metrics['confirmed_orders'] ?? 0) +
+                           (metrics['preparing_orders'] ?? 0) +
+                           (metrics['ready_orders'] ?? 0) +
+                           (metrics['out_for_delivery_orders'] ?? 0);
+        final yesterdayRevenue = metrics['yesterday_revenue'] ?? 0.0;
+        final todayOrders = metrics['today_orders'] ?? 0;
+
+        // Calculate trend for revenue
+        final revenueTrend = _calculateTrend(todayRevenue, yesterdayRevenue);
+        final isPositiveTrend = revenueTrend.startsWith('+');
+
+        return Row(
+          children: [
+            Expanded(
+              child: GEDashboardCard(
+                title: 'Today\'s Revenue',
+                value: 'RM ${todayRevenue.toStringAsFixed(2)}',
+                subtitle: '$todayOrders orders today',
+                icon: Icons.trending_up,
+                trend: revenueTrend,
+                isPositiveTrend: isPositiveTrend,
+                iconColor: isPositiveTrend ? Colors.green : Colors.red,
+              ),
+            ),
+            const SizedBox(width: GESpacing.md),
+            Expanded(
+              child: GEDashboardCard(
+                title: 'Active Orders',
+                value: '$activeOrders',
+                subtitle: activeOrders > 0 ? 'Orders in progress' : 'No active orders',
+                icon: Icons.receipt_long,
+                iconColor: activeOrders > 0 ? Colors.blue : Colors.grey,
+                onTap: () => onNavigateToTab?.call(1), // Navigate to orders tab
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Row(
+        children: [
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Today\'s Revenue',
+              value: 'RM 0.00',
+              subtitle: 'Loading...',
+              icon: Icons.trending_up,
+              isLoading: true,
+            ),
+          ),
+          SizedBox(width: GESpacing.md),
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Active Orders',
+              value: '0',
+              subtitle: 'Loading...',
+              icon: Icons.receipt_long,
+              isLoading: true,
+            ),
+          ),
+        ],
+      ),
+      error: (_, _) => const Row(
+        children: [
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Today\'s Revenue',
+              value: 'RM 0.00',
+              subtitle: 'Error loading data',
+              icon: Icons.trending_up,
+            ),
+          ),
+          SizedBox(width: GESpacing.md),
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Active Orders',
+              value: '0',
+              subtitle: 'Error loading data',
+              icon: Icons.receipt_long,
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  /// Build weekly performance section with GE components
+  Widget _buildWeeklyPerformance(WidgetRef ref) {
+    final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
+
+    return metricsAsync.when(
+      data: (metrics) {
+        final weeklyRevenue = metrics['weekly_revenue'] ?? 0.0;
+        final weeklyOrders = metrics['weekly_orders'] ?? 0;
+        final avgOrderValue = weeklyOrders > 0 ? weeklyRevenue / weeklyOrders : 0.0;
+
+        return Row(
+          children: [
+            Expanded(
+              child: GEDashboardCard(
+                title: 'Weekly Revenue',
+                value: 'RM ${weeklyRevenue.toStringAsFixed(2)}',
+                subtitle: '$weeklyOrders orders this week',
+                icon: Icons.calendar_today,
+                iconColor: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: GESpacing.md),
+            Expanded(
+              child: GEDashboardCard(
+                title: 'Avg Order Value',
+                value: 'RM ${avgOrderValue.toStringAsFixed(2)}',
+                subtitle: 'Per order average',
+                icon: Icons.receipt,
+                iconColor: Colors.purple,
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Row(
+        children: [
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Weekly Revenue',
+              value: 'RM 0.00',
+              subtitle: 'Loading...',
+              icon: Icons.calendar_today,
+              isLoading: true,
+            ),
+          ),
+          SizedBox(width: GESpacing.md),
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Avg Order Value',
+              value: 'RM 0.00',
+              subtitle: 'Loading...',
+              icon: Icons.receipt,
+              isLoading: true,
+            ),
+          ),
+        ],
+      ),
+      error: (_, _) => const Row(
+        children: [
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Weekly Revenue',
+              value: 'RM 0.00',
+              subtitle: 'Error loading data',
+              icon: Icons.calendar_today,
+            ),
+          ),
+          SizedBox(width: GESpacing.md),
+          Expanded(
+            child: GEDashboardCard(
+              title: 'Avg Order Value',
+              value: 'RM 0.00',
+              subtitle: 'Error loading data',
+              icon: Icons.receipt,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build overall statistics section with GE components
+  Widget _buildOverallStats(WidgetRef ref) {
+    final totalOrdersAsync = ref.watch(vendorTotalOrdersProvider);
+    final ratingMetricsAsync = ref.watch(vendorRatingMetricsProvider);
+
+    return Row(
+      children: [
+        // Total Orders Card
+        Expanded(
+          child: totalOrdersAsync.when(
+            data: (totalOrders) => GEDashboardCard(
+              title: 'Total Orders',
+              value: '$totalOrders',
+              subtitle: 'All time',
+              icon: Icons.receipt_long,
+              iconColor: Colors.blue,
+            ),
+            loading: () => const GEDashboardCard(
+              title: 'Total Orders',
+              value: '0',
+              subtitle: 'Loading...',
+              icon: Icons.receipt_long,
+              isLoading: true,
+            ),
+            error: (_, _) => const GEDashboardCard(
+              title: 'Total Orders',
+              value: '0',
+              subtitle: 'Error loading data',
+              icon: Icons.receipt_long,
+            ),
+          ),
+        ),
+
+        const SizedBox(width: GESpacing.md),
+
+        // Rating Card
+        Expanded(
+          child: ratingMetricsAsync.when(
+            data: (metrics) {
+              final rating = metrics['rating'] ?? 0.0;
+              final totalReviews = metrics['total_reviews'] ?? 0;
+              final completionRate = metrics['completion_rate'] ?? 0.0;
+              final ratingColor = _getRatingColor(rating);
+
+              return GEDashboardCard(
+                title: 'Customer Rating',
+                value: rating > 0 ? '${rating.toStringAsFixed(1)} ⭐' : 'No rating',
+                subtitle: totalReviews > 0
+                    ? '$totalReviews reviews • ${completionRate.toStringAsFixed(1)}% completion'
+                    : 'No reviews yet',
+                icon: Icons.star,
+                iconColor: ratingColor,
+              );
+            },
+            loading: () => const GEDashboardCard(
+              title: 'Customer Rating',
+              value: '0.0',
+              subtitle: 'Loading...',
+              icon: Icons.star,
+              isLoading: true,
+            ),
+            error: (_, _) => const GEDashboardCard(
+              title: 'Customer Rating',
+              value: 'N/A',
+              subtitle: 'Error loading data',
+              icon: Icons.star,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build quick actions section
+  Widget _buildQuickActions() {
+    return Row(
+      children: [
+        Expanded(
+          child: QuickActionButton(
+            icon: Icons.add_circle,
+            label: 'Add Menu Item',
+            color: Colors.green,
+            onTap: () => onNavigateToTab?.call(2), // Navigate to menu tab
+          ),
+        ),
+        const SizedBox(width: GESpacing.sm),
+        Expanded(
+          child: QuickActionButton(
+            icon: Icons.inventory,
+            label: 'Update Stock',
+            color: Colors.orange,
+            onTap: () => onNavigateToTab?.call(2), // Navigate to menu tab
+          ),
+        ),
+        const SizedBox(width: GESpacing.sm),
+        Expanded(
+          child: QuickActionButton(
+            icon: Icons.analytics,
+            label: 'View Reports',
+            color: Colors.purple,
+            onTap: () => onNavigateToTab?.call(3), // Navigate to analytics tab
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Show notifications bottom sheet
   void _showNotificationsBottomSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.3,
-        expand: false,
-        builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(context).dividerColor,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Text(
-                      'Notifications',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Consumer(
-                  builder: (context, ref, child) {
-                    debugPrint('🔔 [VENDOR-DASHBOARD] Building notifications section...');
-                    final notificationsAsync = ref.watch(vendorNotificationsProvider(null)); // all notifications
-
-                    return notificationsAsync.when(
-                      data: (notifications) {
-                        if (notifications.isEmpty) {
-                          return const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.notifications_none,
-                                  size: 64,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No notifications yet',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          controller: scrollController,
-                          itemCount: notifications.length,
-                          itemBuilder: (context, index) {
-                            final notification = notifications[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: notification['is_read'] == true
-                                  ? Colors.grey.withValues(alpha: 0.3)
-                                  : Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                                child: Icon(
-                                  _getNotificationIcon(notification['type'] ?? 'info'),
-                                  color: notification['is_read'] == true
-                                    ? Colors.grey
-                                    : Theme.of(context).primaryColor,
-                                ),
-                              ),
-                              title: Text(
-                                notification['title'] ?? 'Notification',
-                                style: TextStyle(
-                                  fontWeight: notification['is_read'] == true
-                                    ? FontWeight.normal
-                                    : FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Text(notification['message'] ?? ''),
-                              trailing: Text(
-                                _formatDateTime(DateTime.parse(notification['created_at'])),
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              onTap: () {
-                                // Mark as read and handle action
-                                if (notification['action_url'] != null) {
-                                  // Navigate to action URL
-                                }
-                              },
-                            );
-                          },
-                        );
-                      },
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                      error: (error, _) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 64,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Error loading notifications: $error',
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    // TODO: Implement notifications bottom sheet
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Notifications feature coming soon!')),
     );
   }
 
-  IconData _getNotificationIcon(String type) {
-    switch (type) {
-      case 'success':
-        return Icons.check_circle;
-      case 'warning':
-        return Icons.warning;
-      case 'error':
-        return Icons.error;
-      case 'info':
-      default:
-        return Icons.info;
+  /// Calculate trend percentage between current and previous values
+  String _calculateTrend(double current, double previous) {
+    if (previous == 0) {
+      return current > 0 ? '+100%' : '0%';
     }
+
+    final percentage = ((current - previous) / previous * 100);
+    final sign = percentage >= 0 ? '+' : '';
+    return '$sign${percentage.toStringAsFixed(1)}%';
   }
 
+  /// Get color based on rating value
+  Color _getRatingColor(double rating) {
+    if (rating >= 4.5) return Colors.green;
+    if (rating >= 4.0) return Colors.lightGreen;
+    if (rating >= 3.5) return Colors.orange;
+    if (rating >= 3.0) return Colors.deepOrange;
+    return Colors.red;
+  }
 
+  /// Get time-based greeting
+  String _getTimeBasedGreeting(DateTime now) {
+    final hour = now.hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  /// Get formatted date string
+  String _getFormattedDate(DateTime date) {
+    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November', 'December'];
+
+    final weekday = weekdays[date.weekday - 1];
+    final month = months[date.month - 1];
+
+    return '$weekday, $month ${date.day}, ${date.year}';
+  }
 }
-
-

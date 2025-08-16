@@ -1,26 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
-// TODO: Restore when customer_profile_provider is implemented
-// import '../providers/customer_profile_provider.dart';
+// Customer-specific providers
 import '../providers/customer_order_provider.dart';
 import '../../providers/customer_address_provider.dart' as address_provider;
-// TODO: Restore when loyalty_provider is used
-// import '../providers/loyalty_provider.dart';
-// TODO: Restore when auth_provider is used
-// import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
-// Order-related imports - using the correct path that matches the provider
+// Order-related imports
 import '../../../../orders/data/models/order.dart';
 
 // Wallet-related imports
 import '../../../../marketplace_wallet/presentation/providers/customer_wallet_provider.dart';
 import '../../../../marketplace_wallet/presentation/widgets/customer_wallet_balance_card.dart';
 
-
-
+// Design system imports
+import '../../../../../design_system/design_system.dart';
+import '../../../../../data/models/user_role.dart';
 
 class CustomerDashboard extends ConsumerStatefulWidget {
   const CustomerDashboard({super.key});
@@ -30,513 +25,442 @@ class CustomerDashboard extends ConsumerStatefulWidget {
 }
 
 class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
+  int _selectedIndex = 0;
+  
+  // Use GE navigation configuration for customer role
+  final _navigationConfig = GERoleNavigationConfig.customer;
 
   @override
   void initState() {
     super.initState();
-    // Load customer profile when dashboard opens
+    // Load customer data when dashboard opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // TODO: Restore when customerProfileProvider.notifier is implemented
-      // ref.read(customerProfileProvider.notifier).loadProfile();
-
       // Load customer addresses for dashboard display
       ref.read(address_provider.customerAddressesProvider.notifier).loadAddresses();
-
+      
       // Load customer wallet data
       ref.read(customerWalletProvider.notifier).loadWallet();
-
-      // 🧪 [LOYALTY-TEST] Load loyalty data for testing real-time updates
+      
       print('🧪 [LOYALTY-TEST] Loading loyalty data from dashboard...');
-      // TODO: Restore when loyaltyProvider.notifier.loadLoyaltyData is implemented
-      // ref.read(loyaltyProvider.notifier).loadLoyaltyData(forceRefresh: true);
     });
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    // TODO: Restore when customerProfileProvider watch is implemented
-    // final profileState = ref.watch(customerProfileProvider);
-    // TODO: Restore when authStateProvider is implemented
-    // final authState = ref.watch(authStateProvider);
-    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: _selectedIndex == 0 ? AppBar(
         title: const Text('GigaEats'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        elevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.push('/customer/notifications'),
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Notifications feature coming soon!')),
+              );
+            },
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/customer/settings'),
+            icon: const Icon(Icons.person),
+            onPressed: () => context.push('/customer/profile'),
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // TODO: Restore when customerProfileProvider.notifier is implemented
-          // ref.read(customerProfileProvider.notifier).refresh();
-
-          // Refresh wallet data
-          await ref.read(customerWalletProvider.notifier).loadWallet(forceRefresh: true);
-
-          // Refresh addresses
-          ref.read(address_provider.customerAddressesProvider.notifier).loadAddresses();
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // TODO: Restore when profileState and authState are implemented
-              // _buildWelcomeSection(context, profileState, authState),
-              _buildWelcomeSection(context, <String, dynamic>{}, <String, dynamic>{}),
-              const SizedBox(height: 24),
-
-              // Wallet Balance Card
-              Consumer(
-                builder: (context, ref, child) {
-                  final walletState = ref.watch(customerWalletProvider);
-                  final balanceKey = walletState.wallet?.availableBalance.toString() ?? 'no-wallet';
-                  return CustomerWalletBalanceCard(
-                    key: ValueKey('wallet-balance-$balanceKey'),
-                    compact: true,
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-
-              _buildStatsSection(context),
-              const SizedBox(height: 24),
-              _buildRecentOrdersSection(context),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNavigation(context),
-    );
-  }
-
-  // TODO: Restore when CustomerProfileState and AuthState classes are implemented
-  Widget _buildWelcomeSection(BuildContext context, Map<String, dynamic> profileState, Map<String, dynamic> authState) {
-    final theme = Theme.of(context);
-    final profile = profileState['profile'];
-    final user = authState['user'];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withValues(alpha: 0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: theme.colorScheme.onPrimary.withValues(alpha: 0.2),
-            backgroundImage: profile?.profileImageUrl != null
-                ? NetworkImage(profile!.profileImageUrl!)
-                : null,
-            child: profile?.profileImageUrl == null
-                ? Icon(
-                    Icons.person,
-                    size: 30,
-                    color: theme.colorScheme.onPrimary,
-                  )
-                : null,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      ) : null,
+      body: _selectedIndex == 0
+        ? RefreshIndicator(
+            onRefresh: () async {
+              // Refresh customer data
+              ref.invalidate(customerOrdersProvider(''));
+              ref.invalidate(customerWalletProvider);
+              ref.invalidate(address_provider.customerAddressesProvider);
+              await Future.delayed(const Duration(milliseconds: 500));
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  'Welcome back!',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
-                  ),
-                ),
-                Text(
-                  profile?.fullName ?? user?.fullName ?? 'Customer',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: theme.colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (profile?.loyaltyPoints != null && profile!.loyaltyPoints > 0)
-                  Text(
-                    '${profile.loyaltyPoints} loyalty points',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
-                    ),
-                  ),
+                _buildWelcomeCard(context),
+                const SizedBox(height: 24),
+                _buildQuickStats(context, ref),
+                const SizedBox(height: 24),
+                _buildWalletSection(ref),
+                const SizedBox(height: 24),
+                _buildRecentOrders(context, ref),
               ],
             ),
-          ),
-        ],
+          )
+        : _buildCurrentTab(),
+      bottomNavigationBar: GEBottomNavigation.navigationBar(
+        destinations: _navigationConfig.destinations,
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+          // Only navigate for non-dashboard tabs
+          if (index != 0) {
+            _handleNavigation(context, index);
+          }
+        },
+        userRole: UserRole.customer,
       ),
     );
   }
 
-
-
-
-  Widget _buildStatsSection(BuildContext context) {
-    // TODO: Restore when customerStatsProvider watch is implemented
-    // final stats = ref.watch(customerStatsProvider);
-    final stats = <String, dynamic>{}; // Placeholder
-    final theme = Theme.of(context);
-
-    if (stats.isEmpty) {
-      return const SizedBox.shrink();
+  Widget _buildCurrentTab() {
+    // For customer dashboard, we only show content for the home tab (index 0)
+    // All other tabs should navigate to their respective screens
+    switch (_selectedIndex) {
+      case 0:
+        return const _CustomerDashboardTab();
+      default:
+        // This should not be reached as navigation should occur
+        return const _CustomerDashboardTab();
     }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your Stats',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                context,
-                title: 'Total Orders',
-                value: '${stats['totalOrders'] ?? 0}',
-                icon: Icons.receipt_long,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                context,
-                title: 'Total Spent',
-                value: 'RM ${(stats['totalSpent'] ?? 0.0).toStringAsFixed(2)}',
-                icon: Icons.attach_money,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 
-  Widget _buildStatCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
-    final theme = Theme.of(context);
-    
+  void _handleNavigation(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        // Already on dashboard - no navigation needed
+        break;
+      case 1:
+        // Navigate to restaurants screen
+        context.push('/customer/restaurants');
+        break;
+      case 2:
+        // Navigate to orders screen
+        context.push('/customer/orders');
+        break;
+      case 3:
+        // Navigate to wallet screen
+        context.push('/customer/wallet');
+        break;
+    }
+  }
+
+  Widget _buildWelcomeCard(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            Text(
-              title,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentOrdersSection(BuildContext context) {
-    debugPrint('🔍 [CUSTOMER-DASHBOARD] ===== _buildRecentOrdersSection CALLED =====');
-
-    final recentOrdersAsync = ref.watch(currentCustomerRecentOrdersProvider);
-
-    debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent orders async state: ${recentOrdersAsync.runtimeType}');
-    recentOrdersAsync.when(
-      data: (orders) {
-        debugPrint('🔍 [CUSTOMER-DASHBOARD] Received ${orders.length} orders from recent orders provider');
-        final statusCounts = <String, int>{};
-        for (final order in orders) {
-          final status = order.status.value;
-          statusCounts[status] = (statusCounts[status] ?? 0) + 1;
-        }
-        debugPrint('🔍 [CUSTOMER-DASHBOARD] Status distribution: $statusCounts');
-
-        // Log recent orders details
-        for (int i = 0; i < orders.length && i < 5; i++) {
-          final order = orders[i];
-          debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent order ${i + 1}: ${order.orderNumber} - ${order.status.value} (${order.status.displayName}) - ${order.items.length} items');
-        }
-      },
-      loading: () => debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent orders are loading...'),
-      error: (error, stack) => debugPrint('🔍 [CUSTOMER-DASHBOARD] Recent orders error: $error'),
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Recent Orders',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            TextButton(
-              onPressed: () => context.push('/customer/orders'),
-              child: const Text('View All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        recentOrdersAsync.when(
-          data: (orders) {
-            if (orders.isEmpty) {
-              return _buildEmptyOrdersCard(context);
-            }
-            return Column(
-              children: orders.take(3).map((order) => _buildOrderCard(context, order)).toList(),
-            );
-          },
-          loading: () => const Card(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          ),
-          error: (error, stack) => Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: Colors.red[400],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Failed to load orders',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Please try again later',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-
-
-  Widget _buildBottomNavigation(BuildContext context) {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0, // Dashboard is selected
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            // Already on dashboard
-            break;
-          case 1:
-            context.push('/customer/restaurants');
-            break;
-          case 2:
-            context.push('/customer/cart');
-            break;
-          case 3:
-            context.push('/customer/orders');
-            break;
-          case 4:
-            context.push('/customer/profile');
-            break;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.restaurant),
-          label: 'Restaurants',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart),
-          label: 'Cart',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.receipt),
-          label: 'Orders',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyOrdersCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(
-              Icons.receipt_outlined,
-              size: 48,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No recent orders',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Start ordering to see your order history here',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrderCard(BuildContext context, Order order) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => context.push('/customer/order/${order.id}'),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Order header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Order #${order.orderNumber}',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          order.vendorName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildStatusChip(order.status, theme),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Order details
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'RM ${order.totalAmount.toStringAsFixed(2)}',
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        'Hungry?',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
-                        '${order.items.length} item${order.items.length != 1 ? 's' : ''}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
+                        'Discover amazing restaurants near you',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                ),
+                const Icon(
+                  Icons.restaurant_menu,
+                  size: 48,
+                  color: Colors.orange,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.search),
+                label: const Text('Browse Restaurants'),
+                onPressed: () => context.push('/restaurants'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStats(BuildContext context, WidgetRef ref) {
+    final ordersAsync = ref.watch(customerOrdersProvider(''));
+
+    return ordersAsync.when(
+      data: (orders) {
+        final totalOrders = orders.length;
+        final totalSpent = orders.fold<double>(
+          0.0,
+          (sum, order) => sum + order.totalAmount,
+        );
+
+        return Row(
+          children: [
+            Expanded(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                     children: [
+                      const Icon(Icons.receipt_long, size: 32),
+                      const SizedBox(height: 8),
                       Text(
-                        DateFormat('MMM dd, yyyy').format(order.createdAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        '$totalOrders',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        DateFormat('hh:mm a').format(order.createdAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
+                      const Text('Total Orders'),
                     ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.attach_money, size: 32),
+                      const SizedBox(height: 8),
+                      Text(
+                        'RM ${totalSpent.toStringAsFixed(2)}',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text('Total Spent'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => Row(
+        children: [
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Icon(Icons.receipt_long, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      '0',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text('Loading...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Icon(Icons.attach_money, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      'RM 0.00',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text('Loading...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      error: (_, stackTrace) => Row(
+        children: [
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Icon(Icons.receipt_long, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      '0',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text('Error'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Icon(Icons.attach_money, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      'RM 0.00',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text('Error'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWalletSection(WidgetRef ref) {
+    return const CustomerWalletBalanceCard();
+  }
+
+  Widget _buildRecentOrders(BuildContext context, WidgetRef ref) {
+    final ordersAsync = ref.watch(customerOrdersProvider(''));
+
+    return ordersAsync.when(
+      data: (orders) {
+        if (orders.isEmpty) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.receipt_long_outlined,
+                    size: 48,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No orders yet',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start by browsing restaurants',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.push('/restaurants'),
+                    child: const Text('Browse Restaurants'),
                   ),
                 ],
+              ),
+            ),
+          );
+        }
+
+        // Show recent orders (last 3)
+        final recentOrders = orders.take(3).toList();
+
+        return Column(
+          children: recentOrders.map((order) {
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: _getStatusColor(order.status).withValues(alpha: 0.1),
+                  child: Icon(
+                    _getStatusIcon(order.status),
+                    color: _getStatusColor(order.status),
+                  ),
+                ),
+                title: Text('Order #${order.id.substring(0, 8)}'),
+                subtitle: Text(
+                  '${order.vendorName} • ${_formatDateTime(order.createdAt)}',
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'RM ${order.totalAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(order.status).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        order.status.name.toUpperCase(),
+                        style: TextStyle(
+                          color: _getStatusColor(order.status),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                onTap: () => context.push('/customer/orders/${order.id}'),
+              ),
+            );
+          }).toList(),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, stackTrace) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading orders',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Please try again later',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey,
+                ),
               ),
             ],
           ),
@@ -545,254 +469,68 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
     );
   }
 
-  Widget _buildStatusChip(OrderStatus status, ThemeData theme) {
-    Color backgroundColor;
-    Color textColor;
-    String text;
-
+  Color _getStatusColor(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
-        backgroundColor = Colors.orange.withValues(alpha: 0.1);
-        textColor = Colors.orange;
-        text = 'Pending';
-        break;
-      case OrderStatus.confirmed:
-        backgroundColor = Colors.blue.withValues(alpha: 0.1);
-        textColor = Colors.blue;
-        text = 'Confirmed';
-        break;
-      case OrderStatus.preparing:
-        backgroundColor = Colors.purple.withValues(alpha: 0.1);
-        textColor = Colors.purple;
-        text = 'Preparing';
-        break;
-      case OrderStatus.ready:
-        backgroundColor = Colors.green.withValues(alpha: 0.1);
-        textColor = Colors.green;
-        text = 'Ready';
-        break;
-      case OrderStatus.outForDelivery:
-        backgroundColor = Colors.indigo.withValues(alpha: 0.1);
-        textColor = Colors.indigo;
-        text = 'Out for Delivery';
-        break;
-      case OrderStatus.delivered:
-        backgroundColor = Colors.green.withValues(alpha: 0.1);
-        textColor = Colors.green;
-        text = 'Delivered';
-        break;
-      case OrderStatus.cancelled:
-        backgroundColor = Colors.red.withValues(alpha: 0.1);
-        textColor = Colors.red;
-        text = 'Cancelled';
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  // TODO: Restore original Order type when conflicts are resolved
-  // Original: Widget _buildOrderCard(BuildContext context, Order order) {
-  // Method removed - replaced with _buildPlaceholderOrderCard to avoid type conflicts
-  /*
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => context.push('/customer/order/${order.id}'),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    order.orderNumber,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(order.status).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _getStatusText(order.status),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: _getStatusColor(order.status),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                order.vendorName,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Delivery type indicator
-              // TODO: Restore when order.deliveryMethod is implemented
-              // _buildDeliveryTypeChip(order.deliveryMethod, theme),
-              _buildDeliveryTypeChip(DeliveryMethod.customerPickup, theme), // Placeholder
-              const SizedBox(height: 8),
-              Text(
-                'RM ${order.totalAmount.toStringAsFixed(2)}',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatDate(order.createdAt),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // TODO: Restore original OrderStatus type when conflicts are resolved
-  // Original: Color _getStatusColor(OrderStatus status) {
-  Color _getStatusColor(orders_order.OrderStatus status) {
-    switch (status) {
-      case orders_order.OrderStatus.pending:
         return Colors.orange;
-      case orders_order.OrderStatus.confirmed:
+      case OrderStatus.confirmed:
         return Colors.blue;
-      case orders_order.OrderStatus.preparing:
+      case OrderStatus.preparing:
         return Colors.purple;
-      case orders_order.OrderStatus.ready:
+      case OrderStatus.ready:
         return Colors.green;
-      case orders_order.OrderStatus.outForDelivery:
+      case OrderStatus.outForDelivery:
+        return Colors.indigo;
+      case OrderStatus.delivered:
         return Colors.teal;
-      case orders_order.OrderStatus.delivered:
-        return Colors.green;
-      case orders_order.OrderStatus.cancelled:
+      case OrderStatus.cancelled:
         return Colors.red;
     }
   }
 
-  // TODO: Restore original OrderStatus type when conflicts are resolved
-  // Original: String _getStatusText(OrderStatus status) {
-  String _getStatusText(orders_order.OrderStatus status) {
+  IconData _getStatusIcon(OrderStatus status) {
     switch (status) {
-      case orders_order.OrderStatus.pending:
-        return 'Pending';
-      case orders_order.OrderStatus.confirmed:
-        return 'Confirmed';
-      case orders_order.OrderStatus.preparing:
-        return 'Preparing';
-      case orders_order.OrderStatus.ready:
-        return 'Ready';
-      case orders_order.OrderStatus.outForDelivery:
-        return 'Out for Delivery';
-      case orders_order.OrderStatus.delivered:
-        return 'Delivered';
-      case orders_order.OrderStatus.cancelled:
-        return 'Cancelled';
+      case OrderStatus.pending:
+        return Icons.schedule;
+      case OrderStatus.confirmed:
+        return Icons.check_circle_outline;
+      case OrderStatus.preparing:
+        return Icons.restaurant;
+      case OrderStatus.ready:
+        return Icons.done_all;
+      case OrderStatus.outForDelivery:
+        return Icons.delivery_dining;
+      case OrderStatus.delivered:
+        return Icons.check_circle;
+      case OrderStatus.cancelled:
+        return Icons.cancel;
     }
   }
 
-  Widget _buildDeliveryTypeChip(DeliveryMethod deliveryMethod, ThemeData theme) {
-    IconData icon;
-    Color color;
-    String label;
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
 
-    switch (deliveryMethod) {
-      case DeliveryMethod.customerPickup:
-        icon = Icons.store;
-        color = Colors.blue;
-        label = 'Pickup';
-        break;
-      case DeliveryMethod.salesAgentPickup:
-        icon = Icons.person_pin_circle;
-        color = Colors.green;
-        label = 'Agent Pickup';
-        break;
-      case DeliveryMethod.ownFleet:
-        icon = Icons.local_shipping;
-        color = Colors.purple;
-        label = 'Own Fleet';
-        break;
-      // TODO: Restore when DeliveryMethod.lalamove is implemented
-      /*case DeliveryMethod.lalamove:
-        icon = Icons.delivery_dining;
-        color = Colors.orange;
-        label = 'Lalamove';
-        break;*/
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
     }
+  }
+}
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+class _CustomerDashboardTab extends ConsumerWidget {
+  const _CustomerDashboardTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // This widget is no longer used since we moved the content to the main build method
+    return const Center(
+      child: Text('Dashboard content moved to main build method'),
     );
   }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return '${difference.inMinutes} minutes ago';
-      }
-      return '${difference.inHours} hours ago';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else {
-      return '${difference.inDays} days ago';
-    }
-  }
-  */
-
 }

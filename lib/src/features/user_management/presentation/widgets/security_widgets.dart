@@ -170,7 +170,7 @@ class BiometricAuthenticationCard extends ConsumerWidget {
                   // TODO: Restore security?.biometricEnabled when provider is implemented - commented out for analyzer cleanup
                   value: (security?['biometricEnabled'] ?? false) as bool, // security?.biometricEnabled ?? false,
                   onChanged: biometricAvailable ? (value) => _toggleBiometric(ref, value) : null,
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 ),
               ],
             ),
@@ -272,7 +272,7 @@ class PINAuthenticationCard extends ConsumerWidget {
                   // TODO: Restore security?.pinEnabled when provider is implemented - commented out for analyzer cleanup
                   value: (security?['pinEnabled'] ?? false) as bool, // security?.pinEnabled ?? false,
                   onChanged: (value) => _togglePIN(context, ref, value),
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 ),
               ],
             ),
@@ -479,7 +479,7 @@ class TransactionSecurityCard extends ConsumerWidget {
                   // TODO: Restore security?.transactionPinRequired when provider is implemented - commented out for analyzer cleanup
                   value: (security?['transactionPinRequired'] ?? false) as bool, // security?.transactionPinRequired ?? false,
                   onChanged: (value) => _toggleTransactionPIN(context, ref, value),
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 ),
               ],
             ),
@@ -591,7 +591,7 @@ class AutoLockSettingsCard extends ConsumerWidget {
                   // TODO: Restore security?.autoLockEnabled when provider is implemented - commented out for analyzer cleanup
                   value: (security?['autoLockEnabled'] ?? false) as bool, // security?.autoLockEnabled ?? false,
                   onChanged: (value) => _toggleAutoLock(context, ref, value),
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 ),
               ],
             ),
@@ -703,7 +703,7 @@ class MFASettingsCard extends ConsumerWidget {
                   // TODO: Restore security?.mfaEnabled when provider is implemented - commented out for analyzer cleanup
                   value: (security?['mfaEnabled'] ?? false) as bool, // security?.mfaEnabled ?? false,
                   onChanged: (value) => _toggleMFA(ref, value),
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 ),
               ],
             ),

@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_method.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+
 import '../../../../customers/presentation/widgets/customer_order_tracking_widget.dart';
 import '../../../../customers/presentation/providers/customer_order_provider.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 import '../../providers/customer/customer_cart_provider.dart';
 import '../../../../menu/data/models/menu_item.dart';
+import '../../../../../design_system/layout/ge_screen.dart';
+import '../../../../../design_system/navigation/ge_app_bar.dart';
+import '../../../../../design_system/navigation/ge_bottom_navigation.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
+import '../../../../../data/models/user_role.dart';
 
 
 class CustomerOrdersScreen extends ConsumerStatefulWidget {
@@ -57,11 +62,10 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
       error: (error, stack) => debugPrint('🔍 [CUSTOMER-ORDERS-SCREEN] Orders error: $error'),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Orders'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
+    return GEScreen(
+      appBar: GEAppBar.withRole(
+        title: 'My Orders',
+        userRole: UserRole.customer,
         actions: [
           // Real-time connection indicator
           ordersAsync.when(
@@ -151,7 +155,30 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
           return _buildErrorState(error.toString());
         },
       ),
-      bottomNavigationBar: _buildBottomNavigation(context),
+      bottomNavigationBar: GEBottomNavigation.navigationBar(
+        destinations: GERoleNavigationConfig.customer.destinations,
+        selectedIndex: 2, // Orders is selected
+        onDestinationSelected: (index) {
+          switch (index) {
+            case 0:
+              context.go('/customer/dashboard');
+              break;
+            case 1:
+              context.push('/customer/restaurants');
+              break;
+            case 2:
+              // Already on orders
+              break;
+            case 3:
+              context.push('/customer/wallet');
+              break;
+            case 4:
+              context.push('/customer/profile');
+              break;
+          }
+        },
+        userRole: UserRole.customer,
+      ),
     );
   }
 
@@ -462,10 +489,9 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            CustomButton(
+            GEButton.primary(
               text: 'Browse Restaurants',
               onPressed: () => context.push('/customer/restaurants'),
-              type: ButtonType.primary,
               icon: Icons.restaurant,
             ),
           ],
@@ -500,11 +526,10 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            CustomButton(
+            GEButton.primary(
               text: 'Try Again',
               onPressed: () async => await ref.read(currentCustomerOrdersProvider.notifier).refresh(),
-              type: ButtonType.primary,
-              isExpanded: false,
+              size: GEButtonSize.medium,
             ),
           ],
         ),
@@ -658,21 +683,17 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
   Widget? _buildOrderActionButton(Order order) {
     // For delivered orders, show reorder button
     if (order.status == OrderStatus.delivered) {
-      return CustomButton(
+      return GEButton.secondary(
         text: 'Reorder',
         onPressed: () => _reorder(order),
-        type: ButtonType.secondary,
-        isExpanded: false,
       );
     }
 
     // For cancelled orders, show contact support
     if (order.status == OrderStatus.cancelled) {
-      return CustomButton(
+      return GEButton.secondary(
         text: 'Contact Support',
         onPressed: () => _contactSupport(order),
-        type: ButtonType.secondary,
-        isExpanded: false,
       );
     }
 
@@ -683,18 +704,15 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
       case DeliveryMethod.customerPickup:
         // For customer pickup orders, show pickup confirmation action when ready
         if (order.status == OrderStatus.ready) {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Mark as Picked Up',
             onPressed: () => _confirmPickup(order),
-            type: ButtonType.primary,
-            isExpanded: false,
             icon: Icons.done,
           );
         } else {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Order Status',
             onPressed: () => _showOrderDetails(order),
-            type: ButtonType.primary,
             isExpanded: false,
           );
         }
@@ -702,17 +720,15 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
       case DeliveryMethod.salesAgentPickup:
         // For sales agent pickup orders, show appropriate action based on status
         if (order.status == OrderStatus.ready) {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Ready for Pickup',
             onPressed: () => _showOrderDetails(order),
-            type: ButtonType.primary,
             isExpanded: false,
           );
         } else {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Order Status',
             onPressed: () => _showOrderDetails(order),
-            type: ButtonType.primary,
             isExpanded: false,
           );
         }
@@ -720,17 +736,15 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
       case DeliveryMethod.ownFleet:
         // For own fleet, show track only if driver is assigned and order is out for delivery
         if (order.status == OrderStatus.outForDelivery && order.assignedDriverId != null) {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Track Order',
             onPressed: () => _trackOrder(order),
-            type: ButtonType.primary,
             isExpanded: false,
           );
         } else {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Order Status',
             onPressed: () => _showOrderDetails(order),
-            type: ButtonType.primary,
             isExpanded: false,
           );
         }
@@ -757,17 +771,15 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
       case DeliveryMethod.thirdParty:
         // For third-party delivery, show appropriate action based on status
         if (order.status == OrderStatus.outForDelivery) {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Track Delivery',
             onPressed: () => _showOrderDetails(order),
-            type: ButtonType.primary,
             isExpanded: false,
           );
         } else {
-          return CustomButton(
+          return GEButton.primary(
             text: 'View Details',
             onPressed: () => _showOrderDetails(order),
-            type: ButtonType.primary,
             isExpanded: false,
           );
         }
@@ -971,51 +983,5 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen>
     }
   }
 
-  Widget _buildBottomNavigation(BuildContext context) {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 3, // Orders is selected
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            context.go('/customer/dashboard');
-            break;
-          case 1:
-            context.push('/customer/restaurants');
-            break;
-          case 2:
-            context.push('/customer/cart');
-            break;
-          case 3:
-            // Already on orders
-            break;
-          case 4:
-            context.push('/customer/profile');
-            break;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.restaurant),
-          label: 'Restaurants',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart),
-          label: 'Cart',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.receipt),
-          label: 'Orders',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-    );
-  }
+
 }

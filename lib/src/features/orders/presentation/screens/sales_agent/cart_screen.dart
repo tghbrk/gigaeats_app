@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 
 import '../providers/cart_provider.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -51,7 +51,7 @@ class CartScreen extends ConsumerWidget {
                 ],
               ),
               child: SafeArea(
-                child: CustomButton(
+                child: GEButton.primary(
                   text: 'Proceed to Checkout - RM ${cartState.totalAmount.toStringAsFixed(2)}',
                   onPressed: () => context.push('/sales-agent/create-order'),
                 ),
@@ -85,7 +85,7 @@ class CartScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          CustomButton(
+          GEButton.primary(
             text: 'Browse Vendors',
             onPressed: () => context.go('/sales-agent'),
           ),

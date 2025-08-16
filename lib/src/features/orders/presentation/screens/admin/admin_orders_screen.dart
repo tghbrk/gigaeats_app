@@ -99,7 +99,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedPeriod,
+                    initialValue: _selectedPeriod,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -608,7 +608,7 @@ class _AdminOrdersScreenState extends ConsumerState<AdminOrdersScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<OrderStatus?>(
-              value: _selectedStatus,
+              initialValue: _selectedStatus,
               decoration: const InputDecoration(labelText: 'Status'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('All Statuses')),

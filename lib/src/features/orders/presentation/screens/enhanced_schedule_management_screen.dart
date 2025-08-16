@@ -8,7 +8,7 @@ import '../providers/checkout_flow_provider.dart';
 import '../../data/services/schedule_validation_service.dart';
 import '../../../user_management/domain/vendor.dart';
 import '../../../core/utils/logger.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Enhanced schedule management screen for order scheduling
 class EnhancedScheduleManagementScreen extends ConsumerStatefulWidget {
@@ -424,21 +424,19 @@ class _EnhancedScheduleManagementScreenState extends ConsumerState<EnhancedSched
           children: [
             if (_selectedDateTime != null)
               Expanded(
-                child: CustomButton(
+                child: GEButton.outline(
                   text: 'Clear Schedule',
                   onPressed: _clearSchedule,
-                  variant: ButtonVariant.outlined,
                   icon: Icons.clear,
                 ),
               ),
             if (_selectedDateTime != null) const SizedBox(width: 12),
             Expanded(
-              child: CustomButton(
-                text: _selectedDateTime != null 
+              child: GEButton.primary(
+                text: _selectedDateTime != null
                     ? 'Confirm Schedule'
                     : 'Skip Scheduling',
                 onPressed: _confirmSchedule,
-                variant: ButtonVariant.primary,
                 icon: _selectedDateTime != null ? Icons.check : Icons.skip_next,
               ),
             ),

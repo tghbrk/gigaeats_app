@@ -5,7 +5,7 @@ import '../../data/models/delivery_method.dart';
 import '../../data/models/delivery_fee_calculation.dart';
 import '../../data/services/delivery_fee_service.dart';
 import '../widgets/enhanced_delivery_method_selector.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Test screen for delivery fee calculation functionality
 class DeliveryFeeTestScreen extends ConsumerStatefulWidget {
@@ -160,7 +160,7 @@ class _DeliveryFeeTestScreenState extends ConsumerState<DeliveryFeeTestScreen> {
             // Calculate Button
             SizedBox(
               width: double.infinity,
-              child: CustomButton(
+              child: GEButton.primary(
                 text: 'Calculate Delivery Fee',
                 onPressed: _isCalculating ? null : _calculateDeliveryFee,
                 isLoading: _isCalculating,

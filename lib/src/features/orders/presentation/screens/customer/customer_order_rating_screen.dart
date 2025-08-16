@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/order.dart';
 
 // Removed unused import: '../../../orders/data/models/order.dart'
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 // TODO: Restore when customer_rating_service is implemented
 // import '../../data/services/customer_rating_service.dart';
@@ -383,12 +383,9 @@ class _CustomerOrderRatingScreenState extends ConsumerState<CustomerOrderRatingS
   Widget _buildSubmitButton(ThemeData theme) {
     final canSubmit = _overallRating > 0;
     
-    return CustomButton(
+    return GEButton.primary(
       text: 'Submit Rating',
       onPressed: canSubmit ? _submitRating : null,
-      // TODO: Restore when ButtonType is implemented
-      // type: ButtonType.primary,
-      // isExpanded: true,
       icon: Icons.send,
     );
   }

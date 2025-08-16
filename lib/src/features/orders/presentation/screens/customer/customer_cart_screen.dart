@@ -11,7 +11,7 @@ import '../../../../user_management/presentation/providers/customer_address_prov
 import '../../widgets/customer/schedule_time_picker.dart';
 import '../../widgets/customer/scheduled_delivery_display.dart';
 import '../../widgets/enhanced_delivery_method_picker.dart';
-import '../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 class CustomerCartScreen extends ConsumerStatefulWidget {
   const CustomerCartScreen({super.key});
@@ -269,10 +269,9 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            CustomButton(
+            GEButton.primary(
               text: 'Browse Restaurants',
               onPressed: () => context.push('/customer/restaurants'),
-              variant: ButtonVariant.primary,
               icon: Icons.restaurant,
             ),
           ],
@@ -761,12 +760,11 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
                 ),
               ),
             ],
-            CustomButton(
+            GEButton.primary(
               text: 'Proceed to Checkout (RM ${cartState.totalAmount.toStringAsFixed(2)})',
               onPressed: canCheckout
                   ? () => context.push('/customer/checkout')
                   : null,
-              variant: ButtonVariant.primary,
               isLoading: cartState.isLoading,
             ),
           ],

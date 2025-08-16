@@ -12,7 +12,7 @@ import '../providers/checkout_flow_provider.dart';
 import '../providers/checkout_fallback_provider.dart';
 
 import '../../../core/utils/logger.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Enhanced multi-step checkout flow screen
 class EnhancedCheckoutFlowScreen extends ConsumerStatefulWidget {
@@ -260,20 +260,18 @@ class _EnhancedCheckoutFlowScreenState extends ConsumerState<EnhancedCheckoutFlo
           children: [
             if (canGoBack)
               Expanded(
-                child: CustomButton(
+                child: GEButton.outline(
                   text: 'Back',
                   onPressed: _goBack,
-                  variant: ButtonVariant.outlined,
                   icon: Icons.arrow_back,
                 ),
               ),
             if (canGoBack) const SizedBox(width: 12),
             Expanded(
               flex: canGoBack ? 1 : 2,
-              child: CustomButton(
+              child: GEButton.primary(
                 text: _getNextButtonText(checkoutState),
                 onPressed: canGoNext ? _goNext : null,
-                variant: ButtonVariant.primary,
                 isLoading: checkoutState.isProcessing,
                 icon: isLastStep ? Icons.check : Icons.arrow_forward,
               ),

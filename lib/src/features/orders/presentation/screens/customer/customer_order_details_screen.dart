@@ -13,7 +13,7 @@ import '../../../data/models/delivery_method.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../../shared/widgets/error_widget.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../customers/presentation/widgets/customer_order_tracking_widget.dart';
 // TODO: Restore when customer services are implemented
 // import '../../../../customers/data/services/customer_reorder_service.dart';
@@ -161,10 +161,9 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.primary(
               text: 'Back to Orders',
               onPressed: () => context.pop(),
-              type: ButtonType.primary,
             ),
           ],
         ),
@@ -584,31 +583,27 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
               Row(
                 children: [
                   Expanded(
-                    child: CustomButton(
+                    child: GEButton.primary(
                       text: 'Reorder',
                       onPressed: () => _reorder(order),
-                      type: ButtonType.primary,
                       icon: Icons.refresh,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: CustomButton(
+                    child: GEButton.secondary(
                       text: 'Rate Order',
                       onPressed: () => _rateOrder(order),
-                      type: ButtonType.secondary,
                       icon: Icons.star,
                     ),
                   ),
                 ],
               ),
             ] else if (order.status == OrderStatus.cancelled) ...[
-              CustomButton(
+              GEButton.secondary(
                 text: 'Contact Support',
                 onPressed: () => _contactSupport(order),
-                type: ButtonType.secondary,
                 icon: Icons.support_agent,
-                isExpanded: true,
               ),
             ] else ...[
               // Active order actions based on delivery method
@@ -1009,24 +1004,22 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
                 // Only show 'Mark as Picked Up' for customer pickup orders, not sales agent pickup
                 if (shouldShowPickupButton) ...[
               Expanded(
-                child: CustomButton(
+                child: GEButton.primary(
                   text: 'Mark as Picked Up',
                   onPressed: () {
                     debugPrint('🔍 [BUTTON-CLICK] Mark as Picked Up button clicked!');
                     debugPrint('🔍 [BUTTON-CLICK] About to call _confirmPickup...');
                     _confirmPickup(order);
                   },
-                  type: ButtonType.primary,
                   icon: Icons.done,
                 ),
               ),
               const SizedBox(width: 12),
             ],
             Expanded(
-              child: CustomButton(
+              child: GEButton.secondary(
                 text: 'Contact Vendor',
                 onPressed: () => _contactVendor(order),
-                type: ButtonType.secondary,
                 icon: Icons.store,
               ),
             ),
@@ -1064,12 +1057,11 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: CustomButton(
+              child: GEButton.secondary(
                 text: order.assignedDriverId != null ? 'Contact Driver' : 'Contact Support',
                 onPressed: order.assignedDriverId != null
                     ? () => _contactDriver(order)
                     : () => _contactSupport(order),
-                type: ButtonType.secondary,
                 icon: order.assignedDriverId != null ? Icons.phone : Icons.support_agent,
               ),
             ),
@@ -1091,17 +1083,15 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
       case DeliveryMethod.ownFleet:
         // For own fleet, show track only if driver is assigned and order is out for delivery
         if (order.status == OrderStatus.outForDelivery && order.assignedDriverId != null) {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Track Order',
             onPressed: () => _trackOrder(order),
-            type: ButtonType.primary,
             icon: Icons.location_on,
           );
         } else {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Order Status',
             onPressed: () => _showOrderStatusInfo(order),
-            type: ButtonType.primary,
             icon: Icons.info_outline,
           );
         }
@@ -1128,27 +1118,24 @@ class _CustomerOrderDetailsScreenState extends ConsumerState<CustomerOrderDetail
       case DeliveryMethod.customerPickup:
       case DeliveryMethod.salesAgentPickup:
         // This shouldn't happen as pickup orders use _buildPickupActions
-        return CustomButton(
+        return GEButton.primary(
           text: 'Order Status',
           onPressed: () => _showOrderStatusInfo(order),
-          type: ButtonType.primary,
           icon: Icons.info_outline,
         );
 
       case DeliveryMethod.thirdParty:
         // For third-party delivery, show appropriate action based on status
         if (order.status == OrderStatus.outForDelivery) {
-          return CustomButton(
+          return GEButton.primary(
             text: 'Track Delivery',
             onPressed: () => _showOrderStatusInfo(order),
-            type: ButtonType.primary,
             icon: Icons.delivery_dining,
           );
         } else {
-          return CustomButton(
+          return GEButton.primary(
             text: 'View Details',
             onPressed: () => _showOrderStatusInfo(order),
-            type: ButtonType.primary,
             icon: Icons.info_outline,
           );
         }

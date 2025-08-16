@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../data/models/order.dart';
 import '../../../../customers/presentation/providers/customer_order_provider.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Test screen to demonstrate real-time order status updates
 /// This screen shows both the old FutureProvider and new StreamProvider side by side
@@ -53,18 +53,14 @@ class CustomerOrdersRealtimeTestScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        CustomButton(
+                        GEButton.secondary(
                           text: 'Refresh Future',
                           onPressed: () => ref.invalidate(currentCustomerOrdersProvider),
-                          type: ButtonType.secondary,
-                          isExpanded: false,
                         ),
                         const SizedBox(width: 12),
-                        CustomButton(
+                        GEButton.secondary(
                           text: 'Refresh Stream',
                           onPressed: () => ref.invalidate(currentCustomerOrdersRealtimeProvider),
-                          type: ButtonType.secondary,
-                          isExpanded: false,
                         ),
                       ],
                     ),

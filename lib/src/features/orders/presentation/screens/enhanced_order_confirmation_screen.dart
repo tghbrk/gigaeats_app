@@ -6,7 +6,7 @@ import '../providers/enhanced_order_placement_provider.dart';
 import '../../data/services/enhanced_order_placement_service.dart';
 import '../../data/models/order.dart';
 import '../../../core/utils/logger.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Enhanced order confirmation screen with comprehensive order details
 class EnhancedOrderConfirmationScreen extends ConsumerStatefulWidget {
@@ -414,10 +414,9 @@ class _EnhancedOrderConfirmationScreenState extends ConsumerState<EnhancedOrderC
             ),
           ),
           const SizedBox(height: 16),
-          CustomButton(
+          GEButton.outline(
             text: 'Track Order',
             onPressed: () => _trackOrder(confirmation.trackingUrl),
-            variant: ButtonVariant.outlined,
             icon: Icons.open_in_new,
           ),
         ],
@@ -459,17 +458,15 @@ class _EnhancedOrderConfirmationScreenState extends ConsumerState<EnhancedOrderC
   Widget _buildActionButtons(ThemeData theme) {
     return Column(
       children: [
-        CustomButton(
+        GEButton.primary(
           text: 'View Order History',
           onPressed: _viewOrderHistory,
-          variant: ButtonVariant.primary,
           icon: Icons.history,
         ),
         const SizedBox(height: 12),
-        CustomButton(
+        GEButton.outline(
           text: 'Continue Shopping',
           onPressed: _continueShopping,
-          variant: ButtonVariant.outlined,
           icon: Icons.shopping_cart,
         ),
       ],

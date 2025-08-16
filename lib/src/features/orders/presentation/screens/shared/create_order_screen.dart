@@ -9,7 +9,7 @@ import '../../../../auth/presentation/providers/auth_provider.dart';
 // TODO: Restore when cartProvider is implemented
 // import '../../../../sales_agent/presentation/providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../../shared/widgets/custom_text_field.dart';
 import '../../../widgets/customer_selector.dart';
 import '../../../widgets/delivery_method_selector.dart';
@@ -182,7 +182,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     // Create Order Button
                     SizedBox(
                       width: double.infinity,
-                      child: CustomButton(
+                      child: GEButton.primary(
                         text: 'Create Order',
                         onPressed: _isLoading ? null : _createOrder,
                         isLoading: _isLoading,
@@ -271,7 +271,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          CustomButton(
+          GEButton.primary(
             text: 'Browse Vendors',
             onPressed: () {
               // Navigate directly to the vendors screen

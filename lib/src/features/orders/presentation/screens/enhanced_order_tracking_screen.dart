@@ -6,7 +6,7 @@ import '../providers/enhanced_order_tracking_provider.dart';
 import '../../data/models/order_tracking_models.dart';
 import '../../data/models/order.dart';
 import '../../../core/utils/logger.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Enhanced order tracking screen with real-time updates
 class EnhancedOrderTrackingScreen extends ConsumerStatefulWidget {
@@ -698,17 +698,15 @@ class _EnhancedOrderTrackingScreenState extends ConsumerState<EnhancedOrderTrack
   Widget _buildActionButtons(ThemeData theme, OrderTrackingStatus? trackingStatus) {
     return Column(
       children: [
-        CustomButton(
+        GEButton.primary(
           text: 'View Order Details',
           onPressed: () => _viewOrderDetails(),
-          variant: ButtonVariant.primary,
           icon: Icons.receipt_long,
         ),
         const SizedBox(height: 12),
-        CustomButton(
+        GEButton.outline(
           text: 'Contact Support',
           onPressed: () => _contactSupport(),
-          variant: ButtonVariant.outlined,
           icon: Icons.support_agent,
         ),
       ],

@@ -8,7 +8,7 @@ import '../../data/models/customer_delivery_method.dart';
 import '../../data/services/delivery_method_service.dart';
 import '../../../user_management/domain/customer_profile.dart';
 import '../../../core/utils/logger.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 
 /// Screen for selecting delivery method during checkout
@@ -303,10 +303,9 @@ class _DeliveryMethodSelectionScreenState extends ConsumerState<DeliveryMethodSe
         ],
       ),
       child: SafeArea(
-        child: CustomButton(
+        child: GEButton.primary(
           text: 'Continue with ${_selectedMethod.displayName}',
           onPressed: () => _continueWithMethod(),
-          variant: ButtonVariant.primary,
           icon: Icons.arrow_forward,
         ),
       ),

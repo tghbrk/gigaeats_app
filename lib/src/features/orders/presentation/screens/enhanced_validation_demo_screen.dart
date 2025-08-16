@@ -12,7 +12,7 @@ import '../../data/services/comprehensive_validation_service.dart';
 import '../../data/models/customer_delivery_method.dart';
 import '../../../core/utils/logger.dart';
 import '../../../../core/utils/validators.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Enhanced validation demonstration screen
 class EnhancedValidationDemoScreen extends ConsumerStatefulWidget {
@@ -340,19 +340,17 @@ class _EnhancedValidationDemoScreenState extends ConsumerState<EnhancedValidatio
         Row(
           children: [
             Expanded(
-              child: CustomButton(
+              child: GEButton.outline(
                 text: 'Add Test Errors',
                 onPressed: _addTestErrors,
-                variant: ButtonVariant.outlined,
                 icon: Icons.error_outline,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: CustomButton(
+              child: GEButton.outline(
                 text: 'Add Test Warnings',
                 onPressed: _addTestWarnings,
-                variant: ButtonVariant.outlined,
                 icon: Icons.warning_outlined,
               ),
             ),
@@ -362,20 +360,18 @@ class _EnhancedValidationDemoScreenState extends ConsumerState<EnhancedValidatio
         Row(
           children: [
             Expanded(
-              child: CustomButton(
+              child: GEButton.primary(
                 text: 'Validate Workflow',
                 onPressed: _isValidating ? null : _validateWorkflow,
-                variant: ButtonVariant.primary,
                 icon: Icons.check_circle_outline,
                 isLoading: _isValidating,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: CustomButton(
+              child: GEButton.outline(
                 text: 'Clear All',
                 onPressed: _clearAllValidation,
-                variant: ButtonVariant.outlined,
                 icon: Icons.clear_all,
               ),
             ),

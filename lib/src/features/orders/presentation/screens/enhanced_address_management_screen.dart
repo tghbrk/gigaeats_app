@@ -7,7 +7,7 @@ import '../widgets/enhanced_address_form.dart';
 import '../../../user_management/domain/customer_profile.dart';
 import '../../../user_management/presentation/providers/customer_address_provider.dart';
 import '../../../core/utils/logger.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 
 /// Enhanced address management screen with GPS support
 class EnhancedAddressManagementScreen extends ConsumerStatefulWidget {
@@ -435,10 +435,9 @@ class _EnhancedAddressManagementScreenState extends ConsumerState<EnhancedAddres
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            CustomButton(
+            GEButton.primary(
               text: 'Add Address',
               onPressed: () => _tabController.animateTo(1),
-              variant: ButtonVariant.primary,
               icon: Icons.add_location,
             ),
           ],
@@ -475,10 +474,9 @@ class _EnhancedAddressManagementScreenState extends ConsumerState<EnhancedAddres
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            CustomButton(
+            GEButton.outline(
               text: 'Retry',
               onPressed: _refreshAddresses,
-              variant: ButtonVariant.outlined,
               icon: Icons.refresh,
             ),
           ],
@@ -501,12 +499,11 @@ class _EnhancedAddressManagementScreenState extends ConsumerState<EnhancedAddres
         ],
       ),
       child: SafeArea(
-        child: CustomButton(
-          text: _selectedAddress != null 
+        child: GEButton.primary(
+          text: _selectedAddress != null
               ? 'Use This Address'
               : 'Select an Address',
           onPressed: _selectedAddress != null ? _confirmSelection : null,
-          variant: ButtonVariant.primary,
           icon: Icons.check,
         ),
       ),

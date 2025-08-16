@@ -10,7 +10,7 @@ import '../../providers/order_provider.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
 // TODO: Restore when cartProvider is implemented
 // import '../../../../sales_agent/presentation/providers/cart_provider.dart';
-import '../../../../../shared/widgets/custom_button.dart';
+import '../../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../../core/utils/responsive_utils.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
@@ -220,7 +220,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          CustomButton(
+          GEButton.primary(
             text: 'Retry',
             onPressed: () {
               ref.read(ordersProvider.notifier).loadOrders();
@@ -310,7 +310,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
               // TODO: Restore when cartProvider is implemented
               // final cartState = ref.watch(cartProvider);
               final cartState = null;
-              return CustomButton(
+              return GEButton.primary(
                 text: 'Create Order',
                 onPressed: () {
                   // Smart navigation based on cart state
@@ -498,11 +498,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  child: CustomButton(
+                  child: GEButton.primary(
                     text: 'View Details',
-                    height: 48,
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: Colors.white,
                     onPressed: () {
                       context.push('/order-details/${order.id}');
                     },

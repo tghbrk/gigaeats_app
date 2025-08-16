@@ -5,7 +5,7 @@ import '../../../user_management/domain/customer_profile.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 
 /// Enhanced address form with GPS support and validation
@@ -335,7 +335,7 @@ class _EnhancedAddressFormState extends ConsumerState<EnhancedAddressForm>
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: _stateController.text.isNotEmpty ? _stateController.text : null,
+          initialValue: _stateController.text.isNotEmpty ? _stateController.text : null,
           decoration: const InputDecoration(
             labelText: 'State *',
             border: OutlineInputBorder(),
@@ -520,18 +520,16 @@ class _EnhancedAddressFormState extends ConsumerState<EnhancedAddressForm>
       children: [
         if (widget.onCancel != null)
           Expanded(
-            child: CustomButton(
+            child: GEButton.outline(
               text: 'Cancel',
               onPressed: widget.onCancel,
-              variant: ButtonVariant.outlined,
             ),
           ),
         if (widget.onCancel != null) const SizedBox(width: 12),
         Expanded(
-          child: CustomButton(
+          child: GEButton.primary(
             text: widget.initialAddress != null ? 'Update Address' : 'Save Address',
             onPressed: _isSaving ? null : _saveAddress,
-            variant: ButtonVariant.primary,
             isLoading: _isSaving,
           ),
         ),

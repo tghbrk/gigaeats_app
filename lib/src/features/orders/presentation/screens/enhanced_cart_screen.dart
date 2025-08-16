@@ -8,7 +8,7 @@ import '../providers/enhanced_cart_provider.dart';
 import '../controllers/cart_operations_controller.dart';
 import '../../data/models/enhanced_cart_models.dart';
 import '../../../core/utils/logger.dart';
-import '../../../shared/widgets/custom_button.dart';
+import '../../../../design_system/widgets/buttons/ge_button.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 
 /// Enhanced cart screen with comprehensive functionality
@@ -125,10 +125,9 @@ class _EnhancedCartScreenState extends ConsumerState<EnhancedCartScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            CustomButton(
+            GEButton.primary(
               text: 'Browse Restaurants',
               onPressed: () => context.push('/customer/restaurants'),
-              variant: ButtonVariant.primary,
               icon: Icons.restaurant,
             ),
           ],
@@ -282,10 +281,9 @@ class _EnhancedCartScreenState extends ConsumerState<EnhancedCartScreen>
         ],
       ),
       child: SafeArea(
-        child: CustomButton(
+        child: GEButton.primary(
           text: 'Proceed to Checkout • RM ${cartState.totalAmount.toStringAsFixed(2)}',
           onPressed: canCheckout ? () => _proceedToCheckout() : null,
-          variant: ButtonVariant.primary,
           isLoading: operationsState.isLoading,
           icon: Icons.arrow_forward,
         ),

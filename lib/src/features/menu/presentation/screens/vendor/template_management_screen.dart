@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../user_management/presentation/screens/vendor/widgets/standard_vendor_header.dart';
 
 import '../../providers/customization_template_providers.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
@@ -42,8 +43,9 @@ class _TemplateManagementScreenState extends ConsumerState<TemplateManagementScr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Template Management'),
+      appBar: StandardVendorHeader(
+        title: 'Template Management',
+        titleIcon: Icons.layers,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

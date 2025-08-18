@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../user_management/presentation/screens/vendor/widgets/standard_vendor_header.dart';
 
 import '../../../data/models/customization_template.dart';
 
@@ -123,8 +124,9 @@ class _EnhancedMenuItemFormScreenState extends ConsumerState<EnhancedMenuItemFor
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.menuItemId != null ? 'Edit Menu Item' : 'Add Menu Item'),
+      appBar: StandardVendorHeader(
+        title: widget.menuItemId != null ? 'Edit Menu Item' : 'Add Menu Item',
+        titleIcon: widget.menuItemId != null ? Icons.edit : Icons.add,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

@@ -83,20 +83,19 @@ class _CustomerPreviewComponentState extends ConsumerState<CustomerPreviewCompon
         children: [
           // Header
           _buildHeader(theme),
-          
-          // Preview Content
-          Container(
-            constraints: const BoxConstraints(maxHeight: 500),
+
+          // Preview Content - Use Expanded to take remaining space
+          Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Menu Item Info
                   _buildMenuItemInfo(theme),
-                  
+
                   // Customizations Preview
                   _buildCustomizationsPreview(theme),
-                  
+
                   // Price Summary
                   _buildPriceSummary(theme),
                 ],

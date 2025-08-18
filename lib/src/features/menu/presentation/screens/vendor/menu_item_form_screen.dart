@@ -8,6 +8,7 @@ import '../../../data/models/product.dart' as product_model;
 import '../../../data/models/customization_template.dart';
 import '../../../data/services/menu_service.dart';
 import '../../widgets/vendor/enhanced_customization_section.dart';
+import '../../widgets/vendor/menu_item_image_upload.dart';
 import '../../providers/customization_template_providers.dart';
 import '../../providers/enhanced_template_providers.dart';
 import '../../widgets/vendor/category_dialogs.dart';
@@ -17,6 +18,7 @@ import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../../presentation/providers/repository_providers.dart' show currentVendorProvider, vendorRepositoryProvider;
 import '../../../../../presentation/providers/repository_providers.dart' as repo_providers;
 import 'package:uuid/uuid.dart';
+import '../../../../user_management/presentation/screens/vendor/widgets/standard_vendor_header.dart';
 
 class MenuItemFormScreen extends ConsumerStatefulWidget {
   final String? menuItemId; // null for create, non-null for edit
@@ -57,6 +59,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   List<String> _allergens = [];
   List<BulkPricingTier> _bulkPricingTiers = [];
   List<String> _imageUrls = [];
+  String? _uploadedImageUrl; // New uploaded image URL
   final List<CustomizationTemplate> _linkedTemplates = []; // Template-only customization system
 
   // Loading states
@@ -64,7 +67,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   bool _isSaving = false;
 
   // Data
-  MenuItem? _existingItem;
+  product_model.Product? _existingItem;
 
   @override
   void initState() {
@@ -90,15 +93,20 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final menuService = MenuService();
+      final menuItemRepository = ref.read(repo_providers.menuItemRepositoryProvider);
 
       if (widget.menuItemId != null) {
         // Editing existing item
-        _existingItem = await menuService.getMenuItem(widget.menuItemId!);
+        debugPrint('🍽️ [MENU-FORM] Loading existing menu item with ID: ${widget.menuItemId}');
+        _existingItem = await menuItemRepository.getMenuItemById(widget.menuItemId!);
+        debugPrint('🍽️ [MENU-FORM] Loaded existing item: ${_existingItem?.name ?? 'null'}');
+
         if (_existingItem != null) {
           _populateFormWithExistingData();
           // Load existing templates for this menu item
           await _loadExistingTemplates();
+        } else {
+          debugPrint('🍽️ [MENU-FORM] ERROR: Could not find menu item with ID: ${widget.menuItemId}');
         }
       } else {
         // Creating new item - set pre-selected category if provided
@@ -125,24 +133,36 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
   void _populateFormWithExistingData() {
     final item = _existingItem!;
     _nameController.text = item.name;
-    _descriptionController.text = item.description;
+    _descriptionController.text = item.description ?? '';
     _basePriceController.text = item.basePrice.toString();
-    _minQuantityController.text = item.minimumOrderQuantity.toString();
-    _maxQuantityController.text = item.maximumOrderQuantity?.toString() ?? '';
-    _prepTimeController.text = item.preparationTimeMinutes.toString();
-    _availableQuantityController.text = item.availableQuantity?.toString() ?? '';
+    _minQuantityController.text = (item.minOrderQuantity ?? 1).toString();
+    _maxQuantityController.text = item.maxOrderQuantity?.toString() ?? '';
+    _prepTimeController.text = (item.preparationTimeMinutes ?? 30).toString();
+    _availableQuantityController.text = ''; // Product model doesn't have availableQuantity
     _tagsController.text = item.tags.join(', ');
 
     _selectedCategory = item.category;
-    _selectedUnit = item.unit ?? 'pax';
-    _isHalalCertified = item.isHalalCertified;
-    _status = item.status;
+    _selectedUnit = 'pax'; // Product model doesn't have unit field, default to 'pax'
+    _isHalalCertified = item.isHalal ?? false;
+    _status = (item.isAvailable ?? true) ? MenuItemStatus.available : MenuItemStatus.unavailable;
 
     debugPrint('🍽️ [MENU-FORM] Populated form with existing data - Category: ${item.category}');
-    _selectedDietaryTypes = List.from(item.dietaryTypes);
+    debugPrint('🍽️ [MENU-FORM] Item name: ${item.name}, price: ${item.basePrice}');
+    debugPrint('🍽️ [MENU-FORM] Min quantity: ${item.minOrderQuantity}, max quantity: ${item.maxOrderQuantity}');
+
+    // Map Product model fields to form state
+    _selectedDietaryTypes = [];
+    if (item.isVegetarian == true) _selectedDietaryTypes.add(DietaryType.vegetarian);
+    if (item.isVegan == true) _selectedDietaryTypes.add(DietaryType.vegan);
+    if (item.isHalal == true) _selectedDietaryTypes.add(DietaryType.halal);
+
     _allergens = List.from(item.allergens);
-    _bulkPricingTiers = List.from(item.bulkPricingTiers);
-    _imageUrls = List.from(item.imageUrls);
+    _bulkPricingTiers = []; // Product model uses different bulk pricing structure
+    _imageUrls = item.imageUrl != null ? [item.imageUrl!] : [];
+    _uploadedImageUrl = item.imageUrl; // Initialize uploaded image URL
+    if (item.galleryImages.isNotEmpty) {
+      _imageUrls.addAll(item.galleryImages);
+    }
   }
 
   /// Load existing templates for the menu item
@@ -181,9 +201,9 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
     final isEditing = widget.menuItemId != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Menu Item' : 'Add Menu Item'),
-        elevation: 0,
+      appBar: StandardVendorHeader(
+        title: isEditing ? 'Edit Menu Item' : 'Add Menu Item',
+        titleIcon: isEditing ? Icons.edit : Icons.add,
         actions: [
           if (isEditing)
             IconButton(
@@ -630,7 +650,13 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
               children: DietaryType.values.map((type) {
                 final isSelected = _selectedDietaryTypes.contains(type);
                 return FilterChip(
-                  label: Text(_getDietaryTypeLabel(type)),
+                  label: Text(
+                    _getDietaryTypeLabel(type),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
                   selected: isSelected,
                   onSelected: (selected) {
                     setState(() {
@@ -786,22 +812,39 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
 
             const SizedBox(height: 16),
 
-            // Image URLs (simplified for demo)
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Image URL',
-                hintText: 'https://example.com/image.jpg',
-                border: OutlineInputBorder(),
-                helperText: 'Add a photo URL for this menu item',
-              ),
-              onChanged: (value) {
-                if (value.trim().isNotEmpty) {
-                  _imageUrls = [value.trim()];
-                } else {
-                  _imageUrls = [];
-                }
+            // Menu Item Image Upload
+            Consumer(
+              builder: (context, ref, child) {
+                final currentVendorAsync = ref.watch(currentVendorProvider);
+
+                return currentVendorAsync.when(
+                  data: (vendor) {
+                    if (vendor == null) {
+                      return const Text('Vendor not found');
+                    }
+
+                    return MenuItemImageUpload(
+                      currentImageUrl: _uploadedImageUrl,
+                      vendorId: vendor.id,
+                      menuItemId: widget.menuItemId ?? 'temp_${DateTime.now().millisecondsSinceEpoch}',
+                      onImageChanged: (imageUrl) {
+                        debugPrint('🖼️ [MENU-ITEM-FORM] Image changed: $imageUrl');
+                        setState(() {
+                          _uploadedImageUrl = imageUrl;
+                          if (imageUrl != null) {
+                            _imageUrls = [imageUrl];
+                          } else {
+                            _imageUrls = [];
+                          }
+                        });
+                      },
+                      isEnabled: !_isSaving,
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => Text('Error loading vendor: $error'),
+                );
               },
-              initialValue: _imageUrls.isNotEmpty ? _imageUrls.first : '',
             ),
           ],
         ),
@@ -1076,7 +1119,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
           isVegan: _selectedDietaryTypes.contains(DietaryType.vegan),
           isSpicy: false, // Default value
           spicyLevel: 0, // Default value
-          imageUrl: _imageUrls.isNotEmpty ? _imageUrls.first : null,
+          imageUrl: _uploadedImageUrl ?? (_imageUrls.isNotEmpty ? _imageUrls.first : null),
           galleryImages: _imageUrls.length > 1 ? _imageUrls.sublist(1) : [],
           isFeatured: false, // Default value
           tags: _tagsController.text.isNotEmpty ? _tagsController.text.split(',').map((e) => e.trim()).toList() : [],
@@ -1102,7 +1145,7 @@ class _MenuItemFormScreenState extends ConsumerState<MenuItemFormScreen> {
           description: _descriptionController.text.trim(),
           category: _selectedCategory!,
           basePrice: double.parse(_basePriceController.text),
-          imageUrl: _imageUrls.isNotEmpty ? _imageUrls.first : null,
+          imageUrl: _uploadedImageUrl ?? (_imageUrls.isNotEmpty ? _imageUrls.first : null),
           isAvailable: _status == MenuItemStatus.available,
           isVegetarian: _selectedDietaryTypes.contains(DietaryType.vegetarian),
           isHalal: _isHalalCertified,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'menu_item_form_screen.dart';
+import '../../../../user_management/presentation/screens/vendor/widgets/standard_vendor_header.dart';
 
 
 
@@ -31,8 +32,9 @@ class _VendorMenuManagementScreenState extends ConsumerState<VendorMenuManagemen
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Menu Management'),
+      appBar: StandardVendorHeader(
+        title: 'Menu Management',
+        titleIcon: Icons.restaurant_menu,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

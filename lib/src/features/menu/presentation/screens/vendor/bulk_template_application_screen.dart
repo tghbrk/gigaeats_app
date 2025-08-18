@@ -9,6 +9,7 @@ import '../../widgets/vendor/bulk_template_selector.dart';
 import '../../widgets/vendor/bulk_operation_progress.dart';
 import '../../../../../shared/widgets/loading_widget.dart';
 import '../../../../../design_system/widgets/buttons/ge_button.dart';
+import '../../../../user_management/presentation/screens/vendor/widgets/standard_vendor_header.dart';
 
 // Provider for vendor menu items (reused from menu management)
 final vendorMenuItemsProvider = FutureProvider.family<List<Product>, String>((ref, vendorId) async {
@@ -59,8 +60,9 @@ class _BulkTemplateApplicationScreenState extends ConsumerState<BulkTemplateAppl
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bulk Template Application'),
+      appBar: StandardVendorHeader(
+        title: 'Bulk Template Application',
+        titleIcon: Icons.auto_awesome,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

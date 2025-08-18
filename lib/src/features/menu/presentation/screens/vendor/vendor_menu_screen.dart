@@ -16,6 +16,7 @@ import '../../widgets/vendor/menu_export_dialog.dart';
 import '../../widgets/vendor/menu_import_dialog.dart';
 import '../../providers/menu_import_export_providers.dart';
 import '../../../data/models/menu_export_import.dart';
+import '../../../../user_management/presentation/screens/vendor/widgets/standard_vendor_header.dart';
 
 
 class VendorMenuScreen extends ConsumerStatefulWidget {
@@ -138,9 +139,9 @@ class _VendorMenuScreenState extends ConsumerState<VendorMenuScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Menu Management'),
-        elevation: 0,
+      appBar: StandardVendorHeader(
+        title: 'Menu Management',
+        titleIcon: Icons.restaurant_menu,
         actions: [
           IconButton(
             onPressed: () => _navigateToAddProduct(),

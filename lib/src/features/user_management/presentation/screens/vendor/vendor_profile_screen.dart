@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'widgets/standard_vendor_header.dart';
 
 import '../../../domain/vendor.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
@@ -59,10 +60,9 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
 
   Widget _buildNoProfileFound() {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Vendor Profile'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+      appBar: const StandardVendorHeader(
+        title: 'Vendor Profile',
+        titleIcon: Icons.store,
       ),
       body: const Center(
         child: Column(
@@ -99,87 +99,179 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   }
 
   Widget _buildProfileContent(Vendor vendor) {
-
-    final theme = Theme.of(context);
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Profile Header
+          // Enhanced Professional Profile Header
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 280,
             pinned: true,
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 vendor.businessName,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
                   shadows: [
                     Shadow(
                       offset: Offset(0, 1),
-                      blurRadius: 3,
-                      color: Colors.black54,
+                      blurRadius: 4,
+                      color: Colors.black45,
                     ),
                   ],
                 ),
               ),
               background: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
-                      theme.colorScheme.primary,
-                      theme.colorScheme.primary.withValues(alpha: 0.8),
+                      Color(0xFF4CAF50),
+                      Color(0xFF2E7D32),
+                      Color(0xFF1B5E20),
                     ],
+                    stops: [0.0, 0.6, 1.0],
                   ),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
-                        child: Text(
-                          vendor.businessName.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                child: Stack(
+                  children: [
+                    // Background pattern overlay
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.1),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
+                    ),
+                    // Main content
+                    Center(
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.star,
-                            color: Colors.amber,
-                            size: 20,
+                          // Enhanced Avatar with shadow and border
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.white.withValues(alpha: 0.9),
+                              child: CircleAvatar(
+                                radius: 46,
+                                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                child: Text(
+                                  vendor.businessName.substring(0, 1).toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(height: 16),
+                          // Business name with enhanced styling
                           Text(
-                            vendor.rating.toStringAsFixed(1),
+                            vendor.businessName,
                             style: const TextStyle(
-                              color: Colors.white,
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(
+                                  offset: Offset(0, 2),
+                                  blurRadius: 4,
+                                  color: Colors.black45,
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          // Rating with enhanced design
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  vendor.rating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '(${vendor.totalReviews} reviews)',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
             actions: [
-              IconButton(
-                onPressed: () => _navigateToEditProfile(),
-                icon: const Icon(Icons.edit),
-                tooltip: 'Edit Profile',
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  onPressed: () => _navigateToEditProfile(),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.white,
+                  ),
+                  tooltip: 'Edit Profile',
+                ),
               ),
             ],
           ),
@@ -377,11 +469,25 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   Widget _buildContactInfo(Vendor vendor) {
     return Column(
       children: [
-        _buildInfoRow('Email', vendor.email),
+        _buildInfoRow('Email', _getActualEmail(vendor)),
         _buildInfoRow('Phone', vendor.phoneNumber),
         // Note: Website field not available in current Vendor model
       ],
     );
+  }
+
+  /// Get the actual email from auth user or fallback to vendor email
+  String _getActualEmail(Vendor vendor) {
+    final authState = ref.read(authStateProvider);
+    final userEmail = authState.user?.email;
+
+    // If we have the authenticated user's email, use it
+    if (userEmail != null && userEmail.isNotEmpty && !userEmail.contains('@example.com')) {
+      return userEmail;
+    }
+
+    // Otherwise, fallback to vendor email (which might be a placeholder)
+    return vendor.email;
   }
 
   Widget _buildAddressInfo(Vendor vendor) {
@@ -423,7 +529,13 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
       runSpacing: 8,
       children: vendor.cuisineTypes.map((cuisine) {
         return Chip(
-          label: Text(cuisine),
+          label: Text(
+            cuisine,
+            style: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           backgroundColor: Colors.grey.withValues(alpha: 0.1),
         );
       }).toList(),

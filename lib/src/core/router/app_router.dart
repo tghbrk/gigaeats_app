@@ -59,6 +59,9 @@ import '../../features/customer_support/presentation/screens/customer_support_sc
 import '../../features/customer_support/presentation/screens/create_support_ticket_screen.dart';
 import '../../features/user_management/data/models/sales_agent_profile.dart';
 import '../../features/user_management/presentation/screens/vendor/vendor_dashboard.dart';
+import '../../features/user_management/presentation/screens/vendor/enhanced_vendor_dashboard.dart';
+import '../../features/user_management/presentation/screens/vendor/test_enhanced_dashboard_screen.dart';
+import '../features/feature_flag_settings_screen.dart';
 import '../../features/orders/presentation/screens/vendor/vendor_orders_screen.dart';
 import '../../features/menu/presentation/screens/vendor/vendor_menu_management_screen.dart';
 import '../../features/menu/presentation/screens/vendor/template_analytics_dashboard_screen.dart';
@@ -419,7 +422,7 @@ List<RouteBase> _buildRoutes() {
     GoRoute(
       path: AppRoutes.vendorDashboard,
       name: 'vendor-dashboard',
-      builder: (context, state) => const VendorDashboard(),
+      builder: (context, state) => const EnhancedVendorDashboard(), // Enhanced dashboard is now the default
       routes: [
         GoRoute(
           path: 'orders',
@@ -1257,6 +1260,21 @@ List<RouteBase> _buildRoutes() {
     ),
 
     // Test Routes (only in debug mode)
+    GoRoute(
+      path: '/test-enhanced-dashboard-screen',
+      name: 'test-enhanced-dashboard-screen',
+      builder: (context, state) => const TestEnhancedDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/test-enhanced-vendor-dashboard',
+      name: 'test-enhanced-vendor-dashboard',
+      builder: (context, state) => const EnhancedVendorDashboard(),
+    ),
+    GoRoute(
+      path: '/feature-flags',
+      name: 'feature-flags',
+      builder: (context, state) => const FeatureFlagSettingsScreen(),
+    ),
     GoRoute(
       path: '/test-data',
       name: 'test-data',

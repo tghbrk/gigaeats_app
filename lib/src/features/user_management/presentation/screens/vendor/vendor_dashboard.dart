@@ -43,6 +43,16 @@ class _VendorDashboardState extends ConsumerState<VendorDashboard> {
         },
         userRole: UserRole.vendor,
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          debugPrint('🧪 [VENDOR-DASHBOARD] Navigating to enhanced dashboard test');
+          context.push('/test-enhanced-vendor-dashboard');
+        },
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('Enhanced'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+      ),
     );
   }
 
@@ -95,6 +105,27 @@ class _VendorDashboardTab extends ConsumerWidget {
         notificationCount: notificationCount,
         onProfileTap: () => onNavigateToTab?.call(4), // Navigate to profile tab
         actions: [
+          IconButton(
+            icon: const Icon(Icons.flag),
+            onPressed: () {
+              context.push('/feature-flags');
+            },
+            tooltip: 'Feature Flags',
+          ),
+          IconButton(
+            icon: const Icon(Icons.science),
+            onPressed: () {
+              context.push('/test-enhanced-dashboard-screen');
+            },
+            tooltip: 'Test Enhanced Dashboard',
+          ),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            onPressed: () {
+              context.push('/test-enhanced-vendor-dashboard');
+            },
+            tooltip: 'Enhanced Dashboard',
+          ),
           IconButton(
             icon: const Icon(Icons.developer_mode),
             onPressed: () {

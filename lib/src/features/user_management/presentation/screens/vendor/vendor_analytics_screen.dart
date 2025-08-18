@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // TODO: Restore when loading_widget is used
 // import '../../../../shared/widgets/loading_widget.dart';
-import '../../../../../presentation/providers/repository_providers.dart' show vendorDashboardMetricsProvider;
+import '../../../../../presentation/providers/repository_providers.dart' show currentVendorProvider;
+import 'widgets/standard_vendor_header.dart';
+import '../../../../../design_system/theme/role_theme_extension.dart';
+import '../../../../../design_system/theme/ge_theme_extension.dart';
+import '../../providers/vendor_analytics_provider.dart';
 
 class VendorAnalyticsScreen extends ConsumerStatefulWidget {
   final ValueChanged<int>? onNavigateToTab;
@@ -34,12 +38,27 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _initializeAnalyticsParams();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _initializeAnalyticsParams() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final vendor = await ref.read(currentVendorProvider.future);
+      if (vendor != null) {
+        final params = VendorAnalyticsParams(
+          vendorId: vendor.id,
+          period: 'month',
+        );
+        ref.read(currentVendorAnalyticsParamsProvider.notifier).state = params;
+        debugPrint('📊 [VENDOR-ANALYTICS] Initialized params for vendor: ${vendor.id}');
+      }
+    });
   }
 
 
@@ -95,9 +114,9 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-        elevation: 0,
+      appBar: StandardVendorHeader(
+        title: 'Analytics',
+        titleIcon: Icons.analytics,
         actions: [
           PopupMenuButton<String>(
             initialValue: _selectedPeriod,
@@ -124,10 +143,11 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
                     _selectedPeriod,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.arrow_drop_down),
+                  const Icon(Icons.arrow_drop_down, color: Colors.white),
                 ],
               ),
             ),
@@ -135,6 +155,9 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(text: 'Overview', icon: Icon(Icons.dashboard)),
             Tab(text: 'Sales', icon: Icon(Icons.trending_up)),
@@ -176,143 +199,28 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
           Consumer(
             builder: (context, ref, child) {
               debugPrint('📊 [VENDOR-ANALYTICS] Building overview metrics...');
-              // Use existing vendor dashboard metrics provider for now
-              final metricsAsync = ref.watch(vendorDashboardMetricsProvider);
 
-              return metricsAsync.when(
-                data: (metrics) {
-                  final totalRevenue = metrics['total_revenue'] ?? 0.0;
-                  final totalOrders = metrics['total_orders'] ?? 0;
-                  final avgOrderValue = metrics['avg_order_value'] ?? 0.0;
-                  final rating = metrics['rating'] ?? 0.0;
+              // Get current vendor and analytics params
+              final vendorAsync = ref.watch(currentVendorProvider);
+              final analyticsParams = ref.watch(currentVendorAnalyticsParamsProvider);
 
-                  return GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.5,
-                    children: [
-                      _buildMetricCard(
-                        title: 'Total Revenue',
-                        value: 'RM ${totalRevenue.toStringAsFixed(2)}',
-                        change: _selectedPeriod,
-                        isPositive: true,
-                        icon: Icons.attach_money,
-                        color: Colors.green,
-                      ),
-                      _buildMetricCard(
-                        title: 'Total Orders',
-                        value: '$totalOrders',
-                        change: _selectedPeriod,
-                        isPositive: true,
-                        icon: Icons.receipt_long,
-                        color: Colors.blue,
-                      ),
-                      _buildMetricCard(
-                        title: 'Avg Order Value',
-                        value: 'RM ${avgOrderValue.toStringAsFixed(2)}',
-                        change: _selectedPeriod,
-                        isPositive: true,
-                        icon: Icons.trending_up,
-                        color: Colors.orange,
-                      ),
-                      _buildMetricCard(
-                        title: 'Customer Rating',
-                        value: rating.toStringAsFixed(1),
-                        change: '${metrics['total_reviews'] ?? 0} reviews',
-                        isPositive: true,
-                        icon: Icons.star,
-                        color: Colors.amber,
-                      ),
-                    ],
+              return vendorAsync.when(
+                data: (vendor) {
+                  if (vendor == null || analyticsParams == null) {
+                    return _buildLoadingMetrics();
+                  }
+
+                  // Watch analytics data with current params
+                  final analyticsAsync = ref.watch(vendorAnalyticsProvider(analyticsParams));
+
+                  return analyticsAsync.when(
+                    data: (analytics) => _buildMetricsGrid(analytics),
+                    loading: () => _buildLoadingMetrics(),
+                    error: (error, _) => _buildErrorMetrics(error),
                   );
                 },
-                loading: () => GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.5,
-                  children: [
-                    _buildMetricCard(
-                      title: 'Today Revenue',
-                      value: '...',
-                      change: 'Loading...',
-                      isPositive: true,
-                      icon: Icons.attach_money,
-                      color: Colors.green,
-                    ),
-                    _buildMetricCard(
-                      title: 'Today Orders',
-                      value: '...',
-                      change: 'Loading...',
-                      isPositive: true,
-                      icon: Icons.receipt_long,
-                      color: Colors.blue,
-                    ),
-                    _buildMetricCard(
-                      title: 'Avg Order Value',
-                      value: '...',
-                      change: 'Loading...',
-                      isPositive: true,
-                      icon: Icons.trending_up,
-                      color: Colors.orange,
-                    ),
-                    _buildMetricCard(
-                      title: 'Customer Rating',
-                      value: '...',
-                      change: 'Loading...',
-                      isPositive: true,
-                      icon: Icons.star,
-                      color: Colors.amber,
-                    ),
-                  ],
-                ),
-                error: (error, _) => GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.5,
-                  children: [
-                    _buildMetricCard(
-                      title: 'Today Revenue',
-                      value: 'RM 0.00',
-                      change: 'Error',
-                      isPositive: false,
-                      icon: Icons.attach_money,
-                      color: Colors.green,
-                    ),
-                    _buildMetricCard(
-                      title: 'Today Orders',
-                      value: '0',
-                      change: 'Error',
-                      isPositive: false,
-                      icon: Icons.receipt_long,
-                      color: Colors.blue,
-                    ),
-                    _buildMetricCard(
-                      title: 'Avg Order Value',
-                      value: 'RM 0.00',
-                      change: 'Error',
-                      isPositive: false,
-                      icon: Icons.trending_up,
-                      color: Colors.orange,
-                    ),
-                    _buildMetricCard(
-                      title: 'Customer Rating',
-                      value: '0.0',
-                      change: 'Error',
-                      isPositive: false,
-                      icon: Icons.star,
-                      color: Colors.amber,
-                    ),
-                  ],
-                ),
+                loading: () => _buildLoadingMetrics(),
+                error: (error, _) => _buildErrorMetrics(error),
               );
             },
           ),
@@ -330,65 +238,42 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
 
           Consumer(
             builder: (context, ref, child) {
-              // TODO: Restore unused variable - commented out for analyzer cleanup
-              // final dateRange = _getDateRangeForPeriod(_selectedPeriod);
-              // TODO: Restore undefined identifiers - commented out for analyzer cleanup
-              // final metricsAsync = ref.watch(vendorFilteredMetricsProvider(dateRange));
-              // final vendorAsync = ref.watch(currentVendorProvider);
-              final metricsAsync = AsyncValue.data(<String, dynamic>{});
-              final vendorAsync = AsyncValue.data(<String, dynamic>{});
+              debugPrint('📊 [VENDOR-ANALYTICS] Building recent performance...');
 
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: metricsAsync.when(
-                    data: (metrics) {
-                      final totalOrders = metrics['total_orders'] ?? 0;
-                      final totalRevenue = metrics['total_revenue'] ?? 0.0;
-                      final pendingOrders = metrics['pending_orders'] ?? 0;
+              // Get current vendor and analytics params
+              final vendorAsync = ref.watch(currentVendorProvider);
+              final analyticsParams = ref.watch(currentVendorAnalyticsParamsProvider);
 
-                      return Column(
-                        children: [
-                          _buildPerformanceRow('Orders ($_selectedPeriod)', '$totalOrders', Icons.today),
-                          const Divider(),
-                          _buildPerformanceRow('Revenue ($_selectedPeriod)', 'RM ${totalRevenue.toStringAsFixed(2)}', Icons.monetization_on),
-                          const Divider(),
-                          _buildPerformanceRow('Pending Orders', '$pendingOrders', Icons.pending_actions),
-                          const Divider(),
-                          vendorAsync.when(
-                            // TODO: Restore undefined getter - commented out for analyzer cleanup
-                            // data: (vendor) => _buildPerformanceRow('Total Orders', '${vendor?.totalOrders ?? 0}', Icons.restaurant_menu),
-                            // TODO: Fix invalid null-aware operator - commented out for analyzer cleanup
-                            // data: (vendor) => _buildPerformanceRow('Total Orders', '${vendor?['totalOrders'] ?? 0}', Icons.restaurant_menu),
-                            data: (vendor) => _buildPerformanceRow('Total Orders', '${vendor['totalOrders'] ?? 0}', Icons.restaurant_menu),
-                            loading: () => _buildPerformanceRow('Total Orders', '...', Icons.restaurant_menu),
-                            error: (_, _) => _buildPerformanceRow('Total Orders', '0', Icons.restaurant_menu),
-                          ),
-                        ],
-                      );
-                    },
-                    loading: () => Column(
-                      children: [
-                        _buildPerformanceRow('Orders Today', '...', Icons.today),
-                        const Divider(),
-                        _buildPerformanceRow('Revenue Today', '...', Icons.monetization_on),
-                        const Divider(),
-                        _buildPerformanceRow('Pending Orders', '...', Icons.pending_actions),
-                        const Divider(),
-                        _buildPerformanceRow('Total Orders', '...', Icons.restaurant_menu),
-                      ],
+              return vendorAsync.when(
+                data: (vendor) {
+                  if (vendor == null || analyticsParams == null) {
+                    return _buildLoadingPerformance();
+                  }
+
+                  // Watch performance metrics with current params
+                  final performanceAsync = ref.watch(vendorPerformanceMetricsProvider(analyticsParams));
+
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: performanceAsync.when(
+                        data: (performance) => _buildPerformanceContent(performance),
+                        loading: () => _buildLoadingPerformance(),
+                        error: (error, _) => _buildErrorPerformance(error),
+                      ),
                     ),
-                    error: (error, _) => Column(
-                      children: [
-                        _buildPerformanceRow('Orders Today', '0', Icons.today),
-                        const Divider(),
-                        _buildPerformanceRow('Revenue Today', 'RM 0.00', Icons.monetization_on),
-                        const Divider(),
-                        _buildPerformanceRow('Pending Orders', '0', Icons.pending_actions),
-                        const Divider(),
-                        _buildPerformanceRow('Total Orders', '0', Icons.restaurant_menu),
-                      ],
-                    ),
+                  );
+                },
+                loading: () => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: _buildLoadingPerformance(),
+                  ),
+                ),
+                error: (error, _) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: _buildErrorPerformance(error),
                   ),
                 ),
               );
@@ -755,55 +640,84 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
     required IconData icon,
     required Color color,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final roleTheme = GERoleThemeExtension.of(context);
+
+    // Use vendor accent color for better branding
+    final accentColor = roleTheme?.accentColor ?? colorScheme.primary;
+    final statusColor = isPositive
+        ? theme.extension<GEThemeExtension>()?.success ?? Colors.green
+        : theme.extension<GEThemeExtension>()?.danger ?? Colors.red;
+
     return Card(
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(12), // Reduced padding from 16 to 12
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Use minimum space needed
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
-                Icon(icon, color: color, size: 20), // Reduced icon size from 24 to 20
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: accentColor,
+                    size: 20,
+                  ),
+                ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (isPositive ? Colors.green : Colors.red).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6), // Reduced border radius
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     change,
-                    style: TextStyle(
-                      color: isPositive ? Colors.green : Colors.red,
-                      fontSize: 10, // Reduced font size from 12 to 10
-                      fontWeight: FontWeight.bold,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4), // Reduced spacing from 8 to 4
+            const SizedBox(height: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min, // Use minimum space needed
                 children: [
-                  Text(
-                    value,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith( // Changed from headlineSmall to titleMedium
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      value,
+                      style: theme.textTheme.titleLarge?.copyWith( // Changed from headlineSmall to titleLarge
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
+                  const SizedBox(height: 2), // Reduced spacing
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.bodySmall?.copyWith( // Changed from bodyMedium to bodySmall
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -814,23 +728,272 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen>
     );
   }
 
+  Widget _buildMetricsGrid(Map<String, dynamic> analytics) {
+    final totalRevenue = analytics['total_revenue'] ?? 0.0;
+    final totalOrders = analytics['total_orders'] ?? 0;
+    final avgOrderValue = analytics['avg_order_value'] ?? 0.0;
+    final rating = analytics['rating'] ?? 0.0;
+    final totalReviews = analytics['total_reviews'] ?? 0;
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.2, // Reduced from 1.5 to 1.2 to give more height
+      children: [
+        _buildMetricCard(
+          title: 'Total Revenue',
+          value: 'RM ${totalRevenue.toStringAsFixed(2)}',
+          change: _selectedPeriod,
+          isPositive: true,
+          icon: Icons.attach_money,
+          color: Colors.green,
+        ),
+        _buildMetricCard(
+          title: 'Total Orders',
+          value: '$totalOrders',
+          change: _selectedPeriod,
+          isPositive: true,
+          icon: Icons.receipt_long,
+          color: Colors.blue,
+        ),
+        _buildMetricCard(
+          title: 'Avg Order Value',
+          value: 'RM ${avgOrderValue.toStringAsFixed(2)}',
+          change: _selectedPeriod,
+          isPositive: true,
+          icon: Icons.trending_up,
+          color: Colors.orange,
+        ),
+        _buildMetricCard(
+          title: 'Customer Rating',
+          value: rating.toStringAsFixed(1),
+          change: '$totalReviews reviews',
+          isPositive: true,
+          icon: Icons.star,
+          color: Colors.amber,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingMetrics() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.2, // Reduced from 1.5 to 1.2 to give more height
+      children: [
+        _buildMetricCard(
+          title: 'Total Revenue',
+          value: '...',
+          change: 'Loading...',
+          isPositive: true,
+          icon: Icons.attach_money,
+          color: Colors.green,
+        ),
+        _buildMetricCard(
+          title: 'Total Orders',
+          value: '...',
+          change: 'Loading...',
+          isPositive: true,
+          icon: Icons.receipt_long,
+          color: Colors.blue,
+        ),
+        _buildMetricCard(
+          title: 'Avg Order Value',
+          value: '...',
+          change: 'Loading...',
+          isPositive: true,
+          icon: Icons.trending_up,
+          color: Colors.orange,
+        ),
+        _buildMetricCard(
+          title: 'Customer Rating',
+          value: '...',
+          change: 'Loading...',
+          isPositive: true,
+          icon: Icons.star,
+          color: Colors.amber,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorMetrics(Object error) {
+    debugPrint('⚠️ [VENDOR-ANALYTICS] Error in metrics: $error');
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.2, // Reduced from 1.5 to 1.2 to give more height
+      children: [
+        _buildMetricCard(
+          title: 'Total Revenue',
+          value: 'RM 0.00',
+          change: 'Error',
+          isPositive: false,
+          icon: Icons.attach_money,
+          color: Colors.green,
+        ),
+        _buildMetricCard(
+          title: 'Total Orders',
+          value: '0',
+          change: 'Error',
+          isPositive: false,
+          icon: Icons.receipt_long,
+          color: Colors.blue,
+        ),
+        _buildMetricCard(
+          title: 'Avg Order Value',
+          value: 'RM 0.00',
+          change: 'Error',
+          isPositive: false,
+          icon: Icons.trending_up,
+          color: Colors.orange,
+        ),
+        _buildMetricCard(
+          title: 'Customer Rating',
+          value: '0.0',
+          change: 'Error',
+          isPositive: false,
+          icon: Icons.star,
+          color: Colors.amber,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPerformanceContent(Map<String, dynamic> performance) {
+    final currentPeriod = performance['current_period'] ?? {};
+    final total = performance['total'] ?? {};
+    final period = performance['period'] ?? 'month';
+
+    final currentOrders = currentPeriod['orders'] ?? 0;
+    final currentRevenue = currentPeriod['revenue'] ?? 0.0;
+    final totalOrders = total['orders'] ?? 0;
+    final pendingOrders = total['pending_orders'] ?? 0;
+    final rating = total['rating'] ?? 0.0;
+    final totalReviews = total['total_reviews'] ?? 0;
+
+    return Column(
+      children: [
+        _buildPerformanceRow(
+          'Orders (${_getPeriodDisplayName(period)})',
+          '$currentOrders',
+          Icons.today,
+        ),
+        const Divider(),
+        _buildPerformanceRow(
+          'Revenue (${_getPeriodDisplayName(period)})',
+          'RM ${currentRevenue.toStringAsFixed(2)}',
+          Icons.monetization_on,
+        ),
+        const Divider(),
+        _buildPerformanceRow('Pending Orders', '$pendingOrders', Icons.pending_actions),
+        const Divider(),
+        _buildPerformanceRow('Total Orders', '$totalOrders', Icons.restaurant_menu),
+        const Divider(),
+        _buildPerformanceRow(
+          'Customer Rating',
+          '${rating.toStringAsFixed(1)} ($totalReviews reviews)',
+          Icons.star,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingPerformance() {
+    return Column(
+      children: [
+        _buildPerformanceRow('Orders (${_getPeriodDisplayName('month')})', '...', Icons.today),
+        const Divider(),
+        _buildPerformanceRow('Revenue (${_getPeriodDisplayName('month')})', '...', Icons.monetization_on),
+        const Divider(),
+        _buildPerformanceRow('Pending Orders', '...', Icons.pending_actions),
+        const Divider(),
+        _buildPerformanceRow('Total Orders', '...', Icons.restaurant_menu),
+        const Divider(),
+        _buildPerformanceRow('Customer Rating', '...', Icons.star),
+      ],
+    );
+  }
+
+  Widget _buildErrorPerformance(Object error) {
+    debugPrint('⚠️ [VENDOR-ANALYTICS] Error in performance: $error');
+    return Column(
+      children: [
+        _buildPerformanceRow('Orders (${_getPeriodDisplayName('month')})', '0', Icons.today),
+        const Divider(),
+        _buildPerformanceRow('Revenue (${_getPeriodDisplayName('month')})', 'RM 0.00', Icons.monetization_on),
+        const Divider(),
+        _buildPerformanceRow('Pending Orders', '0', Icons.pending_actions),
+        const Divider(),
+        _buildPerformanceRow('Total Orders', '0', Icons.restaurant_menu),
+        const Divider(),
+        _buildPerformanceRow('Customer Rating', '0.0 (0 reviews)', Icons.star),
+      ],
+    );
+  }
+
+  String _getPeriodDisplayName(String period) {
+    switch (period) {
+      case 'today':
+        return 'Today';
+      case 'week':
+        return 'This Week';
+      case 'month':
+        return 'This Month';
+      case 'year':
+        return 'This Year';
+      default:
+        return 'This Month';
+    }
+  }
+
   Widget _buildPerformanceRow(String title, String value, IconData icon) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final roleTheme = GERoleThemeExtension.of(context);
+    final accentColor = roleTheme?.accentColor ?? colorScheme.primary;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: Colors.grey[600], size: 20),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              icon,
+              color: accentColor,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Text(
               title,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
             ),
           ),
         ],

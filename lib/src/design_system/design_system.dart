@@ -6,6 +6,8 @@ library;
 
 // Design tokens
 export 'tokens/tokens.dart';
+export 'tokens/ge_vendor_colors.dart';
+export 'tokens/ge_gradients.dart';
 
 // Theme system
 export 'theme/theme.dart';

@@ -15,6 +15,7 @@ import 'src/core/config/supabase_config.dart';
 import 'src/features/shared/providers/app_providers.dart' as app_providers;
 import 'src/core/services/app_lifecycle_service.dart';
 import 'src/core/services/realtime_connection_debug_logger.dart';
+import 'src/core/features/feature_flags.dart';
 import 'src/features/drivers/presentation/widgets/notifications/withdrawal_notification_overlay.dart';
 
 
@@ -134,6 +135,7 @@ void main() async {
     ProviderScope(
       overrides: [
         app_providers.sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+        featureFlagServiceProvider.overrideWithValue(FeatureFlagService(sharedPreferences)),
       ],
       child: const GigaEatsApp(),
     ),

@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Dashboard - Mobile UI/UX Mockup</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #4CAF50;
+            --primary-green-dark: #388E3C;
+            --secondary-blue: #2196F3;
+            --accent-purple: #9C27B0;
+            --success-green: #4CAF50;
+            --danger-red: #F44336;
+            --warning-orange: #FF9800;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --text-light: #BDBDBD;
+            --background: #FAFAFA;
+            --card-background: #FFFFFF;
+            --border-light: #E0E0E0;
+            --shadow-light: 0 2px 8px rgba(0,0,0,0.1);
+            --shadow-medium: 0 4px 16px rgba(0,0,0,0.15);
+            --border-radius: 12px;
+            --spacing-xs: 8px;
+            --spacing-sm: 16px;
+            --spacing-md: 24px;
+            --spacing-lg: 32px;
+            --font-size-xs: 12px;
+            --font-size-sm: 14px;
+            --font-size-base: 16px;
+            --font-size-lg: 18px;
+            --font-size-xl: 24px;
+            --font-size-xxl: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding-bottom: 80px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: var(--text-primary);
+            color: white;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+        }
+
+        .status-icons {
+            display: flex;
+            gap: var(--spacing-xs);
+            align-items: center;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+            color: white;
+            padding: var(--spacing-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-medium);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: center;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-lg);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .header-icon:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Main Content */
+        .container {
+            padding: 0 var(--spacing-sm);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* Section Headers */
+        .section {
+            margin: var(--spacing-lg) 0;
+        }
+
+        .section-header {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-title {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .section-subtitle {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Greeting Section */
+        .greeting {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-light);
+            margin: var(--spacing-md) 0;
+        }
+
+        .greeting-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-xl);
+            color: white;
+            font-weight: 600;
+        }
+
+        .greeting-text h2 {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .greeting-text p {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        .date-info {
+            font-size: var(--font-size-sm);
+            color: var(--text-light);
+            margin: var(--spacing-xs) 0 var(--spacing-sm) 0;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+            margin-top: var(--spacing-sm);
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            padding: var(--spacing-sm);
+            border: none;
+            border-radius: var(--spacing-xs);
+            background: var(--primary-green);
+            color: white;
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-xs);
+        }
+
+        .quick-action-btn:hover {
+            background: var(--primary-green-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .quick-action-btn.secondary {
+            background: var(--secondary-blue);
+        }
+
+        .quick-action-btn.tertiary {
+            background: var(--accent-purple);
+        }
+
+        /* Metric Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-sm);
+            margin: var(--spacing-md) 0;
+        }
+
+        .metric-card {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-light);
+            transition: all 0.2s ease;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .metric-title {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .metric-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--spacing-xs);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-base);
+        }
+
+        .metric-icon.revenue {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--danger-red);
+        }
+
+        .metric-icon.orders {
+            background: rgba(33, 150, 243, 0.1);
+            color: var(--secondary-blue);
+        }
+
+        .metric-icon.value {
+            background: rgba(156, 39, 176, 0.1);
+            color: var(--accent-purple);
+        }
+
+        .metric-icon.rating {
+            background: rgba(255, 152, 0, 0.1);
+            color: var(--warning-orange);
+        }
+
+        .metric-value {
+            font-size: var(--font-size-xxl);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .metric-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: var(--font-size-xs);
+        }
+
+        .metric-subtitle {
+            color: var(--text-secondary);
+        }
+
+        .metric-change {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+        }
+
+        .metric-change.positive {
+            color: var(--success-green);
+        }
+
+        .metric-change.negative {
+            color: var(--danger-red);
+        }
+
+        .metric-change.neutral {
+            color: var(--text-light);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-top: var(--spacing-xs);
+            height: 4px;
+            background: var(--border-light);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--primary-green);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        /* Mini Chart */
+        .mini-chart {
+            height: 40px;
+            margin-top: var(--spacing-xs);
+            display: flex;
+            align-items: end;
+            gap: 2px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: var(--primary-green);
+            border-radius: 1px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .chart-bar:hover {
+            opacity: 1;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-lg);
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            margin: var(--spacing-md) 0;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            color: var(--text-light);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state h3 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-xs);
+            color: var(--text-primary);
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-state-btn {
+            background: var(--primary-green);
+            color: white;
+            border: none;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--spacing-xs);
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            min-height: 44px;
+        }
+
+        .empty-state-btn:hover {
+            background: var(--primary-green-dark);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-background);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            padding: var(--spacing-xs) 0;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--spacing-xs);
+            text-decoration: none;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+            min-height: 64px;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            color: var(--primary-green);
+        }
+
+        .nav-item i {
+            font-size: var(--font-size-lg);
+            margin-bottom: 2px;
+        }
+
+        .nav-item span {
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+
+        /* Branding */
+        .kuse-branding {
+            margin-top: var(--spacing-lg);
+            text-align: center;
+            padding: var(--spacing-sm);
+            color: var(--text-light);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-xs);
+        }
+
+        .kuse-branding:hover {
+            color: var(--primary-green);
+        }
+
+        .kuse-branding svg {
+            height: 1em;
+            transition: transform 0.2s ease;
+        }
+
+        .kuse-branding:hover svg {
+            transform: scale(1.1);
+        }
+
+        /* Print Styles */
+        @media print {
+            .status-bar,
+            .header,
+            .bottom-nav {
+                display: none;
+            }
+            
+            body {
+                background: white;
+                padding-bottom: 0;
+            }
+            
+            .container {
+                max-width: none;
+                padding: 0;
+            }
+            
+            .metric-card,
+            .greeting,
+            .empty-state {
+                box-shadow: none;
+                border: 1px solid var(--border-light);
+                break-inside: avoid;
+                margin-bottom: var(--spacing-sm);
+            }
+            
+            .section {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 360px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+            
+            .quick-action-btn {
+                width: 100%;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 600px;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <span>12:59</span>
+        <div class="status-icons">
+            <i class="fas fa-shield-alt" aria-label="Security"></i>
+            <i class="fas fa-wifi" aria-label="WiFi"></i>
+            <i class="fas fa-signal" aria-label="Signal"></i>
+            <i class="fas fa-battery-three-quarters" aria-label="Battery"></i>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <i class="fas fa-store" aria-label="Store"></i>
+            <span>Vendor Dashboard</span>
+        </div>
+        <div class="header-actions">
+            <div class="header-icon" role="button" aria-label="Notifications" tabindex="0">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div class="header-icon" role="button" aria-label="Profile" tabindex="0">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="header-icon" role="button" aria-label="Settings" tabindex="0">
+                <i class="fas fa-cog"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Greeting Section -->
+        <div class="greeting">
+            <div class="greeting-header">
+                <div class="avatar" aria-label="Profile Avatar">MK</div>
+                <div class="greeting-text">
+                    <h2>Good Morning!</h2>
+                    <p>Welcome back to Mad Krapow</p>
+                </div>
+            </div>
+            <div class="date-info">Sunday, August 17, 2025</div>
+            
+            <div class="quick-actions">
+                <button class="quick-action-btn" aria-label="View Orders">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>View Orders</span>
+                </button>
+                <button class="quick-action-btn secondary" aria-label="Add Product">
+                    <i class="fas fa-plus"></i>
+                    <span>Add Product</span>
+                </button>
+                <button class="quick-action-btn tertiary" aria-label="Contact Support">
+                    <i class="fas fa-headset"></i>
+                    <span>Support</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Today's Performance Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Today's Performance</h2>
+                <p class="section-subtitle">Key metrics for today</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">Today's Revenue</span>
+                        <div class="metric-icon revenue" aria-label="Revenue Icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="metric-value">RM 0.00</div>
+                    <div class="metric-details">
+                        <span class="metric-subtitle">0 orders today</span>
+                        <span class="metric-change neutral">
+                            <i class="fas fa-minus"></i> 0%
+                        </span>
+                    </div>
+                    <div class="mini-chart">
+                        <div class="chart-bar" style="height: 20%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">Active Orders</span>
+                        <div class="metric-icon orders" aria-label="Orders Icon">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                    </div>
+                    <div class="metric-value">0</div>
+                    <div class="metric-details">
+                        <span class="metric-subtitle">No active orders</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Weekly Performance Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Weekly Performance</h2>
+                <p class="section-subtitle">Last 7 days overview</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">Weekly Revenue</span>
+                        <div class="metric-icon orders" aria-label="Calendar Icon">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                    </div>
+                    <div class="metric-value">RM 0.00</div>
+                    <div class="metric-details">
+                        <span class="metric-subtitle">0 orders this week</span>
+                    </div>
+                    <div class="mini-chart">
+                        <div class="chart-bar" style="height: 30%"></div>
+                        <div class="chart-bar" style="height: 10%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                        <div class="chart-bar" style="height: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">Avg Order Value</span>
+                        <div class="metric-icon value" aria-label="Value Icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+                    <div class="metric-value">RM 0.00</div>
+                    <div class="metric-details">
+                        <span class="metric-subtitle">Per order average</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Overall Statistics Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Overall Statistics</h2>
+                <p class="section-subtitle">All-time performance data</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">Total Orders</span>
+                        <div class="metric-icon orders" aria-label="Orders Icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                    <div class="metric-value">116</div>
+                    <div class="metric-details">
+                        <span class="metric-subtitle">All time</span>
+                        <span class="metric-change positive">
+                            <i class="fas fa-arrow-up"></i> +5%
+                        </span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: 75%"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">Customer Rating</span>
+                        <div class="metric-icon rating" aria-label="Rating Icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <div class="metric-value">4.2</div>
+                    <div class="metric-details">
+                        <span class="metric-subtitle">Based on 84 reviews</span>
+                        <span class="metric-change positive">
+                            <i class="fas fa-arrow-up"></i> +0.3
+                        </span>
+                    </div>
+                    <div class="mini-chart">
+                        <div class="chart-bar" style="height: 60%"></div>
+                        <div class="chart-bar" style="height: 70%"></div>
+                        <div class="chart-bar" style="height: 80%"></div>
+                        <div class="chart-bar" style="height: 75%"></div>
+                        <div class="chart-bar" style="height: 85%"></div>
+                        <div class="chart-bar" style="height: 90%"></div>
+                        <div class="chart-bar" style="height: 84%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Empty State for Zero Data -->
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h3>No orders yet today!</h3>
+            <p>Try promoting your menu or adding special offers to attract more customers.</p>
+            <button class="empty-state-btn" aria-label="View Marketing Tips">
+                <i class="fas fa-lightbulb"></i>
+                Get Marketing Tips
+            </button>
+        </div>
+
+        <!-- Branding -->
+        <div class="kuse-branding" onclick="window.open('https://kuse.ai', '_blank')" tabindex="0" role="button" aria-label="Made with Kuse">
+            made with 
+            <svg viewBox="0,0,160,44" xmlns="http://www.w3.org/2000/svg">
+                <path d="m.01,20.65C-.43,8.25,9.3-2.03,22.04.34,34.78,2.72,43.29,8.32,43.29,22.9s-8.66,19.01-22.03,20.3C7.9,44.5.46,33.05.01,20.65z" fill="currentColor"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="m146.76,7.94c8.07,0,13.24,6.15,13.24,14.58v1.39h-20.75c.45,4.05,3.51,7.37,8.57,7.37,2.62,0,5.73-1.05,7.62-2.94l2.67,3.83c-2.67,2.55-6.62,3.88-10.9,3.88-8.07,0-14.08-5.6-14.08-14.08,0-7.76,5.67-14.02,13.63-14.02zm0,4.77c-5.01,0-7.29,3.83-7.57,7.1h15.13c-.11-3.16-2.28-7.1-7.57-7.1z" fill="currentColor"/>
+                <path d="m86.64,24.49c0,4.15,2.39,6.84,6.84,6.84,4.4,0,6.84-2.69,6.84-6.84V8.55h5.37v16.33c0,6.7-4.06,11.14-12.21,11.14-8.21,0-12.21-4.5-12.21-11.09V8.55h5.37v15.94zm32.99-16.55c4.49,0,8.06,1.47,10.6,3.86l-2.59,3.81c-2.05-2-5.28-3.08-8.06-3.08-2.88,0-4.84,1.37-4.84,3.32,0,1.91,2.64,2.54,5.81,3.27,4.59,1.08,10.26,2.4,10.26,8.46,0,4.94-3.76,8.41-11.14,8.41-4.98,0-8.94-1.76-11.24-4.11l2.54-4.11c1.86,1.91,5.18,3.67,8.84,3.67,3.91,0,5.57-1.66,5.57-3.62,0-2.3-2.88-2.98-6.21-3.76-4.54-1.08-9.87-2.3-9.87-8.06,0-4.5,4.2-8.06,10.31-8.06zM60.79,20.82,71.44,8.55h6.5L66.46,21.26,78.82,35.44h-6.5l-9.28-11.1-2.25,2.49v8.6h-5.33V8.55h5.33v12.27z" fill="currentColor"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active" aria-label="Dashboard">
+            <i class="fas fa-th-large"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" aria-label="Orders">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Orders</span>
+        </a>
+        <a href="#" class="nav-item" aria-label="Menu">
+            <i class="fas fa-utensils"></i>
+            <span>Menu</span>
+        </a>
+        <a href="#" class="nav-item" aria-label="Analytics">
+            <i class="fas fa-chart-bar"></i>
+            <span>Analytics</span>
+        </a>
+        <a href="#" class="nav-item" aria-label="Profile">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </a>
+    </nav>
+
+    <script>
+        // Enhanced interactivity for the vendor dashboard
+
+        document.addEventListener(`DOMContentLoaded`, function() {
+            // Initialize dashboard features
+            initializeAnimations();
+            initializeInteractions();
+            setupKeyboardNavigation();
+        });
+
+        function initializeAnimations() {
+            // Animate metric cards on load
+            const cards = document.querySelectorAll(`.metric-card`);
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.opacity = `0`;
+                    card.style.transform = `translateY(20px)`;
+                    card.style.transition = `all 0.5s ease`;
+                    
+                    setTimeout(() => {
+                        card.style.opacity = `1`;
+                        card.style.transform = `translateY(0)`;
+                    }, 50);
+                }, index * 100);
+            });
+
+            // Animate progress bars
+            setTimeout(() => {
+                const progressBars = document.querySelectorAll(`.progress-bar`);
+                progressBars.forEach(bar => {
+                    const width = bar.style.width;
+                    bar.style.width = `0%`;
+                    setTimeout(() => {
+                        bar.style.width = width;
+                    }, 500);
+                });
+            }, 800);
+
+            // Animate mini chart bars
+            setTimeout(() => {
+                const chartBars = document.querySelectorAll(`.chart-bar`);
+                chartBars.forEach((bar, index) => {
+                    const height = bar.style.height;
+                    bar.style.height = `0%`;
+                    setTimeout(() => {
+                        bar.style.height = height;
+                    }, index * 100);
+                });
+            }, 1200);
+        }
+
+        function initializeInteractions() {
+            // Quick action buttons
+            const quickActionBtns = document.querySelectorAll(`.quick-action-btn`);
+            quickActionBtns.forEach(btn => {
+                btn.addEventListener(`click`, function() {
+                    // Add ripple effect
+                    const ripple = document.createElement(`span`);
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    
+                    ripple.style.width = ripple.style.height = size + `px`;
+                    ripple.style.left = (event.clientX - rect.left - size / 2) + `px`;
+                    ripple.style.top = (event.clientY - rect.top - size / 2) + `px`;
+                    ripple.style.position = `absolute`;
+                    ripple.style.borderRadius = `50%`;
+                    ripple.style.background = `rgba(255,255,255,0.3)`;
+                    ripple.style.pointerEvents = `none`;
+                    ripple.style.animation = `ripple 0.6s linear`;
+                    
+                    this.style.position = `relative`;
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                    
+                    // Simulate action feedback
+                    showToast(`Action: ${this.textContent.trim()}`);
+                });
+            });
+
+            // Metric card hover effects
+            const metricCards = document.querySelectorAll(`.metric-card`);
+            metricCards.forEach(card => {
+                card.addEventListener(`click`, function() {
+                    // Add pulse animation
+                    this.style.transform = `scale(0.95)`;
+                    setTimeout(() => {
+                        this.style.transform = `scale(1)`;
+                    }, 150);
+                    
+                    showToast(`Viewing details for ${this.querySelector('.metric-title').textContent}`);
+                });
+            });
+
+            // Header icon interactions
+            const headerIcons = document.querySelectorAll(`.header-icon`);
+            headerIcons.forEach(icon => {
+                icon.addEventListener(`click`, function() {
+                    const iconType = this.querySelector(`i`).className;
+                    let message = ``;
+                    
+                    if (iconType.includes(`bell`)) {
+                        message = `No new notifications`;
+                    } else if (iconType.includes(`user`)) {
+                        message = `Profile settings`;
+                    } else if (iconType.includes(`cog`)) {
+                        message = `Dashboard settings`;
+                    }
+                    
+                    showToast(message);
+                });
+            });
+
+            // Navigation item clicks
+            const navItems = document.querySelectorAll(`.nav-item`);
+            navItems.forEach(item => {
+                item.addEventListener(`click`, function(e) {
+                    e.preventDefault();
+                    
+                    // Remove active class from all items
+                    navItems.forEach(nav => nav.classList.remove(`active`));
+                    
+                    // Add active class to clicked item
+                    this.classList.add(`active`);
+                    
+                    // Show feedback
+                    const section = this.querySelector(`span`).textContent;
+                    showToast(`Navigating to ${section}`);
+                });
+            });
+
+            // Empty state button
+            const emptyStateBtn = document.querySelector(`.empty-state-btn`);
+            if (emptyStateBtn) {
+                emptyStateBtn.addEventListener(`click`, function() {
+                    showToast(`Opening marketing tips...`);
+                });
+            }
+        }
+
+        function setupKeyboardNavigation() {
+            // Enable keyboard navigation for interactive elements
+            const focusableElements = document.querySelectorAll(`
+                .header-icon, .quick-action-btn, .metric-card, 
+                .nav-item, .empty-state-btn, .kuse-branding
+            `);
+            
+            focusableElements.forEach(element => {
+                element.setAttribute(`tabindex`, element.hasAttribute(`tabindex`) ? element.getAttribute(`tabindex`) : `0`);
+                
+                element.addEventListener(`keydown`, function(e) {
+                    if (e.key === `Enter` || e.key === ` `) {
+                        e.preventDefault();
+                        this.click();
+                    }
+                });
+            });
+        }
+
+        function showToast(message) {
+            // Create and show toast notification
+            const toast = document.createElement(`div`);
+            toast.style.cssText = `
+                position: fixed;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(33, 33, 33, 0.9);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 24px;
+                font-size: 14px;
+                font-weight: 500;
+                z-index: 1000;
+                backdrop-filter: blur(10px);
+                animation: slideDown 0.3s ease;
+            `;
+            toast.textContent = message;
+            
+            // Add CSS animation
+            const style = document.createElement(`style`);
+            style.textContent = `
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(-20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                }
+                @keyframes ripple {
+                    to {
+                        transform: scale(4);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(toast);
+            
+            // Remove toast after 2 seconds
+            setTimeout(() => {
+                toast.style.animation = `slideDown 0.3s ease reverse`;
+                setTimeout(() => {
+                    toast.remove();
+                    if (document.head.contains(style)) {
+                        document.head.removeChild(style);
+                    }
+                }, 300);
+            }, 2000);
+        }
+
+        // Simulate real-time data updates
+        function simulateDataUpdates() {
+            const revenueValue = document.querySelector(`.metric-card .metric-value`);
+            const ordersCount = document.querySelectorAll(`.metric-card .metric-value`)[1];
+            
+            // Simulate occasional order updates
+            setInterval(() => {
+                if (Math.random() < 0.1) { // 10% chance every 5 seconds
+                    const currentOrders = parseInt(ordersCount.textContent);
+                    ordersCount.textContent = currentOrders + 1;
+                    
+                    // Update revenue
+                    const newRevenue = (currentOrders + 1) * 15.50;
+                    revenueValue.textContent = `RM ${newRevenue.toFixed(2)}`;
+                    
+                    // Show notification
+                    showToast(`New order received! 🎉`);
+                }
+            }, 5000);
+        }
+
+        // Start data simulation after page load
+        setTimeout(simulateDataUpdates, 3000);
+    </script>
+
+    <!-- Kuse SDK -->
+    <script src="https://cdn.kuse.ai/sdk.prd.js"></script>
+</body>
+</html>

@@ -2,11 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../user_management/presentation/screens/vendor/widgets/standard_vendor_header.dart';
 
 import '../../../data/models/order.dart';
 // import '../../utils/order_status_update_helper.dart';
 import '../../../../../presentation/providers/repository_providers.dart';
-
+import '../../../../vendors/presentation/providers/enhanced_vendor_order_history_providers.dart';
+import '../../../../vendors/presentation/widgets/date_filter/vendor_order_date_filter.dart';
+import '../../../../vendors/presentation/widgets/vendor_daily_order_group.dart';
+import '../../../../vendors/data/models/vendor_date_range_filter.dart';
 
 import '../../../../../core/utils/responsive_utils.dart';
 
@@ -36,8 +40,9 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Orders'),
+      appBar: StandardVendorHeader(
+        title: 'Orders',
+        titleIcon: Icons.receipt_long,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -141,11 +146,8 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
               ).toList();
               break;
             case 3: // History
-              orders = allOrders.where((order) =>
-                order.status == OrderStatus.delivered ||
-                order.status == OrderStatus.cancelled
-              ).toList();
-              break;
+              // For History tab, use the enhanced daily filtering
+              return _buildHistoryTabWithDailyFiltering();
             default:
               orders = allOrders;
           }
@@ -239,11 +241,8 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
               ).toList();
               break;
             case 3: // History
-              orders = allOrders.where((order) =>
-                order.status == OrderStatus.delivered ||
-                order.status == OrderStatus.cancelled
-              ).toList();
-              break;
+              // For History tab, use the enhanced daily filtering
+              return _buildHistoryTabWithDailyFiltering();
             default:
               orders = allOrders;
           }
@@ -787,6 +786,131 @@ class _VendorOrdersScreenState extends ConsumerState<VendorOrdersScreen>
       default:
         return 'No orders yet';
     }
+  }
+
+  /// Build the History tab with daily filtering functionality
+  Widget _buildHistoryTabWithDailyFiltering() {
+    debugPrint('🏪 [VENDOR-ORDERS-SCREEN] Building History tab with daily filtering');
+
+    return Column(
+      children: [
+        // Date filter bar
+        const VendorCompactDateFilterBar(
+          padding: EdgeInsets.all(16),
+          showOrderCount: true,
+        ),
+
+        // Grouped order history
+        Expanded(
+          child: _buildGroupedOrderHistory(),
+        ),
+      ],
+    );
+  }
+
+  /// Build the grouped order history list
+  Widget _buildGroupedOrderHistory() {
+    final groupedHistoryAsync = ref.watch(vendorAutoFilteredGroupedHistoryProvider);
+
+    return groupedHistoryAsync.when(
+      data: (groupedHistory) {
+        debugPrint('🏪 [VENDOR-ORDERS-SCREEN] Grouped history loaded: ${groupedHistory.length} groups');
+
+        if (groupedHistory.isEmpty) {
+          return _buildEmptyHistoryState();
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(vendorAutoFilteredGroupedHistoryProvider);
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: groupedHistory.length,
+            itemBuilder: (context, index) {
+              final group = groupedHistory[index];
+              return ExpandableVendorDailyOrderGroup(
+                groupedHistory: group,
+                statusFilter: VendorOrderFilterStatus.all,
+                initiallyExpanded: index == 0, // Expand first group by default
+                onOrderTap: (order) {
+                  debugPrint('🏪 [VENDOR-ORDERS-SCREEN] Order tapped: ${order.id}');
+                  final route = '/vendor/dashboard/order-details/${order.id}';
+                  context.push(route);
+                },
+              );
+            },
+          ),
+        );
+      },
+      loading: () {
+        debugPrint('🏪 [VENDOR-ORDERS-SCREEN] Loading grouped history...');
+        return const Center(child: CircularProgressIndicator());
+      },
+      error: (error, stack) {
+        debugPrint('❌ [VENDOR-ORDERS-SCREEN] Error loading grouped history: $error');
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error loading order history: $error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  debugPrint('🔄 [VENDOR-ORDERS-SCREEN] Retry button pressed - invalidating grouped history provider');
+                  ref.invalidate(vendorAutoFilteredGroupedHistoryProvider);
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build empty state for history
+  Widget _buildEmptyHistoryState() {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.history,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No order history',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Orders will appear here once they are completed',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: () {
+              // Switch to the first tab (Preparing)
+              _tabController.animateTo(0);
+            },
+            icon: const Icon(Icons.restaurant),
+            label: const Text('View Active Orders'),
+          ),
+        ],
+      ),
+    );
   }
 
 
